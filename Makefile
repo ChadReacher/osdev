@@ -19,13 +19,16 @@ bin/kernel.o: src/kernel.c
 bin/stage1.bin: src/stage1.asm
 	$(AS) -f bin $< -o $@
 
-OS: bin/stage1.bin bin/kernel.bin
-	cat ./bin/stage1.bin ./bin/kernel.bin > ./bin/OS.bin
+bin/stage2.bin: src/stage2.asm
+	$(AS) -f bin $< -o $@
+
+OS: bin/stage1.bin bin/stage2.bin bin/kernel.bin
+	cat ./bin/stage1.bin ./bin/stage2.bin ./bin/kernel.bin > ./bin/OS.bin
 	dd if=/dev/zero of=./bin/boot.iso bs=512 count=2880
 	dd if=./bin/OS.bin of=./bin/boot.iso conv=notrunc bs=512
 
 run:
-	qemu-system-i386 -drive format=raw,file=./bin/boot.iso
+	qemu-system-i386 -drive format=raw,file=bin/boot.iso,if=ide,index=0,media=disk
 
 debug:
 	qemu-system-i386 -drive format=raw,file=./bin/boot.iso -boot a -s -S & gdb -ex "target remote localhost:1234"
