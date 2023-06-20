@@ -10,11 +10,17 @@ all: prepare OS
 prepare:
 	mkdir -p bin
 
-bin/kernel.bin: bin/kernel.o
+bin/kernel.bin: bin/kernel.o bin/screen.o
 	$(LD) -o $@ $^ -Tkernel_linker.ld
 
 bin/kernel.o: src/kernel.c
+	$(CC) -ffreestanding -g -c $< -o $@
+
+bin/screen.o: src/screen.c
 	$(CC) -ffreestanding -c $< -o $@
+
+bin/font.bin: src/font.asm
+	$(AS) -f bin $< -o $@
 
 bin/stage1.bin: src/stage1.asm
 	$(AS) -f bin $< -o $@
@@ -22,8 +28,8 @@ bin/stage1.bin: src/stage1.asm
 bin/stage2.bin: src/stage2.asm
 	$(AS) -f bin $< -o $@
 
-OS: bin/stage1.bin bin/stage2.bin bin/kernel.bin
-	cat ./bin/stage1.bin ./bin/stage2.bin ./bin/kernel.bin > ./bin/OS.bin
+OS: bin/stage1.bin bin/stage2.bin bin/font.bin bin/kernel.bin
+	cat bin/stage1.bin bin/stage2.bin bin/font.bin bin/kernel.bin > bin/OS.bin
 	dd if=/dev/zero of=./bin/boot.iso bs=512 count=2880
 	dd if=./bin/OS.bin of=./bin/boot.iso conv=notrunc bs=512
 

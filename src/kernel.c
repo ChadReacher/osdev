@@ -1,12 +1,31 @@
 #include "util.h"
-
-void dummy_test_entrypoint() {
-}
+#include "screen.h"
 
 __attribute__ ((section ("kernel_entry"))) void _start() {
-	u32 **framebuffer = (u32 **)0x5028;
-	for (u32 i = 0; i < 1920 * 1080; ++i) {
-		*(*framebuffer + i) = 0x000000FF;
+	clear_screen();
+
+	for (u16 i = 0; i < 240; ++i) {
+		u8 ch;
+		if (i < 32) {
+			ch = '^';
+		} else if (i > 127) {
+			ch = 'E';
+		} else {
+			ch = i;
+		}
+		print_char(i, 0, ch);
+	}
+
+	for (u16 i = 0; i < 67; ++i) {
+		u8 ch;
+		if (i < 32) {
+			ch = '^';
+		} else if (i > 127) {
+			ch = 'E';
+		} else {
+			ch = i;
+		}
+		print_char(120, i, ch);
 	}
 
 	for (;;) {}

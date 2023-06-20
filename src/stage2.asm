@@ -87,9 +87,18 @@ prepare_for_32:
 
 bits 32
 entry_32bit:
-	; Set up VBE mode info block in memory to be easier to work with (0x5000 memory location)
+	; Set up segments
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	mov ss, ax
+	mov esp, 0x90000				; Set up the stack pointer
+
+	; Load VBE mode info block at memory location 0x9000
 	mov esi, mode_info_block
-	mov edi, 0x5000
+	mov edi, 0x9000
 	mov ecx, 64
 	rep movsd
 
