@@ -29,7 +29,7 @@ boot_start:
 
 	; Set video mode to 80x25 16 color text
 	mov ah, 0
-	mov al, 3
+	mov al, 13
 	int 0x10
 
 	call enable_a20
