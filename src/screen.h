@@ -13,7 +13,8 @@
 #define FRAMEBUFFER_ADDRESS 0x9028
 #define FONT_ADDRESS 0x6000
 
-void print_char(u16 x, u16 y, u8 ch);
+void print_char(u8 ch);
 void clear_screen();
+void scroll_up();
 
 #endif
