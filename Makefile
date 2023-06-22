@@ -1,23 +1,34 @@
 # Comments start with '#'
-BIN_SRC=/usr/bin/i386elfgcc/bin
+BIN_SRC= /usr/bin/i386elfgcc/bin
 
-CC=$(BIN_SRC)/i386-elf-gcc
-AS=nasm
-LD=$(BIN_SRC)/i386-elf-ld
+CC= $(BIN_SRC)/i386-elf-gcc
+AS= nasm
+LD= $(BIN_SRC)/i386-elf-ld
+
+C_FLAGS= -g -ffreestanding
 
 all: prepare OS
 
 prepare:
 	mkdir -p bin
 
-bin/kernel.bin: bin/kernel.o bin/screen.o
+bin/kernel.bin: bin/kernel.o bin/screen.o bin/memory.o bin/k_stdlib.o bin/string.o
 	$(LD) -o $@ $^ -Tkernel_linker.ld
 
 bin/kernel.o: src/kernel.c
-	$(CC) -ffreestanding -g -c $< -o $@
+	$(CC) $(C_FLAGS) -c $< -o $@
 
 bin/screen.o: src/screen.c
-	$(CC) -ffreestanding -c $< -o $@
+	$(CC) $(C_FLAGS) -c $< -o $@
+
+bin/memory.o: src/memory.c
+	$(CC) $(C_FLAGS) -c $< -o $@
+
+bin/string.o: src/string.c
+	$(CC) $(C_FLAGS) -c $< -o $@
+
+bin/k_stdlib.o: src/k_stdlib.c
+	$(CC) $(C_FLAGS) -c $< -o $@
 
 bin/font.bin: src/font.asm
 	$(AS) -f bin $< -o $@

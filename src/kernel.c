@@ -4,34 +4,22 @@
 __attribute__ ((section ("kernel_entry"))) void _start() {
 	clear_screen();
 
-	for (u16 i = 0; i < 240; ++i) {
-		print_char('V');
-	}
-	for (u16 j = 1; j < 66; ++j) {
-		for (u16 i = 0; i < 240; ++i) {
-			u8 ch;
-			if (i < 32) {
-				ch = 'E';
-			} else if (i > 127) {
-				ch = 'O';
-			} else {
-				ch = i;
-			}
-			if (j != 66 || i != 239) {
-				print_char(ch);
-			}
-		}
-	}
-	for (u16 i = 0; i < 239; ++i) {
-		print_char('S');
-	}
-	print_char('\r');
-	print_char('M');
-	print_char('a');
-	print_char('n');
-	print_char('!');
-	print_char('\r');
-	print_char('Z');
+	i32 a = 10;
+
+	kprintf("Zero decimal number %d\n", 0);
+	kprintf("Positive number %d\n", 1234567890);
+	kprintf("Negative number %d \n", -1234567890);
+	kprintf("Positive number %i \n", 1234567890);
+	kprintf("Negative number %i \n", -1234567890);
+	kprintf("Hex number(1) %x\n", 0x1234567890);
+	kprintf("Hex number(2) %x\n", 0xABCDEF);
+	kprintf("Hex number(3) %x\n", 15);
+	kprintf("Zero hex number %x\n", 0);
+	kprintf("Test with %% \n");
+	kprintf("Default text\n", 1234567890);
+	kprintf("Test single character %c\n", 0x41);
+	kprintf("Test string %s\n", "some string");
+	kprintf("Pointer of variable a %p\n", &a);
 
 	for (;;) {}
 }

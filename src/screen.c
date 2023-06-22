@@ -1,4 +1,8 @@
+#include <stdarg.h>
+#include "memory.h"
+#include "string.h"
 #include "screen.h"
+#include "k_stdlib.h"
 
 static const u32 background_color = 0x00000000; // Black color
 static const u32 foreground_color = 0x00FFFFFF; // White color
@@ -12,7 +16,7 @@ void clear_screen() {
 	}
 }
 
-void print_char(u8 ch) {
+static void print_char(u8 ch) {
 	u32 *framebuffer;
 	u8 *font_char;
 
@@ -22,9 +26,9 @@ void print_char(u8 ch) {
 	if (ch == '\n') {
 		cursor_x = 0;
 		++cursor_y;
-		if (cursor_y >= 67) {
+		if (cursor_y >= MAX_CHARS_IN_COL) {
 			scroll_up();
-			cursor_y = 66;
+			cursor_y = MAX_CHARS_IN_COL - 1;
 		}
 		return;
 	} else if (ch == '\r') {
@@ -32,29 +36,35 @@ void print_char(u8 ch) {
 		return;
 	}
 
-	font_char = (u8 *)(FONT_ADDRESS + ((ch * 16) - 16));
+	font_char = (u8 *)(FONT_ADDRESS + ((ch * PIXEL_HEIGHT) - PIXEL_HEIGHT));
 
 	for (u8 line = 0; line < PIXEL_HEIGHT; ++line) {
 		for (i8 bit = PIXEL_WIDTH - 1; bit >= 0; --bit) {
 			*framebuffer = (font_char[line] & (1 << bit)) ? foreground_color : background_color;
 			++framebuffer;
 		}
-		framebuffer += (1920 - 8);
+		framebuffer += (SCREEN_WIDTH - PIXEL_WIDTH);
 	}
 	++cursor_x;
 
-	if (cursor_x >= 240) {
+	if (cursor_x >= MAX_CHARS_IN_ROW) {
 		cursor_x = 0;
 		++cursor_y;
-		if (cursor_y >= 67) {
+		if (cursor_y >= MAX_CHARS_IN_COL) {
 			scroll_up();
 			cursor_x = 0;
-			cursor_y = 66;
+			cursor_y = MAX_CHARS_IN_COL - 1;
 		}
 	}
 }
 
-void scroll_up() {
+static void print_string(i8 *string) {
+	while (*string) {
+		print_char(*string++);
+	}
+}
+
+static void scroll_up() {
 	u32 *framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
 
 	// PIXEL_HEIGHT - don't copy the last row of chars; 
@@ -71,4 +81,73 @@ void scroll_up() {
 			*framebuffer++ = background_color; 
 		}
 	}
+}
+
+void kprintf(u8 *fmt, ...) {
+	va_list args;
+
+	va_start(args, fmt);
+
+	u8 internal_buf[1024];
+	memset(internal_buf, 0, sizeof internal_buf);
+
+	kvsprintf(internal_buf, fmt, args);
+
+	print_string(internal_buf);
+}
+
+void kvsprintf(u8 *buf, u8 *fmt, va_list args) {
+	u8 internal_buf[512];
+	size_t sz;
+	u8 *p;
+	i8 *temp_s;
+
+	for (p = fmt; *p; ++p) {
+		if (*p != '%') {
+			*buf = *p;
+			++buf;
+			continue;
+		}
+		switch (*++p) {
+			case 'd':
+			case 'i':
+				memset(internal_buf, 0, sizeof internal_buf);
+				itoa(va_arg(args, i32), internal_buf, 10);
+				sz = strlen(internal_buf);
+				memcpy(buf, internal_buf, sz);
+				buf += sz;
+				break;
+			case 'x':
+				memset(internal_buf, 0, sizeof internal_buf);
+				itoa(va_arg(args, i32), internal_buf, 16);
+				sz = strlen(internal_buf);
+				memcpy(buf, internal_buf, sz);
+				buf += sz;
+				break;
+			case 'c':
+				*buf = (i8) va_arg(args, i32);
+				++buf;
+				break;
+			case 's':
+				temp_s = va_arg(args, i8*);
+				sz = strlen(temp_s);
+				memcpy(buf, temp_s, sz);
+				buf += sz;
+				break;
+			case 'p':
+				memset(internal_buf, 0, sizeof internal_buf);
+				itoa((u32)va_arg(args, void*), internal_buf, 16);
+				sz = strlen(internal_buf);
+				memcpy(buf, internal_buf, sz);
+				buf += sz;
+				break;
+			case '%':
+				*buf = *p;
+				++buf;
+				break;
+			default:
+				break;
+		}
+	}
+	va_end(args);
 }
