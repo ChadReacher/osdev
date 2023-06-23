@@ -1,4 +1,4 @@
-#include "util.h"
+#include "types.h"
 #include "screen.h"
 
 __attribute__ ((section ("kernel_entry"))) void _start() {
@@ -18,7 +18,7 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	kprintf("Test with %% \n");
 	kprintf("Default text\n", 1234567890);
 	kprintf("Test single character %c\n", 0x41);
-	kprintf("Test string %s\n", "some string");
+	kprintf("Test string \"%s\"\n", "some string");
 	kprintf("Pointer of variable a %p\n", &a);
 
 	for (;;) {}

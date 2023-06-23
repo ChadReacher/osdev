@@ -2,7 +2,7 @@
 #define SCREEN_H
 
 #include <stdarg.h>
-#include "util.h"
+#include "types.h"
 
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080

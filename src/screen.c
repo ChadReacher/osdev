@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include "serial.h"
 #include "memory.h"
 #include "string.h"
 #include "screen.h"
@@ -11,9 +12,7 @@ static u16 cursor_x = 0, cursor_y = 0;
 
 void clear_screen() {
 	u32 *framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
-	for (u32 i = 0; i < SCREEN_SIZE; ++i) {
-		*framebuffer++ = background_color;
-	}
+	memset(framebuffer, background_color, SCREEN_SIZE);
 }
 
 static void print_char(u8 ch) {
@@ -94,6 +93,10 @@ void kprintf(u8 *fmt, ...) {
 	kvsprintf(internal_buf, fmt, args);
 
 	print_string(internal_buf);
+
+	size_t sz = strlen(internal_buf);
+	internal_buf[sz] = '\r';
+	write_string_serial(internal_buf);
 }
 
 void kvsprintf(u8 *buf, u8 *fmt, va_list args) {
