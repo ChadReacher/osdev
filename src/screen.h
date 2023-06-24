@@ -18,10 +18,8 @@
 #define FONT_ADDRESS 0x6000
 
 void clear_screen();
-void kprintf(u8 *fmt, ...);
-void kvsprintf(u8 *buf, u8 *fmt, va_list args);
 static void print_char(u8 ch);
 static void scroll_up();
-static void print_string(i8 *string);
+void print_string(i8 *string);
 
 #endif

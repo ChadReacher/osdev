@@ -1,5 +1,7 @@
 #include "types.h"
 #include "screen.h"
+#include "k_stdio.h"
+#include "isr.h"
 
 __attribute__ ((section ("kernel_entry"))) void _start() {
 	clear_screen();
@@ -20,6 +22,15 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	kprintf("Test single character %c\n", 0x41);
 	kprintf("Test string \"%s\"\n", "some string");
 	kprintf("Pointer of variable a %p\n", &a);
+	kprintf("Mixing numbers %d and hex numbers %x and single character %c\n", 321, 0xBEE, 0x42);
+
+	kprintf("Initializing IDT...\n");
+	init_isrs();
+
+	// Test interrupt exceptions
+	asm volatile ("int $0");
+	asm volatile ("int $1");
+	asm volatile ("int $2");
 
 	for (;;) {}
 }

@@ -1,7 +1,7 @@
 BIN_UTILS_SRC = /usr/bin/i386elfgcc/bin
 
 CC = $(BIN_UTILS_SRC)/i386-elf-gcc
-C_FLAGS = -g -ffreestanding
+C_FLAGS = -ffreestanding
 LD = $(BIN_UTILS_SRC)/i386-elf-ld
 AS = nasm
 
@@ -26,7 +26,7 @@ OS: bin/bootloader.bin bin/kernel.bin
 bin/bootloader.bin: $(BIN_SRC)
 	cat $^ > bin/bootloader.bin
 
-bin/kernel.bin: bin/kernel.o $(OBJ_SRC)
+bin/kernel.bin: bin/kernel.o bin/interrupt.o $(OBJ_SRC)
 	$(LD) -o $@ $^ -Tkernel_linker.ld
 
 run:
@@ -34,6 +34,9 @@ run:
 
 debug:
 	qemu-system-i386 -drive format=raw,file=./bin/boot.iso -boot a -s -S & gdb -ex "target remote localhost:1234"
+
+bin/interrupt.o: src/interrupt.asm
+	$(AS) -f elf $< -o $@
 
 bin/%.o: src/%.c
 	$(CC) $(C_FLAGS) -c $< -o $@
