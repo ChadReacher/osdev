@@ -1,6 +1,10 @@
 #include "k_stdio.h"
+#include "port.h"
+#include "pic.h"
 #include "idt.h"
 #include "isr.h"
+
+isr_t interrupt_handlers[256];
 
 void init_isrs() {
 	idt_set(0, (u32*)isr0, INTERRUPT_GATE_TYPE);
@@ -35,6 +39,25 @@ void init_isrs() {
 	idt_set(29, (u32*)isr29, INTERRUPT_GATE_TYPE);
 	idt_set(30, (u32*)isr30, INTERRUPT_GATE_TYPE);
 	idt_set(31, (u32*)isr31, INTERRUPT_GATE_TYPE);
+
+	pic_remap();
+
+	idt_set(32, (u32*)irq0, INTERRUPT_GATE_TYPE);
+	idt_set(33, (u32*)irq1, INTERRUPT_GATE_TYPE);
+	idt_set(34, (u32*)irq2, INTERRUPT_GATE_TYPE);
+	idt_set(35, (u32*)irq3, INTERRUPT_GATE_TYPE);
+	idt_set(36, (u32*)irq4, INTERRUPT_GATE_TYPE);
+	idt_set(37, (u32*)irq5, INTERRUPT_GATE_TYPE);
+	idt_set(38, (u32*)irq6, INTERRUPT_GATE_TYPE);
+	idt_set(39, (u32*)irq7, INTERRUPT_GATE_TYPE);
+	idt_set(40, (u32*)irq8, INTERRUPT_GATE_TYPE);
+	idt_set(41, (u32*)irq9, INTERRUPT_GATE_TYPE);
+	idt_set(42, (u32*)irq10, INTERRUPT_GATE_TYPE);
+	idt_set(43, (u32*)irq11, INTERRUPT_GATE_TYPE);
+	idt_set(44, (u32*)irq12, INTERRUPT_GATE_TYPE);
+	idt_set(45, (u32*)irq13, INTERRUPT_GATE_TYPE);
+	idt_set(46, (u32*)irq14, INTERRUPT_GATE_TYPE);
+	idt_set(47, (u32*)irq15, INTERRUPT_GATE_TYPE);
 
 	init_idt();
 }
@@ -79,4 +102,21 @@ i8 *exception_messages[] = {
 
 void isr_handler(registers_t r) {
 	kprintf("Received interrupt: %s(%d) with error code: %x\n", exception_messages[r.int_number], r.int_number, r.err_code);
+}
+
+void register_interrupt_handler(u8 n, isr_t handler) {
+	interrupt_handlers[n] = handler;
+}
+
+void irq_handler(registers_t r) {
+	// Sending EOI command code
+	if (r.int_number >= 40) {
+		port_outb(0xA0, 0x20); // slave
+	}
+	port_outb(0x20, 0x20); // master
+
+	if (interrupt_handlers[r.int_number] != 0) {
+		isr_t handler = interrupt_handlers[r.int_number];
+		handler(r);
+	}
 }

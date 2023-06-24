@@ -26,15 +26,15 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	kprintf("Mixing numbers %d and hex numbers %x and single character %c\n", 321, 0xBEE, 0x42);
 
 	kprintf("Initializing IDT...\n");
+	kprintf("Remapping PIC...\n");
 	init_isrs();
 
-	kprintf("Remapping PIC...\n");
-	pic_remap();
 
 	// Test interrupt exceptions
 	asm volatile ("int $0");
 	asm volatile ("int $1");
 	asm volatile ("int $2");
+	asm volatile ("int $32");
 
 	for (;;) {}
 }
