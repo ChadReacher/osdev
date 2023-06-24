@@ -2,6 +2,7 @@
 #include "screen.h"
 #include "k_stdio.h"
 #include "isr.h"
+#include "pic.h"
 
 __attribute__ ((section ("kernel_entry"))) void _start() {
 	clear_screen();
@@ -26,6 +27,9 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 
 	kprintf("Initializing IDT...\n");
 	init_isrs();
+
+	kprintf("Remapping PIC...\n");
+	pic_remap();
 
 	// Test interrupt exceptions
 	asm volatile ("int $0");

@@ -79,5 +79,4 @@ i8 *exception_messages[] = {
 
 void isr_handler(registers_t r) {
 	kprintf("Received interrupt: %s(%d) with error code: %x\n", exception_messages[r.int_number], r.int_number, r.err_code);
-	//kprintf("Received interrupt: %s(%d)\n", exception_messages[r.int_number], r.int_number);
 }
