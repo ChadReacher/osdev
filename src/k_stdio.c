@@ -19,7 +19,9 @@ void kprintf(u8 *fmt, ...) {
 	print_string(internal_buf);
 
 	size_t sz = strlen(internal_buf);
-	internal_buf[sz] = '\r';
+	if (internal_buf[sz - 1] == '\n') {
+		internal_buf[sz] = '\r';
+	}
 	write_string_serial(internal_buf);
 }
 

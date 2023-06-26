@@ -6,8 +6,7 @@
 static u32 ticks = 0;
 
 static void timer_handler() {
-	++ticks;
-	kprintf("Ticks: %d\r", ticks);
+	++ticks;	
 }
 
 void init_timer(u32 freq) {

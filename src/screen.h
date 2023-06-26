@@ -21,5 +21,14 @@ void clear_screen();
 static void print_char(u8 ch);
 static void scroll_up();
 void print_string(i8 *string);
+void screen_backspace();
+void remove_char();
+
+void remove_cursor();
+void move_cursor();
+void move_cursor_left();
+void move_cursor_right();
+void move_cursor_up();
+void move_cursor_down();
 
 #endif

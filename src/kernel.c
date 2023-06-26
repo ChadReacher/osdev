@@ -4,10 +4,11 @@
 #include "isr.h"
 #include "pic.h"
 #include "timer.h"
+#include "keyboard.h"
 
 __attribute__ ((section ("kernel_entry"))) void _start() {
-	u32 timer_frequency;
 	clear_screen();
+	u32 timer_frequency;
 
 	i32 a = 10;
 
@@ -32,9 +33,12 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	init_isrs();
 
 	timer_frequency = 50;
-	kprintf("Initializing timer with frequency %d\n", timer_frequency);
+	kprintf("Initializing timer with frequency %d...\n", timer_frequency);
 
 	init_timer(timer_frequency);
+
+	kprintf("Initializing keyboard...\n");
+	init_keyboard();
 
 	for (;;) {}
 }
