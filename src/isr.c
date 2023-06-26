@@ -60,6 +60,8 @@ void init_isrs() {
 	idt_set(47, (u32*)irq15, INTERRUPT_GATE_TYPE);
 
 	init_idt();
+
+	asm volatile ("sti");
 }
 
 i8 *exception_messages[] = {

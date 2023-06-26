@@ -3,8 +3,10 @@
 #include "k_stdio.h"
 #include "isr.h"
 #include "pic.h"
+#include "timer.h"
 
 __attribute__ ((section ("kernel_entry"))) void _start() {
+	u32 timer_frequency;
 	clear_screen();
 
 	i32 a = 10;
@@ -29,12 +31,10 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	kprintf("Remapping PIC...\n");
 	init_isrs();
 
+	timer_frequency = 50;
+	kprintf("Initializing timer with frequency %d\n", timer_frequency);
 
-	// Test interrupt exceptions
-	asm volatile ("int $0");
-	asm volatile ("int $1");
-	asm volatile ("int $2");
-	asm volatile ("int $32");
+	init_timer(timer_frequency);
 
 	for (;;) {}
 }
