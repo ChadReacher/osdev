@@ -1,11 +1,9 @@
 #include "types.h"
-#include "k_stdio.h"
+#include "keyboard.h"
+#include "stdio.h"
 #include "k_stdlib.h"
 #include "port.h"
-#include "isr.h"
-#include "keyboard.h"
 #include "screen.h"
-#include "serial.h"
 
 static bool ctrl = false;
 static bool shift = false;

@@ -1,6 +1,5 @@
 #include "memory.h"
 #include "screen.h"
-#include "k_stdio.h"
 
 static const u32 background_color = 0x00000000; // Black color
 static const u32 foreground_color = 0x00FFFFFF; // White color
@@ -13,7 +12,7 @@ void clear_screen() {
 	move_cursor();
 }
 
-static void print_char(u8 ch) {
+void print_char(i8 ch) {
 	u32 *framebuffer;
 	u8 *char_glyph;
 
@@ -68,7 +67,7 @@ void print_string(i8 *string) {
 	}
 }
 
-static void scroll_up() {
+void scroll_up() {
 	u32 *framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
 
 	// PIXEL_HEIGHT - don't copy the last row of chars; 

@@ -1,7 +1,7 @@
 #include "string.h"
 #include "k_stdlib.h"
 
-u8 *itoa(i32 value, u8 *str, i32 base) {
+i8 *itoa(i32 value, i8 *str, i32 base) {
 	i32 rem;
 	size_t idx;
 	bool negative;

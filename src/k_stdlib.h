@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-u8 *itoa(i32 value, u8 *str, i32 base);
+i8 *itoa(i32 value, i8 *str, i32 base);
 
 #endif

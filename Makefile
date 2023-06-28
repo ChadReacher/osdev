@@ -1,9 +1,10 @@
-BIN_UTILS_SRC = /usr/bin/i386elfgcc/bin
+TOOLCHAIN_SRC = /usr/bin/i386elfgcc/bin
 
-CC = $(BIN_UTILS_SRC)/i386-elf-gcc
-C_FLAGS = -ffreestanding
-LD = $(BIN_UTILS_SRC)/i386-elf-ld
+CC = $(TOOLCHAIN_SRC)/i386-elf-gcc
+LD = $(TOOLCHAIN_SRC)/i386-elf-ld
 AS = nasm
+
+C_FLAGS = -W -Wall -pedantic -std=c11 -ffreestanding -m32 -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector
 
 C_SRC = $(wildcard src/*.c)
 HEADERS = $(wildcard src/*.h)

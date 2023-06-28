@@ -14,17 +14,15 @@ typedef struct {
 	u16 isr_address_high;	// The higher 16 bits of the ISR's address
 } __attribute__((packed)) idt_entry_t;
 
-
 typedef struct {
 	u16 limit;
 	u32 base;
 } __attribute__((packed)) idtr_t;
 
 static idt_entry_t idt[IDT_ENTRIES];
-
 static idtr_t idtr;
 
-void idt_set(u8 index, void *isr, u8 flags);
+void idt_set(u8 index, u32 isr, u8 flags);
 void init_idt();
 
 

@@ -9,7 +9,8 @@ i32 init_serial();
 i32 serial_received();
 i8 read_serial();
 i32 is_transmit_empty();
-void write_char_serial(i8 ch);
-void write_string_serial(i8 *str);
+void serial_write(i8 ch);
+void serial_print(i8 *str);
+void serial_printf(i8 *str, ...);
 
 #endif

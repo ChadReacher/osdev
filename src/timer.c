@@ -1,4 +1,3 @@
-#include "k_stdio.h"
 #include "port.h"
 #include "isr.h"
 #include "timer.h"
@@ -15,12 +14,14 @@ void init_timer(u32 freq) {
 
 	register_interrupt_handler(IRQ0, timer_handler);
 
-	divisor = INPUT_FREQUENCY / freq;
+	divisor = INPUT_FREQUENCY_IN_HZ / freq;
 	low_byte = (u8)(divisor & 0xFF);
 	high_byte = (u8)((divisor >> 8) & 0xFF);
 
 	command_word = 0x36; // 00110110b
-	port_outb(CONTROL_WORD_REGISTER, command_word);	// Set binary counting, set mode 3(Square Wave Generator), read LSB first then MSB, select Counter 0
+	// Set binary counting, set mode 3(Square Wave Generator),
+	// read LSB first then MSB, select Counter 0
+	port_outb(CONTROL_WORD_REGISTER, command_word);	
 
 	port_outb(COUNTER_0_REGISTER, low_byte);
 	port_outb(COUNTER_0_REGISTER, high_byte);

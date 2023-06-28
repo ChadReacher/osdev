@@ -1,7 +1,7 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-#include <stdarg.h>
+#include "stdarg.h"
 #include "types.h"
 
 #define SCREEN_WIDTH 1920
@@ -18,8 +18,8 @@
 #define FONT_ADDRESS 0x6000
 
 void clear_screen();
-static void print_char(u8 ch);
-static void scroll_up();
+void print_char(i8 ch);
+void scroll_up();
 void print_string(i8 *string);
 void screen_backspace();
 void remove_char();

@@ -1,34 +1,27 @@
-#include "k_stdio.h"
+#include "stdio.h"
 #include "k_stdlib.h"
-#include <stdarg.h>
 #include "screen.h"
 #include "memory.h"
 #include "string.h"
 #include "serial.h"
 
-void kprintf(u8 *fmt, ...) {
+void kprintf(i8 *fmt, ...) {
 	va_list args;
 
 	va_start(args, fmt);
 
-	u8 internal_buf[1024];
+	i8 internal_buf[1024];
 	memset(internal_buf, 0, sizeof internal_buf);
 
 	kvsprintf(internal_buf, fmt, args);
 
 	print_string(internal_buf);
-
-	size_t sz = strlen(internal_buf);
-	if (internal_buf[sz - 1] == '\n') {
-		internal_buf[sz] = '\r';
-	}
-	write_string_serial(internal_buf);
 }
 
-void kvsprintf(u8 *buf, u8 *fmt, va_list args) {
-	u8 internal_buf[512];
+void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
+	i8 internal_buf[512];
 	size_t sz;
-	u8 *p;
+	i8 *p;
 	i8 *temp_s;
 
 	for (p = fmt; *p; ++p) {
