@@ -2,7 +2,58 @@
 org 0x7E00
 bits 16
 
+%define INT_15_MAGIC_VALUE 0x534D4150
+
 second_stage_start:
+	; Get physical memory map using BIOS int 0x15(eax = 0xE820)
+	memmap_entries equ 0x8500
+get_memory_map:
+	xor ax, ax
+	mov es, ax						; ES = 0
+
+	; Detect memory ares above 4G
+	mov di, 0x8504					; Each list entry is stored at ES:DI
+	xor ebx, ebx					; Clear EBX
+	xor bp, bp						; BP will store the number of entries
+	mov edx, INT_15_MAGIC_VALUE		; Magic value
+	mov eax, 0xE820					; Specific value for int 0x15
+	mov [ES:DI + 20], dword 1		; Force a valid ACPI 3.x entry
+	mov ecx, 24						; Ask for 24 bytes
+	int 0x15
+	jc .error						; If carry flag is set, it means "unsupported function"
+	cmp eax, INT_15_MAGIC_VALUE		; If success, EAX should be set to the magic value
+	jne .error
+	test ebx, ebx					; Check if EBX = 0? (It implies the list has only 1 entry)
+	jz .error						
+	jmp .start						; At this point, we have a valid entry
+
+.next_entry:
+	mov edx, INT_15_MAGIC_VALUE		; Magic value
+	mov ecx, 24						; Reset ECX
+	mov eax, 0xE820					; Reset EAX
+	int 0x15
+
+.start:
+	jcxz .skip_entry				; Memory map entry is 0 bytes in length, skip it
+	mov ecx, [ES:DI + 8]			; Low 32 bits of length
+	or ecx, [ES:DI + 12]			; OR with high 32 bits of length. OR will set the ZF(zero flag)
+	jz .skip_entry					; Length of returned memory region is 0, so skip
+	inc bp							; Increment the number of entries
+	add di, 24
+
+.skip_entry:
+	test ebx, ebx					; Check for the end of list? (EBX == 0)
+	jz .done
+	jmp .next_entry
+	
+.error:
+	stc
+
+.done:
+	mov [memmap_entries], bp		; Store the # of memory map entries
+	clc
+
+setup_vesa:
 	; Get VESA BIOS information
 	xor ax, ax
 	mov es, ax

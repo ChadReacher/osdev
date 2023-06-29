@@ -39,46 +39,48 @@ static void keyboard_handler() {
 
 	scancode = port_inb(0x60);
 
-	if (scancode == 0xE0) {
-		break_code_active = true;
-		return;
-	} 
+	kprintf("Received scancode: %x\n", scancode);
 
-	if (KEY_IS_PRESSED(scancode)) {
-		if (break_code_active) {
-			if (scancode == LEFT_ARROW) {
-				move_cursor_left();
-			} else if (scancode == RIGHT_ARROW) {
-				move_cursor_right();
-			} else if (scancode == UP_ARROW) {
-				move_cursor_up();
-			} else if (scancode == DOWN_ARROW) {
-				move_cursor_down();
-			}
-			break_code_active = false;
-		} else {
-			if (scancode == KEY_LSHIFT || scancode == KEY_RSHIFT) {
-				shift = true;
-			} else if (scancode == KEY_LCTRL) {
-				ctrl = true;
-			} else if (scancode == KEY_BACKSPACE) {
-				screen_backspace();
-			} else if (scancode == KEY_LALT) {
-				// skip for now
-			} else {
-				character = shift ? keyboard_layout_us[1][scancode &0x7F] : keyboard_layout_us[0][scancode &0x7F];
-				kprintf("%c", character);
-			}
-		}
-	} else if (KEY_IS_RELEASED (scancode)) {
-		if (break_code_active) {
-			break_code_active = false;
-		} else {
-			if (scancode == LEFT_SHIFT_RELEASED || scancode == RIGHT_SHIFT_RELEASED) {
-				shift = false;
-			}
-		}
-	}
+	//if (scancode == 0xE0) {
+	//	break_code_active = true;
+	//	return;
+	//} 
+
+	//if (KEY_IS_PRESSED(scancode)) {
+	//	if (break_code_active) {
+	//		if (scancode == LEFT_ARROW) {
+	//			move_cursor_left();
+	//		} else if (scancode == RIGHT_ARROW) {
+	//			move_cursor_right();
+	//		} else if (scancode == UP_ARROW) {
+	//			move_cursor_up();
+	//		} else if (scancode == DOWN_ARROW) {
+	//			move_cursor_down();
+	//		}
+	//		break_code_active = false;
+	//	} else {
+	//		if (scancode == KEY_LSHIFT || scancode == KEY_RSHIFT) {
+	//			shift = true;
+	//		} else if (scancode == KEY_LCTRL) {
+	//			ctrl = true;
+	//		} else if (scancode == KEY_BACKSPACE) {
+	//			screen_backspace();
+	//		} else if (scancode == KEY_LALT) {
+	//			// skip for now
+	//		} else {
+	//			character = shift ? keyboard_layout_us[1][scancode &0x7F] : keyboard_layout_us[0][scancode &0x7F];
+	//			kprintf("%c", character);
+	//		}
+	//	}
+	//} else if (KEY_IS_RELEASED (scancode)) {
+	//	if (break_code_active) {
+	//		break_code_active = false;
+	//	} else {
+	//		if (scancode == LEFT_SHIFT_RELEASED || scancode == RIGHT_SHIFT_RELEASED) {
+	//			shift = false;
+	//		}
+	//	}
+	//}
 }
 
 void init_keyboard() {

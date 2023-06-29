@@ -100,7 +100,7 @@ void init_isr() {
 	init_idt();
 
 	__asm__ volatile ("sti");
-};
+}
 
 void register_interrupt_handler(u8 n, isr_t handler) {
 	interrupt_handlers[n] = handler;

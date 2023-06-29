@@ -10,16 +10,16 @@ void kprintf(i8 *fmt, ...) {
 
 	va_start(args, fmt);
 
-	i8 internal_buf[1024];
+	i8 internal_buf[2048];
 	memset(internal_buf, 0, sizeof internal_buf);
 
-	kvsprintf(internal_buf, fmt, args);
+	kvsprintf(internal_buf, fmt, args);	
 
 	print_string(internal_buf);
 }
 
 void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
-	i8 internal_buf[512];
+	i8 internal_buf[2048];
 	size_t sz;
 	i8 *p;
 	i8 *temp_s;
@@ -41,7 +41,7 @@ void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
 				break;
 			case 'x':
 				memset(internal_buf, 0, sizeof internal_buf);
-				itoa(va_arg(args, i32), internal_buf, 16);
+				utoa(va_arg(args, u32), internal_buf, 16);
 				sz = strlen(internal_buf);
 				memcpy(buf, internal_buf, sz);
 				buf += sz;
