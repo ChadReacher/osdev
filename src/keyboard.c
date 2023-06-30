@@ -5,10 +5,6 @@
 #include "port.h"
 #include "screen.h"
 
-static bool ctrl = false;
-static bool shift = false;
-static bool break_code_active = false;
-
 static u8 keyboard_layout_us[2][128] = {
 	{
 		KEY_NULL, KEY_ESC, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
@@ -35,52 +31,11 @@ static u8 keyboard_layout_us[2][128] = {
 };
 
 static void keyboard_handler() {
-	u8 scancode, character;
+	u8 scancode;
 
 	scancode = port_inb(0x60);
 
 	kprintf("Received scancode: %x\n", scancode);
-
-	//if (scancode == 0xE0) {
-	//	break_code_active = true;
-	//	return;
-	//} 
-
-	//if (KEY_IS_PRESSED(scancode)) {
-	//	if (break_code_active) {
-	//		if (scancode == LEFT_ARROW) {
-	//			move_cursor_left();
-	//		} else if (scancode == RIGHT_ARROW) {
-	//			move_cursor_right();
-	//		} else if (scancode == UP_ARROW) {
-	//			move_cursor_up();
-	//		} else if (scancode == DOWN_ARROW) {
-	//			move_cursor_down();
-	//		}
-	//		break_code_active = false;
-	//	} else {
-	//		if (scancode == KEY_LSHIFT || scancode == KEY_RSHIFT) {
-	//			shift = true;
-	//		} else if (scancode == KEY_LCTRL) {
-	//			ctrl = true;
-	//		} else if (scancode == KEY_BACKSPACE) {
-	//			screen_backspace();
-	//		} else if (scancode == KEY_LALT) {
-	//			// skip for now
-	//		} else {
-	//			character = shift ? keyboard_layout_us[1][scancode &0x7F] : keyboard_layout_us[0][scancode &0x7F];
-	//			kprintf("%c", character);
-	//		}
-	//	}
-	//} else if (KEY_IS_RELEASED (scancode)) {
-	//	if (break_code_active) {
-	//		break_code_active = false;
-	//	} else {
-	//		if (scancode == LEFT_SHIFT_RELEASED || scancode == RIGHT_SHIFT_RELEASED) {
-	//			shift = false;
-	//		}
-	//	}
-	//}
 }
 
 void init_keyboard() {
