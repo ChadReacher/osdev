@@ -1,12 +1,13 @@
 #include "memory.h"
 #include "screen.h"
+#include "debug.h"
 
 static const u32 background_color = 0x00000000; // Black color
 static const u32 foreground_color = 0x00FFFFFF; // White color
 
 static u16 cursor_x = 0, cursor_y = 0;
 
-void clear_screen() {
+void screen_clear() {
 	u32 *framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
 	memset(framebuffer, background_color, SCREEN_SIZE);
 	move_cursor();

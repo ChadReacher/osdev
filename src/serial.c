@@ -3,8 +3,9 @@
 #include "stdarg.h"
 #include "memory.h"
 #include "stdio.h"
+#include "debug.h"
 
-i32 init_serial() {
+i32 serial_init() {
 	port_outb(COM1 + 1, 0x00); // Disable all interrupts
 	port_outb(COM1 + 3, 0x80); // Enable DLAB(divisor latch access bit) for baud rate divisor
 	port_outb(COM1 + 0, 0x03); // Set divisor to 3 according to 38400 baud(low byte)
@@ -16,11 +17,13 @@ i32 init_serial() {
 	port_outb(COM1 + 0, 0xAB); // Test the serial chip(send byte 0xAB and check if serial returns same byte)
 
 	if (port_inb(COM1 + 0) != 0xAB) {
+		DEBUG("%s", "Could not initiliaze serial port communication");
 		return 1;
 	}
 	
 	port_outb(COM1 + 4, 0x0F); // not-loopback with IRQs enabled and OUT1 and OUT2 bits enabled
 
+	DEBUG("%s", "Serial port has been initialized");
 	return 0;
 }
 

@@ -3,6 +3,7 @@
 #include "port.h"
 #include "pic.h"
 #include "isr.h"
+#include "debug.h"
 
 isr_t interrupt_handlers[256];
 
@@ -44,8 +45,9 @@ i8 *exception_messages[] = {
 	"Reserved",
 };
 
-void init_isr() {
+void isr_init() {
 	pic_remap();
+	DEBUG("%s", "PIC has been remapped");
 
 	idt_set(0, (u32)isr0, 0x8E);
 	idt_set(1, (u32)isr1, 0x8E);
@@ -98,8 +100,8 @@ void init_isr() {
 	idt_set(47, (u32)irq15, 0x8E);
 
 	init_idt();
-
-	__asm__ volatile ("sti");
+	DEBUG("%s", "IDT has been initialized");
+	DEBUG("%s", "ISRs have been initialized");
 }
 
 void register_interrupt_handler(u8 n, isr_t handler) {
@@ -107,8 +109,13 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 }
 
 void isr_handler(registers_t r) {
-	kprintf("Received interrupt: %s(%d) with error code: %x\n", exception_messages[r.int_number], r.int_number, r.err_code);
-	__asm__("hlt");
+	if (interrupt_handlers[r.int_number] != 0) {
+		isr_t handler = interrupt_handlers[r.int_number];
+		handler(r);
+	} else {
+		kprintf("Received interrupt: %s(%d) with error code: %x\n", exception_messages[r.int_number], r.int_number, r.err_code);
+		__asm__("hlt");
+	}
 }
 
 void irq_handler(registers_t r) {

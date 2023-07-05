@@ -79,7 +79,7 @@ typedef struct {
 	u32 eip, cs, eflags, useresp, ss;
 } registers_t;
 
-void init_isr();
+void isr_init();
 void isr_handler(registers_t r);
 
 // Enables registration of callbacks for interrupts or IRQs

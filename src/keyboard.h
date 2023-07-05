@@ -41,6 +41,6 @@
 #define UP_ARROW 0x48
 #define DOWN_ARROW 0x50
 
-void init_keyboard();
+void keyboard_init();
 
 #endif

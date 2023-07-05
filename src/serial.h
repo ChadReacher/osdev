@@ -5,7 +5,7 @@
 
 #define COM1 0x3F8
 
-i32 init_serial();
+i32 serial_init();
 i32 serial_received();
 i8 read_serial();
 i32 is_transmit_empty();

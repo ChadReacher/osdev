@@ -1,5 +1,6 @@
 #include "pmm.h"
 #include "memory.h"
+#include "screen.h"
 #include "debug.h"
 
 u32 *memory_map = 0;
@@ -58,7 +59,7 @@ i32 find_first_free_blocks(u32 num_blocks) {
 	}
 	return -1;
 }
-void init_pmm() {
+void pmm_init() {
 	u32 num_mmap_entries;
 	memory_map_entry *mmap_entry;
 
@@ -71,22 +72,31 @@ void init_pmm() {
 	// Initialize physical memory manager at 0x30000 
 	// to all available memory. 
 	// By default all memory is used/reserved.
-	_init_pmm(0x30000, total_memory_bytes); 
+	_pmm_init(0x30000, total_memory_bytes); 
 
 	// Get back to start of the list to initialize available memory
 	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
 	for (u32 i = 0; i < num_mmap_entries; ++i) {
 		if (mmap_entry->type == 1) { // If the type of memory chunk is 'Available Memory'?
-			init_memory_regs(mmap_entry->base_address, mmap_entry->length); // Initialize this memory region
+			init_memory_regions(mmap_entry->base_address, mmap_entry->length);
 		}
 		++mmap_entry;
 	}
 
-	// Deinitialize(mark memory region as used) kernel and "OS" memory region
-	deinit_memory_regs(0x10000, 0x9000);
+	// Deinitialize(mark memory region as used) kernel and "OS" memory regions
+	deinit_memory_regions(0x10000, 0xB000);
+	
+	// Deinitialize physical memory map itself
+	deinit_memory_regions(0x30000, max_blocks / BLOCK_SIZE);
+
+	// Deinitialize framebuffer
+	u32 fb_size_in_bytes = SCREEN_SIZE * 4;
+	deinit_memory_regions(0xFD000000, fb_size_in_bytes);
+
+	DEBUG("%s", "Physical memory manager has been initialized\r\n");
 }
 
-void _init_pmm(u32 start_address, u32 size) {
+void _pmm_init(u32 start_address, u32 size) {
 	memory_map = (u32 *)start_address;
 	max_blocks = size / BLOCK_SIZE;
 	used_blocks = max_blocks;
@@ -94,7 +104,7 @@ void _init_pmm(u32 start_address, u32 size) {
 	memset(memory_map, 0xFF, max_blocks / BLOCKS_PER_BYTE);
 }
 
-void init_memory_regs(u32 base_address, u32 size) {
+void init_memory_regions(u32 base_address, u32 size) {
 	u32 align = base_address / BLOCK_SIZE;
 	u32 num_blocks = size / BLOCK_SIZE;
 	for (; num_blocks > 0; --num_blocks) {
@@ -105,7 +115,7 @@ void init_memory_regs(u32 base_address, u32 size) {
 	set_block(0); // Insure that we won't overwrite Bios Data Area / IVT
 }
 
-void deinit_memory_regs(u32 base_address, u32 size) {
+void deinit_memory_regions(u32 base_address, u32 size) {
 	u32 align = base_address / BLOCK_SIZE;
 	u32 num_blocks = size / BLOCK_SIZE;
 	for (; num_blocks > 0; --num_blocks) {

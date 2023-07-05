@@ -1,6 +1,7 @@
 #include "port.h"
 #include "isr.h"
 #include "timer.h"
+#include "debug.h"
 
 static u32 ticks = 0;
 
@@ -8,7 +9,7 @@ static void timer_handler() {
 	++ticks;	
 }
 
-void init_timer(u32 freq) {
+void timer_init(u32 freq) {
 	u8 command_word, low_byte, high_byte; 
 	u16 divisor;
 
@@ -25,4 +26,6 @@ void init_timer(u32 freq) {
 
 	port_outb(COUNTER_0_REGISTER, low_byte);
 	port_outb(COUNTER_0_REGISTER, high_byte);
+
+	DEBUG("%s", "Timer has been initialized\r\n");
 }

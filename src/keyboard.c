@@ -4,6 +4,7 @@
 #include "k_stdlib.h"
 #include "port.h"
 #include "screen.h"
+#include "debug.h"
 
 static u8 keyboard_layout_us[2][128] = {
 	{
@@ -38,6 +39,7 @@ static void keyboard_handler() {
 	kprintf("Received scancode: %x\n", scancode);
 }
 
-void init_keyboard() {
+void keyboard_init() {
 	register_interrupt_handler(IRQ1, keyboard_handler);
+	DEBUG("%s", "Keyboard has been initialized\r\n");
 }
