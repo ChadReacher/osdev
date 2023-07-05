@@ -23,7 +23,7 @@ i32 serial_init() {
 	
 	port_outb(COM1 + 4, 0x0F); // not-loopback with IRQs enabled and OUT1 and OUT2 bits enabled
 
-	DEBUG("%s", "Serial port has been initialized");
+	DEBUG("%s", "Serial port has been initialized\r\n");
 	return 0;
 }
 

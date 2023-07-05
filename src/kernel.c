@@ -63,7 +63,4 @@ void print_physical_memory_info() {
 	kprintf("\n");
 	--mmap_entry;
 	kprintf("Total amount of memory(in bytes): %x\n", (u32)mmap_entry->base_address + (u32)mmap_entry->length - 1);
-	kprintf("Number of used or reserved 4K blocks: %x\n", used_blocks);
-	kprintf("Number of free 4K blocks: %x\n", (max_blocks - used_blocks));
-	kprintf("Total amount of 4K blocks: %x\n", max_blocks);
 }

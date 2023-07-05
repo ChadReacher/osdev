@@ -4,7 +4,7 @@
 #include "debug.h"
 
 u32 *memory_map = 0;
-u32 max_blocks = 0;
+u32 total_blocks = 0;
 u32 used_blocks = 0;
 
 void set_block(u32 bit) {
@@ -32,23 +32,36 @@ u8 test_block(u32 bit) {
 }
 
 i32 find_first_free_blocks(u32 num_blocks) {
+	u32 memory_bitmap, next_memory_bitmap;
 	if (num_blocks == 0) return -1;
 
 	// Iterate through integers(4 bytes) that contain blocks.
 	// Each integer contains 4 * BLOCKS_PER_BYTE(8) = 32 blocks.
-	// Number of these integers equal 'max_blocks / 32'.
-	for (u32 i = 0; i < max_blocks / 32; ++i) { 
-		if (memory_map[i] != 0xFFFFFFFF) { // Check if this integer is fully used?
+	// Number of these integers equal 'total_blocks / 32'.
+	for (u32 i = 0; i < total_blocks / 32; ++i) { 
+		memory_bitmap = memory_map[i];
+		if (memory_bitmap != 0xFFFFFFFF) { // Check if this integer is fully used?
 			for (u32 j = 0; j < 32; ++j) { // Iterate through each block in the integer
 				u32 bit = 1 << j;
 				// Check if the block 'j' in integer 'memory_map[i]' is not used
-				if ((memory_map[i] & bit) == 0) { 
-					u32 start_bit = i * 32 + bit; // Get bit at index 'i' within memory map
-					u32 found_free_blocks = 0;
-					for (u32 count = 0; count <= num_blocks; ++count) {
-						if (test_block(start_bit + count) == 0) {
-							++found_free_blocks;
+				if ((memory_bitmap & bit) == 0) { 
+					//u32 start_bit = i * 32 + bit; // Get bit at index 'i' within memory map
+					//u32 found_free_blocks = 0;
+					for (u32 count = 0, found_free_blocks = 0; count < num_blocks; ++count) {
+						// If we are at the end of the current bitmap and there 
+						// is free blocks in the next bitmap, also we are not at the
+						// end of memory
+						if ((j + count > 31) && (i + 1 <= total_blocks / 32)) {
+							next_memory_bitmap = memory_map[i + 1];
+							if ((next_memory_bitmap & (1 << (j + count) - 32)) == 0) {
+								++found_free_blocks;
+							}
+						} else {
+							if (!(memory_bitmap & (1 << (j + count)))) {
+								++found_free_blocks;
+							}
 						}
+
 						if (found_free_blocks == num_blocks) {
 							return i * 32 + j;
 						}
@@ -87,21 +100,24 @@ void pmm_init() {
 	deinit_memory_regions(0x10000, 0xB000);
 	
 	// Deinitialize physical memory map itself
-	deinit_memory_regions(0x30000, max_blocks / BLOCK_SIZE);
+	deinit_memory_regions(0x30000, total_blocks / BLOCK_SIZE);
 
 	// Deinitialize framebuffer
 	u32 fb_size_in_bytes = SCREEN_SIZE * 4;
 	deinit_memory_regions(0xFD000000, fb_size_in_bytes);
 
 	DEBUG("%s", "Physical memory manager has been initialized\r\n");
+	DEBUG("Number of used or reserved 4K blocks: %x\r\n", used_blocks);
+	DEBUG("Number of free 4K blocks: %x\r\n", (total_blocks - used_blocks));
+	DEBUG("Total amount of 4K blocks: %x\r\n", total_blocks);
 }
 
 void _pmm_init(u32 start_address, u32 size) {
 	memory_map = (u32 *)start_address;
-	max_blocks = size / BLOCK_SIZE;
-	used_blocks = max_blocks;
+	total_blocks = size / BLOCK_SIZE;
+	used_blocks = total_blocks;
 
-	memset(memory_map, 0xFF, max_blocks / BLOCKS_PER_BYTE);
+	memset(memory_map, 0xFF, total_blocks / BLOCKS_PER_BYTE);
 }
 
 void init_memory_regions(u32 base_address, u32 size) {
@@ -125,7 +141,7 @@ void deinit_memory_regions(u32 base_address, u32 size) {
 }
 
 void *allocate_blocks(u32 num_blocks) {
-	if (num_blocks >= (max_blocks - used_blocks)) 
+	if (num_blocks >= (total_blocks - used_blocks)) 
 		return 0;
 
 	// Find free blocks

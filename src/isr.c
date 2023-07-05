@@ -100,8 +100,8 @@ void isr_init() {
 	idt_set(47, (u32)irq15, 0x8E);
 
 	init_idt();
-	DEBUG("%s", "IDT has been initialized");
-	DEBUG("%s", "ISRs have been initialized");
+	DEBUG("%s", "IDT has been initialized\r\n");
+	DEBUG("%s", "ISRs have been initialized\r\n");
 }
 
 void register_interrupt_handler(u8 n, isr_t handler) {

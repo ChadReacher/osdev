@@ -5,7 +5,7 @@
 #include "bios_memory_map.h"
 
 extern u32 *memory_map;
-extern u32 max_blocks;
+extern u32 total_blocks;
 extern u32 used_blocks;
 
 #define BLOCK_SIZE		4096
