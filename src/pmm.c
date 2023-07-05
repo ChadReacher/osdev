@@ -53,7 +53,7 @@ i32 find_first_free_blocks(u32 num_blocks) {
 						// end of memory
 						if ((j + count > 31) && (i + 1 <= total_blocks / 32)) {
 							next_memory_bitmap = memory_map[i + 1];
-							if ((next_memory_bitmap & (1 << (j + count) - 32)) == 0) {
+							if ((next_memory_bitmap & (1 << ((j + count) - 32))) == 0) {
 								++found_free_blocks;
 							}
 						} else {

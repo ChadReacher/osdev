@@ -4,6 +4,7 @@
 #include "pic.h"
 #include "isr.h"
 #include "debug.h"
+#include "panic.h"
 
 isr_t interrupt_handlers[256];
 
@@ -113,8 +114,7 @@ void isr_handler(registers_t r) {
 		isr_t handler = interrupt_handlers[r.int_number];
 		handler(r);
 	} else {
-		kprintf("Received interrupt: %s(%d) with error code: %x\n", exception_messages[r.int_number], r.int_number, r.err_code);
-		__asm__("hlt");
+		PANIC("Received interrupt: %s(%d) with error code: %x", exception_messages[r.int_number], r.int_number, r.err_code);
 	}
 }
 

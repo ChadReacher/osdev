@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "stdio.h"
 #include "debug.h"
+#include "panic.h"
 
 i32 serial_init() {
 	port_outb(COM1 + 1, 0x00); // Disable all interrupts
@@ -17,7 +18,7 @@ i32 serial_init() {
 	port_outb(COM1 + 0, 0xAB); // Test the serial chip(send byte 0xAB and check if serial returns same byte)
 
 	if (port_inb(COM1 + 0) != 0xAB) {
-		DEBUG("%s", "Could not initiliaze serial port communication");
+		PANIC("Could not initiliaze serial port communication");
 		return 1;
 	}
 	
