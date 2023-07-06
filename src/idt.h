@@ -19,11 +19,7 @@ typedef struct {
 	u32 base;
 } __attribute__((packed)) idtr_t;
 
-static idt_entry_t idt[IDT_ENTRIES];
-static idtr_t idtr;
-
 void idt_set(u8 index, u32 isr, u8 flags);
 void init_idt();
-
 
 #endif

@@ -1,5 +1,8 @@
 #include "idt.h"
 
+idt_entry_t idt[IDT_ENTRIES];
+idtr_t idtr;
+
 void idt_set(u8 index, u32 isr, u8 flags) {
 	idt[index].isr_address_low = ((u32)isr & 0xFFFF);
 	idt[index].kernel_cs = 0x08;

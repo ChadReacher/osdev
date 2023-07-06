@@ -31,7 +31,7 @@ bin/kernel.bin: bin/kernel.o bin/interrupt.o $(OBJ_SRC)
 	$(LD) -o $@ $^ -Tkernel_linker.ld
 
 run:
-	qemu-system-i386 -drive format=raw,file=bin/boot.iso,if=ide,index=0,media=disk
+	qemu-system-i386 -drive format=raw,file=bin/boot.iso,if=ide,index=0,media=disk -rtc base=localtime,clock=host,driftfix=slew
 
 debug:
 	qemu-system-i386 -drive format=raw,file=./bin/boot.iso -boot a -s -S & gdb -ex "target remote localhost:1234"

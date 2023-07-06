@@ -11,13 +11,13 @@ void *memset(void *ptr, u32 value, size_t num) {
 }
 
 void *memcpy(void *dst, const void* src, size_t num) {
-	u8 *c_dst;
-	const u8 *c_src;
+	u8 *dest;
+	const u8 *source;
 
-	c_dst = (u8 *)dst;
-	c_src = (const u8 *)src;
+	dest = (u8 *)dst;
+	source = (const u8 *)src;
 	for (size_t i = 0; i < num; ++i) {
-		c_dst[i] = c_src[i];
+		dest[i] = source[i];
 	}
-	return dst;
+	return dest;
 }

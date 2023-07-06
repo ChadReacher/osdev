@@ -9,6 +9,7 @@
 #include "bios_memory_map.h"
 #include "pmm.h"
 #include "paging.h"
+#include "cmos.h"
 
 void print_physical_memory_info();
 
@@ -21,11 +22,11 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	timer_init(50);
 	keyboard_init();
 	pmm_init();
-	__asm__ ("sti");
-	paging_init();
-
 	kprintf("Physical memory info: ");
 	print_physical_memory_info();
+	cmos_rtc_init();
+	paging_init();
+	__asm__ ("sti");
 
 	for (;;) {}
 }

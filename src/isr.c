@@ -48,7 +48,7 @@ i8 *exception_messages[] = {
 
 void isr_init() {
 	pic_remap();
-	DEBUG("%s", "PIC has been remapped");
+	DEBUG("%s", "PIC has been remapped\r\n");
 
 	idt_set(0, (u32)isr0, 0x8E);
 	idt_set(1, (u32)isr1, 0x8E);
