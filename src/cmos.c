@@ -95,7 +95,7 @@ cmos_rtc_t cmos_read_rtc() {
 	return rtc;
 }
 
-void cmos_rtc_handler(registers_t regs) {
+void cmos_rtc_handler(registers_state regs) {
 	(void)regs; // get rid off 'unused' warning
 
 	cmos_rtc_t date_and_time;

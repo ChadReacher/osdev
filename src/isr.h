@@ -77,13 +77,14 @@ typedef struct {
 	u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
 	u32 int_number, err_code;
 	u32 eip, cs, eflags, useresp, ss;
-} registers_t;
+} registers_state;
 
 void isr_init();
-void isr_handler(registers_t r);
+void irq_init();
+void isr_handler(registers_state r);
 
 // Enables registration of callbacks for interrupts or IRQs
-typedef void (*isr_t)(registers_t);
+typedef void (*isr_t)(registers_state);
 void register_interrupt_handler(u8 n, isr_t handler);
 
 #endif

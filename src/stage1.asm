@@ -46,7 +46,7 @@ boot_start:
 	xor bx, bx						; ES:BX => 0x1000:0x0000 => 0x10000
 
 	mov ah, 2						; specific value for interrupt int 0x13
-	mov al, 25 						; number of sectors to read
+	mov al, 30 						; number of sectors to read
 	mov ch, 0 						; track/cylinder number
 	mov cl, 9 						; sector number(they start at 1)
 	mov dh, 0 						; head number

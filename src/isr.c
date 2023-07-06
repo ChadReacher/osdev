@@ -105,20 +105,38 @@ void isr_init() {
 	DEBUG("%s", "ISRs have been initialized\r\n");
 }
 
+void irq_init() {
+	__asm__ __volatile__ ("sti");
+	DEBUG("%s", "IRQs have been initialized\r\n");
+}
+
 void register_interrupt_handler(u8 n, isr_t handler) {
 	interrupt_handlers[n] = handler;
 }
 
-void isr_handler(registers_t r) {
-	if (interrupt_handlers[r.int_number] != 0) {
-		isr_t handler = interrupt_handlers[r.int_number];
-		handler(r);
+void isr_handler(registers_state regs) {
+	if (interrupt_handlers[regs.int_number] != 0) {
+		isr_t handler = interrupt_handlers[regs.int_number];
+		handler(regs);
 	} else {
-		PANIC("Received interrupt: %s(%d) with error code: %x", exception_messages[r.int_number], r.int_number, r.err_code);
+		DEBUG("%s", "Hit");
+		PANIC("Received interrupt: %s(%d) with error code: %x\n\n"
+			  "   Instruction Pointer = %x\n"
+			  "   Code Segment = %x\n"
+			  "   CPU Flags = %x\n"
+			  "   Stack Pointer = %x\n"
+			  "   Stack Segment = %x\n", 
+			  exception_messages[regs.int_number], regs.int_number, regs.err_code,
+			  regs.eip,
+			  regs.cs,
+			  regs.eflags,
+			  regs.esp,
+			  regs.ss
+		);
 	}
 }
 
-void irq_handler(registers_t r) {
+void irq_handler(registers_state r) {
 	// Sending EOI command code
 	if (r.int_number >= 40) {
 		port_outb(0xA0, 0x20); // slave

@@ -31,7 +31,7 @@ typedef struct {
 } cmos_rtc_t;
 
 cmos_rtc_t cmos_read_rtc();
-void cmos_rtc_handler(registers_t regs);
+void cmos_rtc_handler(registers_state regs);
 void cmos_rtc_init();
 
 #endif

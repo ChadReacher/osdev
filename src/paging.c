@@ -6,7 +6,7 @@
 
 page_directory_t *cur_page_dir = 0;
 
-void pagefault_handler(registers_t regs) {
+void pagefault_handler(registers_state regs) {
 	u32 bad_address;
 
 	__asm__ __volatile__ ("movl %%cr2, %0" : "=r"(bad_address));
@@ -14,7 +14,9 @@ void pagefault_handler(registers_t regs) {
 	kprintf("Page Fault Exception. Error code - %x\n", regs.err_code);
 	kprintf("Bad Address: %x\n", bad_address);
 
-	__asm__ __volatile__ ("cli; hlt");
+	while (1) {
+		__asm__ __volatile__ ("hlt");
+	}
 }
 
 // Return a page for a given virtual address in the current page directory

@@ -5,8 +5,8 @@ extern irq_handler
 	global isr%1
 	isr%1:
 		cli
-		push byte %1
-		push byte %1
+		push byte %1			; Push an interrupt number
+		push byte %1			; Push a stub error code
 		jmp isr_common_stub
 %endmacro
 
@@ -14,7 +14,7 @@ extern irq_handler
 	global isr%1
 	isr%1:
 		cli
-		push byte %1
+		push byte %1			; Push an interrupt number
 		jmp isr_common_stub
 %endmacro
 
@@ -22,15 +22,15 @@ extern irq_handler
 	global irq%1
 	irq%1:
 		cli
-		push byte %1
-		push byte %1 + 32
+		push byte %1			; Push an interrupt number
+		push byte %1 + 32  		; Push a stub error code
 		jmp irq_common_stub
 %endmacro
 
 
 isr_common_stub:
 	; 1. Save CPU state
-	pusha				; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
+	pushad				; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
 	mov ax, ds			; Lower 16 bits of eax = ds
 	push eax			; Save the data segment register
 	mov ax, 0x10		; Kernel data segment register
@@ -48,14 +48,14 @@ isr_common_stub:
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-	popa
-	add esp, 8
+	popad
+	add esp, 8			; Restore stack as we pushed two dwords
 	sti
 	iret				; Pops 5 things at once: cs, eip, eflags, ss, esp
 
 irq_common_stub:
 	; 1. Save CPU state
-	pusha
+	pushad
 	mov ax, ds
 	push eax
 	mov ax, 0x10
@@ -73,7 +73,7 @@ irq_common_stub:
 	mov es, bx
 	mov fs, bx
 	mov gs, bx
-	popa
+	popad
 	add esp, 8
 	sti
 	iret

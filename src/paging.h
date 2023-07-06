@@ -33,6 +33,6 @@ typedef struct {
 page_table_entry *paging_get_page(virtual_address addr);
 void *paging_allocate_page(page_table_entry *page);
 void paging_init();
-void pagefault_handler(registers_t regs);
+void pagefault_handler(registers_state regs);
 
 #endif

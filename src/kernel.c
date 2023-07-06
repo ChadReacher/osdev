@@ -17,8 +17,9 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	DEBUG("%s", "OS has started\r\n");
 
 	screen_clear();
-	serial_init();
 	isr_init();
+
+	serial_init();
 	timer_init(50);
 	keyboard_init();
 	pmm_init();
@@ -26,7 +27,8 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	print_physical_memory_info();
 	cmos_rtc_init();
 	paging_init();
-	__asm__ ("sti");
+	irq_init();
+
 
 	for (;;) {}
 }
