@@ -46,6 +46,22 @@ i8 *exception_messages[] = {
 	"Reserved",
 };
 
+void breakpoint_handler(registers_state regs) {
+	PANIC("Exception: BREAKPOINT\n"
+		  "   Instruction Pointer = 0x%x\n"
+		  "   Code Segment		  = 0x%x\n"
+		  "   CPU Flags			  = 0x%x\n"
+		  "   Stack Pointer       = 0x%x\n"
+		  "   Stack Segment       = 0x%x\n", 
+		  exception_messages[regs.int_number], regs.int_number, regs.err_code,
+		  regs.eip,
+		  regs.cs,
+		  regs.eflags,
+		  regs.esp,
+		  regs.ss
+	);
+}
+
 void isr_init() {
 	pic_remap();
 	DEBUG("%s", "PIC has been remapped\r\n");
@@ -100,6 +116,8 @@ void isr_init() {
 	idt_set(46, (u32)irq14, 0x8E);
 	idt_set(47, (u32)irq15, 0x8E);
 
+	register_interrupt_handler(3, breakpoint_handler);
+
 	init_idt();
 	DEBUG("%s", "IDT has been initialized\r\n");
 	DEBUG("%s", "ISRs have been initialized\r\n");
@@ -118,22 +136,21 @@ void isr_handler(registers_state regs) {
 	if (interrupt_handlers[regs.int_number] != 0) {
 		isr_t handler = interrupt_handlers[regs.int_number];
 		handler(regs);
-	} else {
-		DEBUG("%s", "Hit");
-		PANIC("Received interrupt: %s(%d) with error code: %x\n\n"
-			  "   Instruction Pointer = %x\n"
-			  "   Code Segment = %x\n"
-			  "   CPU Flags = %x\n"
-			  "   Stack Pointer = %x\n"
-			  "   Stack Segment = %x\n", 
-			  exception_messages[regs.int_number], regs.int_number, regs.err_code,
-			  regs.eip,
-			  regs.cs,
-			  regs.eflags,
-			  regs.esp,
-			  regs.ss
-		);
+		return;
 	}
+	PANIC("Received interrupt: %s(%d) with error code: %x\n\n"
+		  "   Instruction Pointer = 0x%x\n"
+		  "   Code Segment		  = 0x%x\n"
+		  "   CPU Flags			  = 0x%x\n"
+		  "   Stack Pointer       = 0x%x\n"
+		  "   Stack Segment       = 0x%x\n", 
+		  exception_messages[regs.int_number], regs.int_number, regs.err_code,
+		  regs.eip,
+		  regs.cs,
+		  regs.eflags,
+		  regs.esp,
+		  regs.ss
+	);
 }
 
 void irq_handler(registers_state r) {
