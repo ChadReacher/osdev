@@ -48,6 +48,7 @@ u32 readline_index = 0;
 u8 raw_scancode = 0;
 bool ctrl_mode = false;
 bool shift_mode = false;
+bool capslock_mode = false;
 
 void help(const i8 *command) {
 	if (strlen(command) == 4) {
@@ -164,6 +165,11 @@ void kshell(u8 scancode) {
 				shift_mode = false;
 			}
 			break;
+		case KEY_CAPSLOCK:
+			if (KEY_IS_PRESSED(scancode)) {
+				capslock_mode = !capslock_mode;
+			}			
+			break;
 		case UP_ARROW:
 			if (KEY_IS_PRESSED(scancode)) {
 				reset_readline();
@@ -174,7 +180,7 @@ void kshell(u8 scancode) {
 			break;
 		default:
 			if (KEY_IS_PRESSED(scancode)) {
-				u8 c = keyboard_layout_us[(shift_mode ? 1 : 0)][raw_scancode];
+				u8 c = keyboard_layout_us[(shift_mode ^ capslock_mode) ? 1 : 0][raw_scancode];
 				if (!c) {
 					return;
 				}
