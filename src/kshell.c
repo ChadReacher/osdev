@@ -42,6 +42,7 @@ const i8 *commands[][NB_DOCUMENTED_COMMANDS] = {
 };
 
 i8 readline[READLINE_SIZE] = {0};
+i8 last_readline[READLINE_SIZE] = {0};
 u32 readline_index = 0;
 // Scancode without info about pressed or released key
 u8 raw_scancode = 0;
@@ -118,7 +119,6 @@ void run_command(const i8 *command) {
 void reset_readline() {
 	readline_index = 0;
 	memset((void *)readline, 0, READLINE_SIZE);
-	kprintf(PROMPT);
 }
 
 void kshell(u8 scancode) {
@@ -144,7 +144,9 @@ void kshell(u8 scancode) {
 			if (KEY_IS_PRESSED(scancode)) {
 				kprintf("\n");
 				run_command((const i8*) readline);
+				strcpy(last_readline, readline);
 				reset_readline();
+				kprintf(PROMPT);
 			}
 			break;
 		case KEY_TAB:
@@ -160,6 +162,14 @@ void kshell(u8 scancode) {
 				shift_mode = true;
 			} else {
 				shift_mode = false;
+			}
+			break;
+		case UP_ARROW:
+			if (KEY_IS_PRESSED(scancode)) {
+				reset_readline();
+				strcpy(readline, last_readline);
+				kprintf(readline);
+				readline_index = strlen(readline);
 			}
 			break;
 		default:
@@ -178,6 +188,7 @@ void kshell(u8 scancode) {
 					} else if (c == 'l') {
 						clear();
 						reset_readline();
+						kprintf(PROMPT);
 					}
 				} else {
 					kprintf("%c", c);

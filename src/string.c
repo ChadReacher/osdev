@@ -24,9 +24,6 @@ i8 *strrev(i8 *str) {
 	return str;
 }
 
-// Left  - "help date"
-// Right - "help"
-// Len   - 4
 u8 strncmp(const i8 *left, const i8 *right, i32 len) {
 	while (len-- && *left && *right) {
 		if (*left != *right) {
@@ -40,4 +37,13 @@ u8 strncmp(const i8 *left, const i8 *right, i32 len) {
 	}
 
 	return 0;
+}
+
+i8 *strcpy(i8 *dest, const i8 *src) {
+	i8 *cpy_dest = dest;
+	while (*src) {
+		*dest++ = *src++;
+	}
+	*dest = '\0';
+	return cpy_dest;
 }
