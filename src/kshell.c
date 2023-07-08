@@ -33,12 +33,13 @@ static u8 keyboard_layout_us[2][128] = {
 	}
 };
 
-#define NB_DOCUMENTED_COMMANDS 3
+#define NB_DOCUMENTED_COMMANDS 4
 
 const i8 *commands[][NB_DOCUMENTED_COMMANDS] = {
 	{"help", "Display information about OS shell commands"},
 	{"date", "Print the system date and time"},
 	{"clear", "Clear the terminal screen"},
+	{"selftest", "Run test suite"},
 };
 
 i8 readline[READLINE_SIZE] = {0};
@@ -101,6 +102,14 @@ void clear() {
 	screen_clear();
 }
 
+void selftest() {
+	kprintf("OS selftest\n");
+	kprintf("\n[Interrupts]\n");
+	kprintf("  Invoking breakpoint interrupt:\n");
+	__asm__ ("int3");
+	kprintf("\nEverything is good\n");
+}
+
 void run_command(const i8 *command) {
 	if (*command == 0) {
 		return;
@@ -112,6 +121,8 @@ void run_command(const i8 *command) {
 		date();
 	} else if (strncmp(command, "clear", 5) == 0) {
 		clear();
+	} else if (strncmp(command, "selftest", 8) == 0) {
+		selftest();
 	} else {
 		kprintf("Invalid command\n");
 	}

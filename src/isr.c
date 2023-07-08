@@ -47,7 +47,7 @@ i8 *exception_messages[] = {
 };
 
 void breakpoint_handler(registers_state regs) {
-	PANIC("Exception: BREAKPOINT\n"
+	kprintf("Exception: BREAKPOINT\n"
 		  "   Instruction Pointer = 0x%x\n"
 		  "   Code Segment		  = 0x%x\n"
 		  "   CPU Flags			  = 0x%x\n"
