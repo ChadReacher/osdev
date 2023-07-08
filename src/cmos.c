@@ -100,30 +100,8 @@ void cmos_rtc_handler(registers_state regs) {
 
 	cmos_rtc_t date_and_time;
 
-	date_and_time = cmos_read_rtc();
-
-	kprintf("%d/", date_and_time.year);
-	if (date_and_time.month < 10) {
-		kprintf("0");
-	}
-	kprintf("%d/", date_and_time.month);
-	if (date_and_time.day < 10) {
-		kprintf("0");
-	}
-	kprintf("%d ", date_and_time.day);
-	if (date_and_time.hours < 10) {
-		kprintf("0");
-	}
-	kprintf("%d:", date_and_time.hours);
-	if (date_and_time.minutes < 10) {
-		kprintf("0");
-	}
-	kprintf("%d:", date_and_time.minutes);
-	if (date_and_time.seconds < 10) {
-		kprintf("0");
-	}
-	kprintf("%d", date_and_time.seconds);
-	kprintf("\r");
+	date_and_time = cmos_read_rtc();	
+	(void)date_and_time;
 
 	// Read Status Register C so taht future IRQ8s can occur
 	cmos_read_register(CMOS_REG_STATUS_C);

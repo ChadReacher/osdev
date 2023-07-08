@@ -2,14 +2,18 @@
 #include "screen.h"
 #include "debug.h"
 
-static const u32 background_color = 0x00000000; // Black color
+static const u32 background_color = 0x00263238; // Black color
 static const u32 foreground_color = 0x00FFFFFF; // White color
 
 static u16 cursor_x = 0, cursor_y = 0;
 
 void screen_clear() {
 	u32 *framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
-	memset(framebuffer, background_color, SCREEN_SIZE);
+	for (u32 i = 0; i < SCREEN_SIZE; ++i) {
+		framebuffer[i] = background_color;
+	}
+	cursor_x = 0;
+	cursor_y = 0;
 	move_cursor();
 }
 
@@ -36,6 +40,20 @@ void print_char(i8 ch) {
 
 		cursor_x = 0;
 		move_cursor();
+		return;
+	} else if (ch == '\b') {
+		remove_cursor(); 
+		if (cursor_x == 0) {
+			if (cursor_y != 0) {
+				cursor_x = MAX_CHARS_IN_ROW - 1;
+				--cursor_y;
+			}
+		} else {
+			--cursor_x;
+		}
+		remove_char();
+		move_cursor();
+
 		return;
 	}
 
@@ -104,20 +122,6 @@ void move_cursor() {
 		*framebuffer = (char_glyph[line] & (1 << bit)) ? foreground_color : background_color;
 		framebuffer += SCREEN_WIDTH;
 	}
-}
-
-void screen_backspace() {
-	remove_cursor(); 
-	if (cursor_x == 0) {
-		if (cursor_y != 0) {
-			cursor_x = MAX_CHARS_IN_ROW - 1;
-			--cursor_y;
-		}
-	} else {
-		--cursor_x;
-	}
-	remove_char();
-	move_cursor();
 }
 
 void remove_cursor() {

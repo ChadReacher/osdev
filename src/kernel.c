@@ -10,16 +10,17 @@
 #include "pmm.h"
 #include "paging.h"
 #include "cmos.h"
+#include "kshell.h"
 
 void print_physical_memory_info();
 
 __attribute__ ((section ("kernel_entry"))) void _start() {
+	serial_init();
 	DEBUG("%s", "OS has started\r\n");
 
 	screen_clear();
 	isr_init();
 
-	serial_init();
 	timer_init(50);
 	keyboard_init();
 	pmm_init();
@@ -29,8 +30,10 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	paging_init();
 	irq_init();
 
-
-	for (;;) {}
+	kprintf(PROMPT);
+	for (;;) {
+		kshell(keyboard_get_last_scancode());
+	}
 }
 
 void print_physical_memory_info() {

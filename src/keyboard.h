@@ -3,11 +3,13 @@
 
 #include "isr.h"
 
+#define KEYBOARD_DATA_PORT 0x60
+
 #define KEY_NULL 0x00
 #define KEY_ESC 0x1B
 #define KEY_BACKSPACE 0x0E
-#define KEY_TAB 0x09
-#define KEY_ENTER '\n'
+#define KEY_TAB 0x0F
+#define KEY_ENTER 0x1C
 #define KEY_LCTRL 0x1D
 #define KEY_LSHIFT 0x2A
 #define KEY_RSHIFT 0x36
@@ -41,6 +43,7 @@
 #define UP_ARROW 0x48
 #define DOWN_ARROW 0x50
 
+u8 keyboard_get_last_scancode();
 void keyboard_init();
 
 #endif

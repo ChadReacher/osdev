@@ -23,3 +23,21 @@ i8 *strrev(i8 *str) {
 
 	return str;
 }
+
+// Left  - "help date"
+// Right - "help"
+// Len   - 4
+u8 strncmp(const i8 *left, const i8 *right, i32 len) {
+	while (len-- && *left && *right) {
+		if (*left != *right) {
+			return *left - *right;
+		}
+		++left;
+		++right;
+	}
+	if (len >= 0) {
+		return *left - *right;
+	}
+
+	return 0;
+}

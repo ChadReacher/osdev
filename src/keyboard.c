@@ -6,38 +6,25 @@
 #include "screen.h"
 #include "debug.h"
 
-// Comment out it for now
-//static u8 keyboard_layout_us[2][128] = {
-//	{
-//		KEY_NULL, KEY_ESC, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-//		'-', '=', KEY_BACKSPACE, KEY_TAB, 'q', 'w', 'e', 'r', 't', 'y', 'u',
-//		'i', 'o', 'p', '[', ']', KEY_ENTER, KEY_LCTRL, 'a', 's', 'd', 'f', 'g',
-//		'h', 'j', 'k', 'l', ';', '\'', '`', KEY_LSHIFT, '\\', 'z', 'x', 'c',
-//		'v', 'b', 'n', 'm', ',', '.', '/', KEY_RSHIFT, '*', KEY_LALT, ' ',
-//		KEY_CAPSLOCK, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8,
-//		KEY_F9, KEY_F10, KEY_NUMBERLOCK, KEY_SCROLLLOCK, '7', '8',
-//		'9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.', 0, 0, 0, KEY_F11,
-//		KEY_F12,
-//	}, 
-//	{
-//		KEY_NULL, KEY_ESC, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
-//		'_', '+', KEY_BACKSPACE, KEY_TAB, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U',
-//		'I', 'O', 'P', '{', '}', KEY_ENTER, KEY_LCTRL, 'A', 'S', 'D', 'F', 'G',
-//		'H', 'J', 'K', 'L', ':', '"', '~', KEY_LSHIFT, '|', 'Z', 'X', 'C',
-//		'V', 'B', 'N', 'M', '<', '>', '?', KEY_RSHIFT, '*', KEY_LALT, ' ',
-//		KEY_CAPSLOCK, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8,
-//		KEY_F9, KEY_F10, KEY_NUMBERLOCK, KEY_SCROLLLOCK, '7', '8',
-//		'9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.', 0, 0, 0, KEY_F11,
-//		KEY_F12,
-//	}
-//};
+u8 last_scancode = 0;
+u8 last_read = 0;
+
+u8 keyboard_get_last_scancode() {
+	if (last_read == 1) {
+		return 0;
+	}
+	DEBUG("last_scancode: %d\r\n", last_scancode);
+	last_read = 1;
+	return last_scancode;
+}
 
 static void keyboard_handler() {
 	u8 scancode;
 
-	scancode = port_inb(0x60);
-
-	kprintf("Received scancode: %x\n", scancode);
+	scancode = port_inb(KEYBOARD_DATA_PORT);
+	DEBUG("Received scancode: %d\r\n", scancode);	
+	last_scancode = scancode;
+	last_read = 0;
 }
 
 void keyboard_init() {
