@@ -41,11 +41,12 @@ const i8 *commands[][NB_DOCUMENTED_COMMANDS] = {
 	{"clear", "Clear the terminal screen"},
 };
 
-u8 readline[READLINE_SIZE] = {0};
+i8 readline[READLINE_SIZE] = {0};
 u32 readline_index = 0;
-bool ctrl_mode = false;
 // Scancode without info about pressed or released key
 u8 raw_scancode = 0;
+bool ctrl_mode = false;
+bool shift_mode = false;
 
 void help(const i8 *command) {
 	const i8 *arg = 0;
@@ -153,9 +154,17 @@ void kshell(u8 scancode) {
 				readline[readline_index++] = ' ';
 			}
 			break;
+		case KEY_LSHIFT:
+		case KEY_RSHIFT:
+			if (KEY_IS_PRESSED(scancode)) {
+				shift_mode = true;
+			} else {
+				shift_mode = false;
+			}
+			break;
 		default:
 			if (KEY_IS_PRESSED(scancode)) {
-				u8 c = keyboard_layout_us[0][raw_scancode];
+				u8 c = keyboard_layout_us[(shift_mode ? 1 : 0)][raw_scancode];
 				if (!c) {
 					return;
 				}

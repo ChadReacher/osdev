@@ -7,24 +7,23 @@
 #include "debug.h"
 
 u8 last_scancode = 0;
-u8 last_read = 0;
 
 u8 keyboard_get_last_scancode() {
-	if (last_read == 1) {
-		return 0;
-	}
-	DEBUG("last_scancode: %d\r\n", last_scancode);
-	last_read = 1;
-	return last_scancode;
+	u8 scancode;
+
+	scancode = last_scancode;
+	last_scancode = 0;
+	return scancode;
 }
 
 static void keyboard_handler() {
-	u8 scancode;
+	u8 status;
 
-	scancode = port_inb(KEYBOARD_DATA_PORT);
-	DEBUG("Received scancode: %d\r\n", scancode);	
-	last_scancode = scancode;
-	last_read = 0;
+	status = port_inb(KEYBOARD_STATUS_PORT);
+	if (status & 0x01) { // Is output buffer full?
+		last_scancode = port_inb(KEYBOARD_DATA_PORT);
+		DEBUG("Received scancode: %d\r\n", last_scancode);	
+	}
 }
 
 void keyboard_init() {
