@@ -3,8 +3,11 @@ TOOLCHAIN_SRC = /usr/bin/i386elfgcc/bin
 CC = $(TOOLCHAIN_SRC)/i386-elf-gcc
 LD = $(TOOLCHAIN_SRC)/i386-elf-ld
 AS = nasm
+AR = ar
 
 C_FLAGS = -W -Wall -pedantic -std=c11 -ffreestanding -m32 -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector
+
+LIBK = bin/libk.a
 
 C_SRC = $(wildcard src/*.c)
 HEADERS = $(wildcard src/*.h)
@@ -27,8 +30,11 @@ OS: bin/bootloader.bin bin/kernel.bin
 bin/bootloader.bin: $(BIN_SRC)
 	cat $^ > bin/bootloader.bin
 
-bin/kernel.bin: bin/kernel.o bin/interrupt.o $(OBJ_SRC)
-	$(LD) -o $@ $^ -Tkernel_linker.ld
+bin/kernel.bin: bin/kernel.o bin/interrupt.o $(LIBK)
+	$(LD) --nmagic --output=$@ --script=kernel_linker.ld $^
+
+$(LIBK): $(OBJ_SRC)
+	$(AR) rcs $@ $^
 
 run:
 	qemu-system-i386 -drive format=raw,file=bin/boot.iso,if=ide,index=0,media=disk -rtc base=localtime,clock=host,driftfix=slew

@@ -198,8 +198,9 @@ void kshell(u8 scancode) {
 
 				if (ctrl_mode) {
 					if (c == 'c') {
-						readline[readline_index] = '^';
-						readline[readline_index] = 'C';
+						//readline[readline_index] = '^';
+						//readline[readline_index] = 'C';
+						reset_readline();
 						kprintf("^C\n");
 						kprintf(PROMPT);
 					} else if (c == 'l') {
