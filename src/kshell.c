@@ -49,13 +49,13 @@ bool ctrl_mode = false;
 bool shift_mode = false;
 
 void help(const i8 *command) {
-	const i8 *arg = 0;
 	if (strlen(command) == 4) {
-		arg = command;
-	} else {
-		arg = command + 5;
+		for (u8 i = 0; i < NB_DOCUMENTED_COMMANDS; ++i) {
+			kprintf("%s - %s\n", commands[i][0], commands[i][1]);
+		}
+		return;
 	}
-
+	const i8 *arg = command + 5;
 	for (u8 i = 0; i < NB_DOCUMENTED_COMMANDS; ++i) {
 		if (strncmp(arg, commands[i][0], strlen(commands[i][0])) == 0) {
 			kprintf("%s - %s\n", arg, commands[i][1]);
