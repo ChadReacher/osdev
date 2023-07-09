@@ -1,10 +1,11 @@
+#include "isr.h"
 #include "idt.h"
 #include "stdio.h"
 #include "port.h"
 #include "pic.h"
-#include "isr.h"
 #include "debug.h"
 #include "panic.h"
+#include "syscall.h"
 
 isr_t interrupt_handlers[256];
 
@@ -134,6 +135,11 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 }
 
 void isr_handler(registers_state regs) {
+	if (regs.int_number == SYSCALL) {
+		syscall_handler(regs);
+		return;
+	}
+
 	if (interrupt_handlers[regs.int_number] != 0) {
 		isr_t handler = interrupt_handlers[regs.int_number];
 		handler(regs);

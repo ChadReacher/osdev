@@ -5,6 +5,7 @@
 #include "screen.h"
 #include "string.h"
 #include "debug.h"
+#include "test.h"
 
 static u8 keyboard_layout_us[2][128] = {
 	// When SHIFT is NOT pressed
@@ -109,7 +110,7 @@ void selftest() {
 	__asm__ ("int3");
 	kprintf("\n[Syscalls]\n");
 	kprintf("  Invoking syscalls:\n");
-	__asm__ ("int $80");
+	test();
 	kprintf("\nEverything is good\n");
 }
 
