@@ -107,6 +107,9 @@ void selftest() {
 	kprintf("\n[Interrupts]\n");
 	kprintf("  Invoking breakpoint interrupt:\n");
 	__asm__ ("int3");
+	kprintf("\n[Syscalls]\n");
+	kprintf("  Invoking syscalls:\n");
+	__asm__ ("int $80");
 	kprintf("\nEverything is good\n");
 }
 

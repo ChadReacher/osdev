@@ -49,15 +49,14 @@ i8 *exception_messages[] = {
 void breakpoint_handler(registers_state regs) {
 	kprintf("Exception: BREAKPOINT\n"
 		  "   Instruction Pointer = 0x%x\n"
-		  "   Code Segment		  = 0x%x\n"
-		  "   CPU Flags			  = 0x%x\n"
+		  "   Code Segment        = 0x%x\n"
+		  "   CPU Flags           = 0x%x\n"
 		  "   Stack Pointer       = 0x%x\n"
 		  "   Stack Segment       = 0x%x\n", 
-		  exception_messages[regs.int_number], regs.int_number, regs.err_code,
 		  regs.eip,
 		  regs.cs,
 		  regs.eflags,
-		  regs.esp,
+		  regs.useresp,
 		  regs.ss
 	);
 }
@@ -115,6 +114,8 @@ void isr_init() {
 	idt_set(45, (u32)irq13, 0x8E);
 	idt_set(46, (u32)irq14, 0x8E);
 	idt_set(47, (u32)irq15, 0x8E);
+
+	idt_set(SYSCALL, (u32)isr80, 0x8E);
 
 	register_interrupt_handler(3, breakpoint_handler);
 

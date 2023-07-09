@@ -11,6 +11,7 @@
 #include "paging.h"
 #include "cmos.h"
 #include "kshell.h"
+#include "syscall.h"
 
 void print_physical_memory_info();
 
@@ -21,6 +22,7 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	screen_clear();
 	isr_init();
 
+	syscall_init();
 	timer_init(50);
 	keyboard_init();
 	pmm_init();

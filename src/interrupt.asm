@@ -111,6 +111,8 @@ def_isr_handler 29  				; Intel reserved. Do not use
 def_isr_handler 30  				; Intel reserved. Do not use
 def_isr_handler 31  				; Intel reserved. Do not use
 
+def_isr_handler 80					; Syscall
+
 def_irq_handler 0   ; Programmable Interrupt Timer Interupt
 def_irq_handler 1	; Keyboard interrupt
 def_irq_handler 2   ; Cascade (used internally by the two PICs. Never raised)
