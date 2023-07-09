@@ -5,8 +5,8 @@ extern irq_handler
 	global isr%1
 	isr%1:
 		cli
-		push byte %1			; Push an interrupt number
-		push byte %1			; Push a stub error code
+		push %1			; Push an interrupt number
+		push %1			; Push a stub error code
 		jmp isr_common_stub
 %endmacro
 
@@ -14,7 +14,7 @@ extern irq_handler
 	global isr%1
 	isr%1:
 		cli
-		push byte %1			; Push an interrupt number
+		push %1			; Push an interrupt number
 		jmp isr_common_stub
 %endmacro
 
@@ -22,8 +22,8 @@ extern irq_handler
 	global irq%1
 	irq%1:
 		cli
-		push byte %1			; Push an interrupt number
-		push byte %1 + 32  		; Push a stub error code
+		push %1			; Push an interrupt number
+		push %1 + 32  		; Push a stub error code
 		jmp irq_common_stub
 %endmacro
 
@@ -111,7 +111,7 @@ def_isr_handler 29  				; Intel reserved. Do not use
 def_isr_handler 30  				; Intel reserved. Do not use
 def_isr_handler 31  				; Intel reserved. Do not use
 
-def_isr_handler 80					; Syscall
+def_isr_handler 0x80				; Syscall
 
 def_irq_handler 0   ; Programmable Interrupt Timer Interupt
 def_irq_handler 1	; Keyboard interrupt

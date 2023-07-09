@@ -4,6 +4,7 @@
 #include "types.h"
 #include "isr.h"
 
+#define INT_SYSCALL "int $0x80"
 #define NB_SYSCALLS  2
 #define SYSCALL_TEST 1
 

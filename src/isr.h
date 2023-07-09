@@ -21,7 +21,7 @@
 #define IRQ14 46
 #define IRQ15 47
 
-#define SYSCALL 80
+#define SYSCALL 0x80
 
 // ISRs reserved for CPU exceptions
 extern void isr0();
@@ -58,7 +58,7 @@ extern void isr30();
 extern void isr31();
 
 // Specifically for syscall
-extern void isr80();
+extern void isr0x80();
 
 extern void irq0();
 extern void irq1();
