@@ -4,8 +4,8 @@
 #include "types.h"
 #include "isr.h"
 
-#define NB_SYSCALLS  1
-#define SYSCALL_TEST 0
+#define NB_SYSCALLS  2
+#define SYSCALL_TEST 1
 
 typedef void (*syscall_handler_t)(registers_state regs_state);
 

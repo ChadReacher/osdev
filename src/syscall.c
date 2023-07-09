@@ -24,5 +24,5 @@ void syscall_register_handler(u8 id, syscall_handler_t handler) {
 }
 
 void syscall_test(registers_state regs) {
-	kprintf("Hello from syscall_test()\n");
+	kprintf("Hello from syscall_test(), %s\n", regs.ebx);
 }

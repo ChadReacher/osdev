@@ -110,7 +110,7 @@ void selftest() {
 	__asm__ ("int3");
 	kprintf("\n[Syscalls]\n");
 	kprintf("  Invoking syscalls:\n");
-	test();
+	test("kernel shell");
 	kprintf("\nEverything is good\n");
 }
 
