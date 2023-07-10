@@ -17,7 +17,7 @@ void screen_clear() {
 	move_cursor();
 }
 
-void print_char(i8 ch) {
+void screen_print_char(i8 ch) {
 	u32 *framebuffer;
 	u8 *char_glyph;
 
@@ -30,7 +30,7 @@ void print_char(i8 ch) {
 		cursor_x = 0;
 		++cursor_y;
 		if (cursor_y >= MAX_CHARS_IN_COL) {
-			scroll_up();
+			screen_scroll_up();
 			cursor_y = MAX_CHARS_IN_COL - 1;
 		}
 		move_cursor();
@@ -72,7 +72,7 @@ void print_char(i8 ch) {
 		cursor_x = 0;
 		++cursor_y;
 		if (cursor_y >= MAX_CHARS_IN_COL) {
-			scroll_up();
+			screen_scroll_up();
 			cursor_x = 0;
 			cursor_y = MAX_CHARS_IN_COL - 1;
 		}
@@ -80,13 +80,13 @@ void print_char(i8 ch) {
 	move_cursor();
 }
 
-void print_string(i8 *string) {
+void screen_print_string(i8 *string) {
 	while (*string) {
-		print_char(*string++);
+		screen_print_char(*string++);
 	}
 }
 
-void scroll_up() {
+void screen_scroll_up() {
 	u32 *framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
 
 	// PIXEL_HEIGHT - don't copy the last row of chars; 

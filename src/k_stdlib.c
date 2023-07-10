@@ -1,6 +1,6 @@
-#include "string.h"
-#include "screen.h"
 #include "k_stdlib.h"
+#include "string.h"
+#include "ctype.h"
 
 i8 *itoa(i32 value, i8 *str, i32 base) {
 	i32 rem;
@@ -54,4 +54,13 @@ i8 *utoa(u32 value, i8 *str, u32 base) {
 	strrev(str);
 
 	return str;
+}
+
+u32 atoi(const i8 *str) {
+	u32 i = 0;
+	while (isdigit(*str)) {
+		i = i * 10  + (*str - '0');
+		++str;
+	}
+	return i;
 }

@@ -7,15 +7,12 @@
 
 void kprintf(i8 *fmt, ...) {
 	va_list args;
-
 	va_start(args, fmt);
-
 	i8 internal_buf[2048];
 	memset(internal_buf, 0, sizeof internal_buf);
-
 	kvsprintf(internal_buf, fmt, args);	
-
-	print_string(internal_buf);
+	puts(internal_buf);
+	va_end(args);
 }
 
 void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
@@ -71,5 +68,12 @@ void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
 				break;
 		}
 	}
-	va_end(args);
+}
+
+void putchar(i8 c) {
+	screen_print_char(c);
+}
+
+void puts(i8 *s) {
+	screen_print_string(s);
 }

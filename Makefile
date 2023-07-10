@@ -7,49 +7,46 @@ AR = ar
 
 C_FLAGS = -W -Wall -pedantic -std=c11 -ffreestanding -m32 -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector
 
-LIBK = bin/libk.a
+LIBK = build/libk.a
 
 C_SRC = $(wildcard src/*.c)
 HEADERS = $(wildcard src/*.h)
 ASM_SRC = src/stage1.asm src/stage2.asm src/font.asm
 
-OBJ_SRC = $(C_SRC:src/%.c=bin/%.o)
-OBJ_SRC := $(filter-out bin/kernel.o, $(OBJ_SRC))
-BIN_SRC = $(ASM_SRC:src/%.asm=bin/%.bin)
+OBJ_SRC = $(C_SRC:src/%.c=build/%.o)
+OBJ_SRC := $(filter-out build/kernel.o, $(OBJ_SRC))
+BIN_SRC = $(ASM_SRC:src/%.asm=build/%.bin)
 
-all: prepare OS
+all: OS
 
-prepare:
-	mkdir -p bin
+OS: build/bootloader.bin build/kernel.bin
+	cat $^ > build/OS.bin
+	dd if=/dev/zero of=build/boot.iso bs=512 count=2880
+	dd if=build/OS.bin of=build/boot.iso conv=notrunc bs=512
 
-OS: bin/bootloader.bin bin/kernel.bin
-	cat $^ > bin/OS.bin
-	dd if=/dev/zero of=./bin/boot.iso bs=512 count=2880
-	dd if=./bin/OS.bin of=./bin/boot.iso conv=notrunc bs=512
+build/bootloader.bin: $(BIN_SRC)
+	cat $^ > build/bootloader.bin
 
-bin/bootloader.bin: $(BIN_SRC)
-	cat $^ > bin/bootloader.bin
-
-bin/kernel.bin: bin/kernel.o bin/interrupt.o $(LIBK)
+build/kernel.bin: build/kernel.o build/interrupt.o $(LIBK)
 	$(LD) --nmagic --output=$@ --script=kernel_linker.ld $^
 
 $(LIBK): $(OBJ_SRC)
 	$(AR) rcs $@ $^
 
 run:
-	qemu-system-i386 -drive format=raw,file=bin/boot.iso,if=ide,index=0,media=disk -rtc base=localtime,clock=host,driftfix=slew
+	qemu-system-i386 -drive format=raw,file=build/boot.iso,if=ide,index=0,media=disk -rtc base=localtime,clock=host,driftfix=slew
 
 debug:
-	qemu-system-i386 -drive format=raw,file=./bin/boot.iso -boot a -s -S & gdb -ex "target remote localhost:1234"
+	qemu-system-i386 -drive format=raw,file=build/boot.iso -boot a -s -S & gdb -ex "target remote localhost:1234"
 
-bin/interrupt.o: src/interrupt.asm
+build/interrupt.o: src/interrupt.asm
 	$(AS) -f elf $< -o $@
 
-bin/%.o: src/%.c
+build/%.o: src/%.c
 	$(CC) $(C_FLAGS) -c $< -o $@
 
-bin/%.bin: src/%.asm
+build/%.bin: src/%.asm
 	$(AS) -f bin $< -o $@
 
 clean:
-	rm -f -r ./bin
+	rm build/*

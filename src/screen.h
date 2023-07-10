@@ -15,10 +15,9 @@
 #define FONT_ADDRESS 0xA000
 
 void screen_clear();
-void print_char(i8 ch);
-void scroll_up();
-void print_string(i8 *string);
-void screen_backspace();
+void screen_print_char(i8 ch);
+void screen_print_string(i8 *string);
+void screen_scroll_up();
 void remove_char();
 
 void remove_cursor();
