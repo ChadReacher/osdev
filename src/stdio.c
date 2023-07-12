@@ -55,7 +55,7 @@ void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
 				break;
 			case 'p':
 				memset(internal_buf, 0, sizeof internal_buf);
-				itoa((u32)va_arg(args, void*), internal_buf, 16);
+				utoa((u32)va_arg(args, void*), internal_buf, 16);
 				sz = strlen(internal_buf);
 				memcpy(buf, internal_buf, sz);
 				buf += sz;

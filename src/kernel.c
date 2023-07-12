@@ -16,19 +16,18 @@
 void print_physical_memory_info();
 
 __attribute__ ((section ("kernel_entry"))) void _start() {
+	screen_clear();
+
 	serial_init();
 	DEBUG("%s", "OS has started\r\n");
-
-	screen_clear();
 	isr_init();
-
 	syscall_init();
 	timer_init(50);
 	keyboard_init();
+	cmos_rtc_init();
 	pmm_init();
 	kprintf("Physical memory info: ");
 	print_physical_memory_info();
-	cmos_rtc_init();
 	paging_init();
 	irq_init();
 

@@ -36,6 +36,9 @@ $(LIBK): $(OBJ_SRC)
 run:
 	qemu-system-i386 -drive format=raw,file=build/boot.iso,if=ide,index=0,media=disk -rtc base=localtime,clock=host,driftfix=slew
 
+log:
+	qemu-system-i386 -drive format=raw,file=build/boot.iso,if=ide,index=0,media=disk -rtc base=localtime,clock=host,driftfix=slew -d int -no-reboot -chardev stdio,id=char0,logfile=serial.log,signal=off -serial chardev:char0
+
 debug:
 	qemu-system-i386 -drive format=raw,file=build/boot.iso -boot a -s -S & gdb -ex "target remote localhost:1234"
 
