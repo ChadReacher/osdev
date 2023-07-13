@@ -8,7 +8,7 @@ static const u32 foreground_color = 0x00FFFFFF; // White color
 static u16 cursor_x = 0, cursor_y = 0;
 
 void screen_clear() {
-	u32 *framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
+	u32 *framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	for (u32 i = 0; i < SCREEN_SIZE; ++i) {
 		framebuffer[i] = background_color;
 	}
@@ -21,7 +21,7 @@ void screen_print_char(i8 ch) {
 	u32 *framebuffer;
 	u8 *char_glyph;
 
-	framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
+	framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	framebuffer += cursor_y * PIXEL_HEIGHT * SCREEN_WIDTH + cursor_x * PIXEL_WIDTH;
 
 	if (ch == '\n') {
@@ -87,7 +87,7 @@ void screen_print_string(i8 *string) {
 }
 
 void screen_scroll_up() {
-	u32 *framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
+	u32 *framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 
 	// PIXEL_HEIGHT - don't copy the last row of chars; 
 	// SCREEN_HEIGHT % PIXEL_HEIGHT - we have an extra 8 rows, but we can't put there any character, so we need to take into account it
@@ -112,7 +112,7 @@ void move_cursor() {
 
 	ch = '|';
 
-	framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
+	framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	framebuffer += cursor_y * PIXEL_HEIGHT * SCREEN_WIDTH + cursor_x * PIXEL_WIDTH;
 
 	char_glyph = (u8 *)(FONT_ADDRESS + ((ch * PIXEL_HEIGHT) - PIXEL_HEIGHT));
@@ -131,7 +131,7 @@ void remove_cursor() {
 
 	ch = ' ';
 
-	framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
+	framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	framebuffer += cursor_y * PIXEL_HEIGHT * SCREEN_WIDTH + cursor_x * PIXEL_WIDTH;
 
 	char_glyph = (u8 *)(FONT_ADDRESS + ((ch * PIXEL_HEIGHT) - PIXEL_HEIGHT));
@@ -147,7 +147,7 @@ void remove_char() {
 	u32 *framebuffer;
 	u8 *char_glyph;
 
-	framebuffer = *(u32 **)FRAMEBUFFER_ADDRESS;
+	framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	framebuffer += cursor_y * PIXEL_HEIGHT * SCREEN_WIDTH + cursor_x * PIXEL_WIDTH;
 
 	char_glyph = (u8 *)(FONT_ADDRESS + ((' ' * PIXEL_HEIGHT) - PIXEL_HEIGHT));

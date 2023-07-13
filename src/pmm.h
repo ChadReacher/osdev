@@ -10,7 +10,6 @@ extern u32 used_blocks;
 
 #define BLOCK_SIZE		4096
 #define BLOCKS_PER_BYTE 8
-#define BLOCK_ALIGN		4096
 
 #define INDEX_FROM_BIT(b) (b / 32)
 #define OFFSET_FROM_BIT(b) (b % 32)
@@ -21,8 +20,8 @@ void set_block(u32 bit);
 void clear_block(u32 bit);
 u8 test_block(u32 bit);
 i32 find_first_free_blocks(u32 num_blocks);
-void init_memory_regions(u32 base_address, u32 size);
-void deinit_memory_regions(u32 base_address, u32 size);
+void mark_memory_as_free(u32 base_address, u32 size);
+void mark_memory_as_used(u32 base_address, u32 size);
 void *allocate_blocks(u32 num_blocks);
 void free_blocks(void *address, u32 num_blocks);
 

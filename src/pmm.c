@@ -87,24 +87,27 @@ void pmm_init() {
 	// By default all memory is used/reserved.
 	_pmm_init(0x30000, total_memory_bytes); 
 
-	// Get back to start of the list to initialize available memory
+	// Get back to start of the list to available memory as free to use
 	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
 	for (u32 i = 0; i < num_mmap_entries; ++i) {
 		if (mmap_entry->type == 1) { // If the type of memory chunk is 'Available Memory'?
-			init_memory_regions(mmap_entry->base_address, mmap_entry->length);
+			mark_memory_as_free(mmap_entry->base_address, mmap_entry->length);
 		}
 		++mmap_entry;
 	}
 
+	mark_memory_as_used(0x7F93, 0x50);		// Mark gdt, idt as used memory
+	mark_memory_as_used(0xA000, 0x800);		// Mark font as used memory
+	
 	// Deinitialize(mark memory region as used) kernel and "OS" memory regions
-	deinit_memory_regions(0x10000, 0xB000);
+	//mark_memory_as_used(0x10000, 0xB000);
 	
 	// Deinitialize physical memory map itself
-	deinit_memory_regions(0x30000, total_blocks / BLOCK_SIZE);
+	//mark_memory_as_used(0x30000, total_blocks / BLOCK_SIZE);
 
 	// Deinitialize framebuffer
-	u32 fb_size_in_bytes = SCREEN_SIZE * 4;
-	deinit_memory_regions(0xFD000000, fb_size_in_bytes);
+	//u32 fb_size_in_bytes = SCREEN_SIZE * 4;
+	//mark_memory_as_used(0xFD000000, fb_size_in_bytes);
 
 	DEBUG("%s", "Physical memory manager has been initialized\r\n");
 	DEBUG("Number of used or reserved 4K blocks: %x\r\n", used_blocks);
@@ -120,7 +123,7 @@ void _pmm_init(u32 start_address, u32 size) {
 	memset(memory_map, 0xFF, total_blocks / BLOCKS_PER_BYTE);
 }
 
-void init_memory_regions(u32 base_address, u32 size) {
+void mark_memory_as_free(u32 base_address, u32 size) {
 	u32 align = base_address / BLOCK_SIZE;
 	u32 num_blocks = size / BLOCK_SIZE;
 	for (; num_blocks > 0; --num_blocks) {
@@ -131,9 +134,12 @@ void init_memory_regions(u32 base_address, u32 size) {
 	set_block(0); // Insure that we won't overwrite Bios Data Area / IVT
 }
 
-void deinit_memory_regions(u32 base_address, u32 size) {
+void mark_memory_as_used(u32 base_address, u32 size) {
 	u32 align = base_address / BLOCK_SIZE;
 	u32 num_blocks = size / BLOCK_SIZE;
+	if (size % BLOCK_SIZE > 0) {
+		++num_blocks;
+	}
 	for (; num_blocks > 0; --num_blocks) {
 		set_block(align++);
 		++used_blocks;
