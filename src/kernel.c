@@ -12,6 +12,7 @@
 #include "cmos.h"
 #include "kshell.h"
 #include "syscall.h"
+#include "heap.h"
 
 void print_physical_memory_info();
 
@@ -29,7 +30,13 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 	kprintf("Physical memory info: ");
 	print_physical_memory_info();
 	paging_init();
+	heap_init();
 	irq_init();
+
+	u8 *p = (u8 *)malloc(5);
+	DEBUG("Allocated 5 bytes at %p\r\n", p);
+	free((void*)p);
+	DEBUG("Freed 5 bytes with p\r\n");
 
 	kprintf(PROMPT);
 	for (;;) {

@@ -59,13 +59,18 @@ void map_page(void *phys_addr, void *virt_addr) {
 
 	if ((*entry & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
 		page_table_t *table = (page_table_t *)allocate_blocks(1);
+		DEBUG("Created new table at %p\r\n", (void *)table);
 		if (!table) {
 			return;
 		}
-		memset((void*)table, 0, sizeof(page_table_t));
 		*entry |= PAGING_FLAG_PRESENT;
 		*entry |= PAGING_FLAG_WRITEABLE;
 		*entry = ((*entry & ~0xFFFFF000) | (physical_address)table);
+
+		page_table_entry *page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
+		*page |= PAGING_FLAG_PRESENT;
+		*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
+		return;
 	}
 
 	page_table_t *table = (page_table_t *)(GET_FRAME(*entry));

@@ -100,10 +100,10 @@ void pmm_init() {
 	mark_memory_as_used(0xA000, 0x800);		// Mark font as used memory
 	
 	// Deinitialize(mark memory region as used) kernel and "OS" memory regions
-	//mark_memory_as_used(0x10000, 0xB000);
+	mark_memory_as_used(0x10000, 0xB000);
 	
 	// Deinitialize physical memory map itself
-	//mark_memory_as_used(0x30000, total_blocks / BLOCK_SIZE);
+	mark_memory_as_used(0x30000, total_blocks / BLOCK_SIZE);
 
 	// Deinitialize framebuffer
 	//u32 fb_size_in_bytes = SCREEN_SIZE * 4;
