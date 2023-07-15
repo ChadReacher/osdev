@@ -35,8 +35,32 @@ __attribute__ ((section ("kernel_entry"))) void _start() {
 
 	u8 *p = (u8 *)malloc(5);
 	DEBUG("Allocated 5 bytes at %p\r\n", p);
+	for (u8 i = 1; i < 6; ++i) {
+		p[i - 1] = i;
+	}
+	for (u8 i = 0; i < 5; ++i) {
+		kprintf("%d ", p[i]);
+	}
+	kprintf("\n");
+
+	p = (u8 *)realloc(p, 15);
+	DEBUG("After REALLOCATING TO 15 bytes at %p\r\n", p);
+	for (u8 i = 0; i < 15; ++i) {
+		kprintf("%d ", p[i]);
+	}
+	kprintf("\n");
+
+	for (u8 i = 5; i < 16; ++i) {
+		p[i] = i;
+	}
+
+	for (u8 i = 0; i < 15; ++i) {
+		kprintf("%d ", p[i]);
+	}
+	kprintf("\n");
+
 	free((void*)p);
-	DEBUG("Freed 5 bytes with p\r\n");
+	DEBUG("%s", "Freed 5 bytes with p\r\n");
 
 	kprintf(PROMPT);
 	for (;;) {

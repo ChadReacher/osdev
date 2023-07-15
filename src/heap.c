@@ -3,6 +3,7 @@
 #include "paging.h"
 #include "stdio.h"
 #include "debug.h"
+#include "memory.h"
 
 void *heap_start = NULL;
 void *heap_curr = NULL;
@@ -172,4 +173,39 @@ void free(void *ptr) {
 
 }
 
+void *realloc(void *ptr, size_t size) {
+	size_t real_size;
+	if (!ptr) {
+		return malloc(size);
+	} else if (ptr && size == 0) {
+		free(ptr);
+		return NULL;
+	}
 
+	real_size = sizeof(heap_block) + size;
+	
+	heap_block *block = best_fit(size);
+	if (block) {
+		block->free = false;
+		split_block(block, size);
+	} else {
+		heap_block *new_block = (heap_block*)sbrk(real_size);
+		new_block->size = size;
+		new_block->next = NULL;
+		new_block->free = false;
+		
+		memcpy((void *)(new_block + 1), ptr, size);
+
+		heap_block *last = block_list;
+		while (last->next) {
+			last = last->next;
+		}
+		last->next = new_block;
+
+		block = new_block;
+	}
+
+	free(ptr);
+
+	return block + 1;
+}
