@@ -16,7 +16,7 @@
 
 void print_physical_memory_info();
 
-__attribute__ ((section ("kernel_entry"))) void _start() {
+void _start() {
 	screen_clear();
 
 	serial_init();

@@ -1,15 +1,21 @@
 OUTPUT_FORMAT("binary")
 SECTIONS
 {
-	.text 0x10000 :
+	. = 0x10000;
+
+	.text :
 	{
-		*(kernel_entry);
 		*(.text);
 	}
 
 	.rodata :
 	{
 		*(.rodata);
+	}
+
+	.data :
+	{
+		*(.data);
 	}
 
 	.bss :

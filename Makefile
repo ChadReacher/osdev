@@ -27,7 +27,7 @@ OS: build/bootloader.bin build/kernel.bin
 build/bootloader.bin: $(BIN_SRC)
 	cat $^ > build/bootloader.bin
 
-build/kernel.bin: build/kernel.o build/interrupt.o $(LIBK)
+build/kernel.bin: build/kernel_entry.o build/kernel.o build/interrupt.o $(LIBK)
 	$(LD) --nmagic --output=$@ --script=kernel_linker.ld $^
 
 $(LIBK): $(OBJ_SRC)
@@ -43,6 +43,9 @@ debug:
 	qemu-system-i386 -drive format=raw,file=build/boot.iso -boot a -s -S & gdb -ex "target remote localhost:1234"
 
 build/interrupt.o: src/interrupt.asm
+	$(AS) -f elf $< -o $@
+
+build/kernel_entry.o: src/kernel_entry.asm
 	$(AS) -f elf $< -o $@
 
 build/%.o: src/%.c
