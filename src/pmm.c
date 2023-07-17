@@ -96,7 +96,7 @@ void pmm_init() {
 		++mmap_entry;
 	}
 
-	mark_memory_as_used(0x7F93, 0x50);		// Mark gdt, idt as used memory
+	mark_memory_as_used(0x7F93, 0x2000);	// Mark gdt, idt as used memory
 	mark_memory_as_used(0xA000, 0x800);		// Mark font as used memory
 	
 	// Deinitialize(mark memory region as used) kernel and "OS" memory regions

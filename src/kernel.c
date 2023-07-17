@@ -23,6 +23,7 @@ void _start() {
 	DEBUG("%s", "OS has started\r\n");
 	isr_init();
 	syscall_init();
+	irq_init();
 	timer_init(50);
 	keyboard_init();
 	cmos_rtc_init();
@@ -31,10 +32,9 @@ void _start() {
 	print_physical_memory_info();
 	paging_init();
 	heap_init();
-	irq_init();
 
 	u8 *p = (u8 *)malloc(5);
-	DEBUG("Allocated 5 bytes at %p\r\n", p);
+	kprintf("Allocated 5 bytes at %p\r\n", p);
 	for (u8 i = 1; i < 6; ++i) {
 		p[i - 1] = i;
 	}
@@ -44,7 +44,7 @@ void _start() {
 	kprintf("\n");
 
 	p = (u8 *)realloc(p, 15);
-	DEBUG("After REALLOCATING TO 15 bytes at %p\r\n", p);
+	kprintf("After REALLOCATING TO 15 bytes at %p\r\n", p);
 	for (u8 i = 0; i < 15; ++i) {
 		kprintf("%d ", p[i]);
 	}
@@ -60,7 +60,7 @@ void _start() {
 	kprintf("\n");
 
 	free((void*)p);
-	DEBUG("%s", "Freed 5 bytes with p\r\n");
+	kprintf("%s", "Freed 5 bytes with p\r\n");
 
 	kprintf(PROMPT);
 	for (;;) {

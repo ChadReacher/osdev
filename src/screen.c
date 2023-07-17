@@ -2,7 +2,7 @@
 #include "screen.h"
 #include "debug.h"
 
-static const u32 background_color = 0x00263238; // Black color
+static const u32 background_color = 0x00263238; // Grey color
 static const u32 foreground_color = 0x00FFFFFF; // White color
 
 static u16 cursor_x = 0, cursor_y = 0;

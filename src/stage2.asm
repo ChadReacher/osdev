@@ -5,6 +5,7 @@ bits 16
 %define INT_15_MAGIC_VALUE 0x534D4150
 
 second_stage_start:
+	mov byte [drive_num], dl
 	; Get physical memory map using BIOS int 0x15(eax = 0xE820)
 	memmap_entries equ 0x8500
 get_memory_map:
@@ -153,7 +154,74 @@ entry_32bit:
 	mov ecx, 64
 	rep movsd
 
+	;; LOAD KERNEL AT 0x10000
+	mov bl, byte [kernel_size_in_sectors]
+	mov edi, 0x10000
+
+	mov dx, 0x1F6
+	mov al, [drive_num]
+	and al, 0x0F
+	or al, 0x0A0
+	out dx, al
+
+	; Number of sectors to read
+	mov dx, 0x1F2
+	mov al, byte [kernel_size_in_sectors]
+	inc al
+	out dx, al
+
+	; Start with # sector
+	mov dx, 0x1F3
+	mov al, 10
+	out dx, al
+
+	mov dx, 0x1F4
+	xor al, al
+	out dx, al
+
+	mov dx, 0x1F5
+	xor al, al
+	out dx, al
+
+	mov dx, 0x1F7
+	mov al, 0x20
+	out dx, al
+
+; 0x7F70
+kernel_loop:
+	in al, dx
+	test al, 8
+	je kernel_loop
+
+	mov cx, 256
+	mov dx, 0x1F0
+	rep insw
+
+	mov dx, 0x3F6
+	in al, dx
+	in al, dx
+	in al, dx
+	in al, dx
+
+	cmp bl, 0
+	je jump_to_kernel
+	 
+	dec bl
+	mov dx, 0x1F7
+	jmp kernel_loop
+
+jump_to_kernel:
+	;mov eax, 1
+	;mov ebx, 2
+	;mov ecx, 3
+	;mov edx, 4
+	;cli
+	;hlt
+
 	jmp 0x10000						; Jump to memory where we have loaded the kernel
+
+drive_num: db 0
+kernel_size_in_sectors: db 50
 
 bits 16
 enable_a20:
@@ -253,7 +321,7 @@ offset:  	dw 0
 t_segment: 	dw 0
 mode:	 	dw 0
 
-times 512 - ($ - $$) db 0
+times 1024 - ($ - $$) db 0
 
 ; Sector 2
 vbe_info_block:
@@ -329,4 +397,4 @@ mode_info_block:
 	.reserved4: times 190 db 0      ; Remainder of mode info block
 
 ; Sector padding
-times 1536-($-$$) db 0
+times 2048 - ($ - $$) db 0

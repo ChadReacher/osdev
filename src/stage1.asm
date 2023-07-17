@@ -18,9 +18,9 @@ boot_start:
 	mov bx, 0x7E00					; ES:BX => 0x0000:0x7E00 => 0x7E00
 
 	mov ah, 2						; specific value for interrupt int 0x13
-	mov al, 3 						; number of sectors to read
+	mov al, 4 						; number of sectors to read
 	mov ch, 0 						; track/cylinder number
-	mov cl, 2 						; sector number(they start at 1, first sector - bootloader, second - start of kernel)
+	mov cl, 2 						; sector number(they start at 1, first sector - bootloader)
 	mov dh, 0 						; head number
 	mov dl, [drive_num] 			; drive number
 
@@ -34,25 +34,11 @@ boot_start:
 	mov ah, 2						; specific value for interrupt int 0x13
 	mov al, 4 						; number of sectors to read
 	mov ch, 0 						; track/cylinder number
-	mov cl, 5 						; sector number(they start at 1, first sector - bootloader, second - start of kernel)
+	mov cl, 6 						; sector number(they start at 1, first sector - bootloader, second - start of kernel)
 	mov dh, 0 						; head number
 	mov dl, [drive_num] 			; drive number
 
 	int 0x13 
-
-	; Load kernel at 0x10000
-	mov bx, 0x1000
-	mov es, bx
-	xor bx, bx						; ES:BX => 0x1000:0x0000 => 0x10000
-
-	mov ah, 2						; specific value for interrupt int 0x13
-	mov al, 50						; number of sectors to read
-	mov ch, 0 						; track/cylinder number
-	mov cl, 9 						; sector number(they start at 1)
-	mov dh, 0 						; head number
-	mov dl, [drive_num] 			; drive number
-
-	int 0x13	
 
 	jmp 0x0000:0x7E00				; Jump to second stage bootloader
 
