@@ -4,7 +4,7 @@
 #include "screen.h"
 #include "debug.h"
 
-page_directory_t *cur_page_dir = 0;
+page_directory_t *cur_page_dir = (page_directory_t *)0x12000;
 
 void pagefault_handler(registers_state regs) {
 	u32 bad_address;
@@ -82,6 +82,10 @@ void map_page(void *phys_addr, void *virt_addr) {
 void paging_init() {
 	register_interrupt_handler(14, pagefault_handler);
 
+	/* Probably we wouldn't need it, as we have already
+	 * created page directory and page table with 
+	 * identity mapping to the first 4 MB
+	 *
 	// Create top level page table(page directory)
 	page_directory_t *dir = (page_directory_t *)allocate_blocks(1);
 	if (!dir)
@@ -121,14 +125,7 @@ void paging_init() {
 		page = ((page & ~0xFFFFF000) | (physical_address)frame);
 
 		kernel_page_table->entries[PAGE_TABLE_INDEX(virt_addr)] = page;
-	}
-
-	// Set up recursive paging
-	page_directory_entry page_dir_entry = 0;
-	page_dir_entry |= PAGING_FLAG_PRESENT;
-	page_dir_entry |= PAGING_FLAG_WRITEABLE;
-	page_dir_entry = ((page_dir_entry & ~0xFFFFF000) | (physical_address)dir);
-	dir->entries[PAGE_DIRECTORY_ENTRIES - 1] = page_dir_entry;
+	}	
 
 	page_directory_entry *default_entry = &dir->entries[PAGE_DIR_INDEX(0x00000000)];
 	*default_entry |= PAGING_FLAG_PRESENT;
@@ -150,6 +147,14 @@ void paging_init() {
 	__asm__ __volatile__ ("movl %cr0, %eax");
 	__asm__ __volatile__ ("orl $0x80000001, %eax");
 	__asm__ __volatile__ ("movl %eax, %cr0");
+	*/
+
+	// Set up recursive paging
+	page_directory_entry page_dir_entry = 0;
+	page_dir_entry |= PAGING_FLAG_PRESENT;
+	page_dir_entry |= PAGING_FLAG_WRITEABLE;
+	page_dir_entry = ((page_dir_entry & ~0xFFFFF000) | (physical_address)cur_page_dir);
+	cur_page_dir->entries[PAGE_DIRECTORY_ENTRIES - 1] = page_dir_entry;
 
 	// Identity map framebuffer
 	u32 fb_size_in_bytes = SCREEN_SIZE * 4;

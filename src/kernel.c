@@ -17,10 +17,9 @@
 void print_physical_memory_info();
 
 void _start() {
-	screen_clear();
-
 	serial_init();
 	DEBUG("%s", "OS has started\r\n");
+
 	isr_init();
 	syscall_init();
 	irq_init();
@@ -28,9 +27,10 @@ void _start() {
 	keyboard_init();
 	cmos_rtc_init();
 	pmm_init();
+	paging_init();
+	screen_clear();
 	kprintf("Physical memory info: ");
 	print_physical_memory_info();
-	paging_init();
 	heap_init();
 
 	u8 *p = (u8 *)malloc(5);
