@@ -29,7 +29,6 @@ void _start() {
 	pmm_init();
 	paging_init();
 	screen_clear();
-	kprintf("Physical memory info: ");
 	print_physical_memory_info();
 	heap_init();
 
@@ -75,6 +74,7 @@ void print_physical_memory_info() {
 	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
 	num_entries = *((u32 *)BIOS_NUM_ENTRIES);
 
+	kprintf("Physical memory info: ");
 	kprintf("Total number of entries: %d\n", num_entries);
 	for (u8 i = 0; i < num_entries; ++i) {
 		kprintf("Region: %x | Base: %x | Length: %x | Type(%d): ", i, (u32)mmap_entry->base_address, (u32)mmap_entry->length, mmap_entry->type);

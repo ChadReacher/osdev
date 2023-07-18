@@ -10,19 +10,18 @@ KERNEL_PAGE_NUMBER		equ (KERNEL_VIRTUAL_BASE >> 22)
 
 ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; 
 ;
-; Virtual address consists is default 32 bit integer 
-; xxxxxxxxxx xxxxxxxxxx xxxxxxxxxxxx
-; Higher 10 bits - Entry index in page directory
-; Next 10 bits   - Entry index in page table
-; Lower 12 bits  - Flags(Present, R/W, U/S etc.)
+; Page table entry consists of 32 bit entry number
+; xxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxx
+; High 20 bits define page frame address
+; Low 12 bits define flags
 ;
 ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; 
 
 ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; 
 ;
-; Page table entry consists of 32 bit entry number
+; Page directory entry consists of 32 bit entry number
 ; xxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxx
-; High 20 bits define frame address
+; High 20 bits define address of page table
 ; Low 12 bits define flags
 ;
 ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; 
@@ -48,21 +47,24 @@ page_table_end:
 	; Setup boot page directory
 	; Identity-map the first 4MB of memory and
 	; virtual kernel page points to the first 4MB of memory
+
+	; we are assumed we are at virtual address, so
+	; we need to subtract to get a physical address
 	mov edx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
 
 	mov eax, [edx]
-	or eax, 0x3
+	or eax, 0x3							; Set present bit and R/W
 	sub eax, KERNEL_VIRTUAL_BASE
 	mov [edx], eax
 
-	add edx, 4 * KERNEL_PAGE_NUMBER
+	add edx, 4 * KERNEL_PAGE_NUMBER		; Move to the kernel page entry number
 
 	mov eax, [edx]
-	or eax, 0x3	
+	or eax, 0x3							; Set present bit and R/W
 	sub eax, KERNEL_VIRTUAL_BASE
 	mov [edx], eax
 
-; Load boot page directory
+; Load physical boot page directory address
 mov ecx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
 mov cr3, ecx
 
@@ -71,6 +73,7 @@ mov ecx, cr0
 or ecx, 0x80000001
 mov cr0, ecx
 
+; Move to higher half kernel
 lea ecx, [start_in_higher_half]
 jmp ecx
 

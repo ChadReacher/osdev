@@ -154,7 +154,7 @@ entry_32bit:
 	mov ecx, 64
 	rep movsd
 
-	;; LOAD KERNEL AT 0x10000
+	;; LOAD KERNEL AT 0x10000 with ATA PIO ports
 	mov bl, byte [kernel_size_in_sectors]
 	mov edi, 0x10000
 
