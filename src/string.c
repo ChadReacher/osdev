@@ -1,4 +1,5 @@
 #include "string.h"
+#include "heap.h"
 
 size_t strlen(const i8 *str) {
 	size_t len = 0;
@@ -47,3 +48,85 @@ i8 *strcpy(i8 *dest, const i8 *src) {
 	*dest = '\0';
 	return cpy_dest;
 }
+
+i8 *strncpy(i8 *dest, const i8 *src, size_t n) {
+	size_t i;
+
+	if (n == 0) {
+		return dest;
+	}
+
+	for (i = 0; i < n && src[i] != '\0'; ++i) {
+		dest[i] = src[i];
+	}
+
+	for (; i < n; ++i) {
+		dest[i] = '\0';
+	}
+
+	return dest;
+}
+
+size_t strcspn(const i8 *str1, const i8 *str2) {
+	const i8 *init_str1 = str1;
+	const i8 *c;
+
+	while (*str1) {
+		for (c = str2; *c; ++c) {
+			if (*str1 == *c) {
+				break;
+			}
+		}
+
+		if (*c) {
+			break;
+		}
+
+		++str1;
+	}
+
+	return str1 - init_str1;
+}
+
+i8 *strsep(i8 **str, const i8 *sep) {
+	i8 *end;
+
+	if (*str == NULL) {
+		return NULL;
+	}
+
+	i8 *s = *str;
+	end = s + strcspn(s, sep);
+	if (*end) {
+		*end = 0;
+		++end;
+	} else {
+		end = NULL;
+	}
+
+	*str = end;
+	return s;
+}
+
+i32 strcmp(const i8 *str1, const i8 *str2) {
+	u8 c1, c2;
+
+	while ((c1 = *str1) == (c2 = *str2)) {
+		if (c1 == '\0') {
+			return 0;
+		}
+		++str1;
+		++str2;
+	}
+	return c1 - c2;
+}
+
+i8 *strdup(const i8 *str) {
+	size_t len = strlen(str);
+	i8 *ret = malloc(len + 1);
+	if (ret) {
+		strncpy(ret, str, len + 1);
+	}
+	return ret;
+}
+

@@ -1,3 +1,4 @@
+#include "types.h"
 #include "stdio.h"
 #include "k_stdlib.h"
 #include "screen.h"
@@ -6,6 +7,9 @@
 #include "serial.h"
 
 void kprintf(i8 *fmt, ...) {
+	if (!fmt) {
+		return;
+	}
 	va_list args;
 	va_start(args, fmt);
 	i8 internal_buf[2048];
@@ -44,8 +48,11 @@ void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
 				buf += sz;
 				break;
 			case 'c':
-				*buf = (i8) va_arg(args, i32);
-				++buf;
+				i8 c = va_arg(args, i32);
+				if (c) {
+					*buf = c;
+					++buf;
+				}
 				break;
 			case 's':
 				temp_s = va_arg(args, i8*);

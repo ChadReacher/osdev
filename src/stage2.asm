@@ -159,16 +159,15 @@ entry_32bit:
 	mov edi, 0x10000
 
 	mov dx, 0x1F6
-	mov al, [drive_num]
-	and al, 0x0F
-	or al, 0x0A0
+	mov al, 0x0A0
+	or al, 0
 	out dx, al
 
 	; Number of sectors to read
 	mov dx, 0x1F2
 	mov al, byte [kernel_size_in_sectors]
-	inc al
 	out dx, al
+	dec bl
 
 	; Start with # sector
 	mov dx, 0x1F3
@@ -187,7 +186,6 @@ entry_32bit:
 	mov al, 0x20
 	out dx, al
 
-; 0x7F70
 kernel_loop:
 	in al, dx
 	test al, 8
@@ -211,17 +209,10 @@ kernel_loop:
 	jmp kernel_loop
 
 jump_to_kernel:
-	;mov eax, 1
-	;mov ebx, 2
-	;mov ecx, 3
-	;mov edx, 4
-	;cli
-	;hlt
-
 	jmp 0x10000						; Jump to memory where we have loaded the kernel
 
 drive_num: db 0
-kernel_size_in_sectors: db 80
+kernel_size_in_sectors: db 100
 
 bits 16
 enable_a20:
