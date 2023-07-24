@@ -19,31 +19,19 @@ vfs_node_t *vfs_root = NULL;
 
 void vfs_init() {
 	vfs_tree = generic_tree_create();
-	vfs_tree->sz = 1;
 
+	// THINK:
 	// Should we create an empty directory(w/o fs) at the root?
-	// Will something be mounted at root?
-
-	vfs_node_t *vfs_node_root = malloc(sizeof(vfs_node_t));
-	strcpy(vfs_node_root->name, "/");
-	vfs_node_root->mask = vfs_node_root->uid = vfs_node_root->gid = vfs_node_root->inode = vfs_node_root->length = vfs_node_root->impl = 0;
-	vfs_node_root->read = NULL;
-	vfs_node_root->write = NULL;
-	vfs_node_root->open = NULL; 
-	vfs_node_root->close = NULL; 
-	vfs_node_root->readdir = NULL;
-	vfs_node_root->finddir = NULL;
-	vfs_node_root->ptr = NULL;
-
-	vfs_node_root->flags = 0; // ?
+	// Will something be mounted at root?	
 
 	tree_node_t *tree_node_root = malloc(sizeof(tree_node_t));
-	tree_node_root->val = vfs_node_root;
+	tree_node_root->val = NULL;
 	tree_node_root->children = list_create();
 	tree_node_root->parent = tree_node_root;
 
-	vfs_root = vfs_node_root;
+	vfs_root = NULL;
 	vfs_tree->root = tree_node_root;
+	vfs_tree->sz = 1;
 
 	DEBUG("%s", "Virtual file system has been successfully initialized\r\n");
 }
@@ -145,6 +133,22 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 		return;
 	}
 
+	// Are we trying to mount the root?
+	if (strlen(path) == 1 && path[0] == '/') {
+		if (vfs_tree->root->val && vfs_root) {
+			DEBUG("%s", "Vfs tree root is already mounted\r\n");
+			return;
+		}
+		vfs_root = vfs_node_to_mount;
+		vfs_tree->root->val = vfs_node_to_mount;
+		return;
+	}
+
+	if (!vfs_tree->root->val && !vfs_root) {
+		DEBUG("Cannot mount the path(%s) because the root is not mounted\r\n", path);
+		return;
+	}
+
 	path_dup = strdup(path);
 	path_dup = path_dup + 1;
 	tree_node_t *current_tree_node = vfs_tree->root;	
@@ -206,7 +210,7 @@ void vfs_print_node(tree_node_t *node) {
 }
 
 void vfs_print() {
-	if (!vfs_tree) {
+	if (!vfs_tree || !vfs_tree->root->val) {
 		return;
 	}
 	DEBUG("Size of VFS tree: %x\r\n", vfs_tree->sz);

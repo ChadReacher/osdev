@@ -152,6 +152,28 @@ void _start() {
 
 	vfs_init();
 
+	vfs_node_t *vfs_node_to_mount_root = malloc(sizeof(vfs_node_t));
+	strcpy(vfs_node_to_mount_root->name, "/");
+	vfs_node_to_mount_root->mask = 0; 
+	vfs_node_to_mount_root->uid = 0;
+	vfs_node_to_mount_root->gid = 0;
+	vfs_node_to_mount_root->inode = 0;
+	vfs_node_to_mount_root->length = 0;
+	vfs_node_to_mount_root->impl = 0;
+	vfs_node_to_mount_root->read = NULL;
+	vfs_node_to_mount_root->write = NULL;
+	vfs_node_to_mount_root->open = NULL; 
+	vfs_node_to_mount_root->close = NULL; 
+	vfs_node_to_mount_root->readdir = NULL;
+	vfs_node_to_mount_root->finddir = NULL;
+	vfs_node_to_mount_root->ptr = NULL;
+	vfs_node_to_mount_root->flags = 0x123;
+
+	DEBUG("%s", "===============\r\n");
+	DEBUG("%s", "Mounting /\r\n");
+	vfs_mount("/", vfs_node_to_mount_root);
+	DEBUG("%s", "===============\r\n");
+
 	vfs_node_t *vfs_node_to_mount = malloc(sizeof(vfs_node_t));
 	strcpy(vfs_node_to_mount->name, "home");
 	vfs_node_to_mount->mask = 0; 
