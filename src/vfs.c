@@ -129,7 +129,7 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 	list_t *children;
 	list_node_t *child;
 
-	if (!vfs_tree || !vfs_tree->root  || !vfs_tree->sz || path == NULL || path[0] != '/' || !vfs_node_to_mount) {
+	if (!vfs_tree || !vfs_tree->root || !vfs_tree->sz || path == NULL || path[0] != '/' || !vfs_node_to_mount) {
 		return;
 	}
 

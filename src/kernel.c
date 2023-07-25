@@ -17,6 +17,7 @@
 #include "generic_tree.h"
 #include "string.h"
 #include "vfs.h"
+#include "pci.h"
 
 void print_physical_memory_info();
 
@@ -35,6 +36,7 @@ void _start() {
 	screen_clear();
 	print_physical_memory_info();
 	heap_init();
+	pci_init();
 
 
 
