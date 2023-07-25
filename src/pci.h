@@ -39,8 +39,7 @@
 
 
 #define DEVICE_PER_BUS 32
-#define FUNCTION_PER_DEVICE 32
-
+#define FUNCTION_PER_DEVICE 8
 
 typedef union pci_device {
 	u32 bits;

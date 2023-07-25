@@ -13,14 +13,14 @@ static inline void port_outb(u16 port, u8 data) {
 	__asm__ __volatile__ ("out %%al, %%dx" : : "a"(data), "d"(port));
 }
 
-static inline u8 port_inw(u16 port) {
+static inline u16 port_inw(u16 port) {
 	u16 res;
-	__asm__ __volatile__ ("inw %%dx, %%ax" : "=a"(res) : "d"(port));
+	__asm__ __volatile__ ("in %%dx, %%ax" : "=a"(res) : "d"(port));
 	return res;
 }
 
 static inline void port_outw(u16 port, u16 data) {
-	__asm__ __volatile__ ("outw %%ax, %%dx" : : "a"(data), "d"(port));
+	__asm__ __volatile__ ("out %%ax, %%dx" : : "a"(data), "d"(port));
 }
 
 static inline u32 port_inl(u16 port) {

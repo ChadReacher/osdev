@@ -26,10 +26,33 @@ void pci_init() {
     pci_size_map[PCI_BAR5] = 5;
 	pci_size_map[PCI_INTERRUPT_LINE] = 1;
 	pci_size_map[PCI_SECONDARY_BUS] = 1;
+
+	// Leave it for now just to test PCI functions
+	pci_device_t dev = {0};
+	for (u32 bus = 0; bus < 256; ++bus) {
+		dev.bus_num = bus;
+		for (u32 device = 0; device < 32; ++device) {
+			dev.device_num = device;
+			for (u32 function = 0; function < 8; ++function) {
+				dev.function_num = function;
+
+				u32 vendor_id = pci_read(dev, PCI_VENDOR_ID);
+				u32 device_id = pci_read(dev, PCI_DEVICE_ID);
+				u32 class = pci_read(dev, PCI_CLASS);
+				u32 subclass = pci_read(dev, PCI_SUBCLASS);
+				if (vendor_id != 0xFFFF && device_id != 0xFFFF) {
+					DEBUG("Found a PCI device with device_id = 0x%x and vendor_id = 0x%x\r\n", device_id, vendor_id);
+					DEBUG("Class - 0x%x, Subclass - 0x%x\r\n", class, subclass);
+				}
+			}
+		}
+	}
+	dev = pci_get_device(0x8086, 0x7010, -1);
+	DEBUG("Found dev - 0x%x\r\n", dev.bits);
 }
 
 void pci_write(pci_device_t dev, u32 field, u32 value) {
-	dev.field_num = (field & 0xFC) >> 2;
+	dev.field_num = (field & 0xFC);
 	dev.enable_bit = 1;
 	port_outl(PCI_CONFIG_ADDRESS, dev.bits);
 	port_outl(PCI_CONFIG_DATA, value);
@@ -41,15 +64,17 @@ u32 pci_read(pci_device_t dev, u32 field) {
 	port_outl(PCI_CONFIG_ADDRESS, dev.bits);
 
 	u32 field_size = pci_size_map[field];
-	u32 res = 0xFFFF;
 	if (field_size == 1) {
-		res = port_inb(PCI_CONFIG_DATA + (field & 3));
+		u8 res = port_inb(PCI_CONFIG_DATA + (field & 3));
+		return res;
 	} else if (field_size == 2) {
-		res = port_inw(PCI_CONFIG_DATA + (field & 2));
+		u16 res = port_inw(PCI_CONFIG_DATA + (field & 2));
+		return res;
 	} else if (field_size == 4) {
-		res = port_inl(PCI_CONFIG_DATA );
+		u32 res = port_inl(PCI_CONFIG_DATA);
+		return res;
 	}
-	return res;
+	return 0xFFFF;
 }
 
 i32 get_device_type(pci_device_t dev) {
