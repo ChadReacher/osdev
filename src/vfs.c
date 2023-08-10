@@ -129,21 +129,21 @@ void vfs_close(vfs_node_t *node) {
 	}
 }
 
-struct dirent *vfs_readdir(tree_node_t *tree_node, u32 index) {
+dirent *vfs_readdir(tree_node_t *tree_node, u32 index) {
 	if (!tree_node) {
 		return NULL;
 	}
 	vfs_node_t *vfs_node = (vfs_node_t *)tree_node->val;
 
 	if (vfs_node && ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) && vfs_node->readdir) {
-		struct dirent *de;
+		dirent *de;
 		if (index == 0) {
-			de = malloc(sizeof(struct dirent));
+			de = malloc(sizeof(dirent));
 			strcpy(de->name, ".");
 			de->inode = vfs_node->inode;
 			return de;
 		} else if (index == 1) {
-			de = malloc(sizeof(struct dirent));
+			de = malloc(sizeof(dirent));
 			strcpy(de->name, "..");
 
 			vfs_node_t *parent_vfs_node = (vfs_node_t *)tree_node->parent->val;
@@ -154,7 +154,7 @@ struct dirent *vfs_readdir(tree_node_t *tree_node, u32 index) {
 		bool node_is_mounpoint = (vfs_node->flags & FS_MOUNTPOINT) == FS_MOUNTPOINT;
 
 		if (node_is_mounpoint && tree_node->children->sz > (index - 2)) {
-			de = malloc(sizeof(struct dirent));
+			de = malloc(sizeof(dirent));
 			list_node_t *vfs_child_list_node = tree_node->children->head;
 			for (u32 i = 0; i < (index - 2) && vfs_child_list_node; ++i) {
 				vfs_child_list_node = vfs_child_list_node->next;
@@ -180,7 +180,7 @@ vfs_node_t *vfs_finddir(vfs_node_t *node, i8 *name) {
 	if (node && (node->flags & FS_DIRECTORY) && node->finddir) {
 		return node->finddir(node, name);
 	}
-	return NULL;
+	return (vfs_node_t *)NULL;
 }
 
 void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {

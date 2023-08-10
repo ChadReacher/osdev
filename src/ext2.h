@@ -152,7 +152,7 @@ u32 ext2_read(vfs_node_t *node, u32 offset, u32 size, i8 *buffer);
 u32 ext2_write(vfs_node_t *node, u32 offset, u32 size, i8 *buffer);
 u32 ext2_open(vfs_node_t *node, u32 flags);
 u32 ext2_close(vfs_node_t *node);
-struct dirent *ext2_readdir(vfs_node_t *node, u32 index);
+dirent *ext2_readdir(vfs_node_t *node, u32 index);
 vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name);
 
 ext2_inode_table *ext2_get_inode_table(u32 inode_num);
@@ -164,10 +164,9 @@ u32 get_real_block(ext2_inode_table *inode, u32 block_num);
 u32 ext2_read_inode_filedata(ext2_inode_table *inode, u32 offset, u32 size, i8 *buffer);
 void ext2_write_inode_filedata(ext2_inode_table *inode, u32 inode_idx, u32 offset, u32 size, i8 *buffer);
 
+void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dirent, vfs_node_t *vfs_node);
+
 void read_inode_disk_block(ext2_inode_table *inode, u32 block, i8 *buf);
 void write_inode_disk_block(ext2_inode_table *inode, u32 block, i8 *buf);
-
-static void read_disk_block(u32 block, i8 *buf);
-static void write_disk_block(u32 block, i8 *buf);
 
 #endif

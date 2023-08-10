@@ -24,6 +24,7 @@ void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
 	u32 sz;
 	i8 *p;
 	i8 *temp_s;
+	i8 c;
 
 	for (p = fmt; *p; ++p) {
 		if (*p != '%') {
@@ -48,7 +49,7 @@ void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
 				buf += sz;
 				break;
 			case 'c':
-				i8 c = va_arg(args, i32);
+				c = va_arg(args, i32);
 				if (c) {
 					*buf = c;
 					++buf;

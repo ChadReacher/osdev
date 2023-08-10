@@ -94,6 +94,34 @@ void _start() {
 	DEBUG("%s", "-------------------------\r\n");	
 	*/
 
+
+	DEBUG("%s", "-------------------------\r\n");	
+	extern vfs_node_t *vfs_root;
+	dirent *dir_entry = ext2_readdir(vfs_root, 0);
+	u32 dir_entry_idx = 0;
+	while (dir_entry) {
+		DEBUG("Got dir entry idx %d, name - %s, inode - 0x%x\r\n", dir_entry_idx, dir_entry->name, dir_entry->inode);
+		dir_entry = ext2_readdir(vfs_root, dir_entry_idx);
+		++dir_entry_idx;
+	}
+	DEBUG("%s", "-------------------------\r\n");
+
+	DEBUG("%s", "-------------------------\r\n");
+	DEBUG("%s", "Trying to find a file 'hi.txt'\r\n");
+	vfs_node_t *file_node = ext2_finddir(vfs_root, "hi.txt");
+	if (file_node != NULL) {
+		DEBUG("Found a vfs node - %s\r\n", file_node->name);
+		DEBUG("Mask - 0x%x\r\n", file_node->mask);
+		DEBUG("Flags - 0x%x\r\n", file_node->flags);
+		DEBUG("UID - 0x%x\r\n", file_node->uid);
+		DEBUG("GID - 0x%x\r\n", file_node->gid);
+		DEBUG("Inode - 0x%x\r\n", file_node->inode);
+		DEBUG("Length - 0x%x\r\n", file_node->length);
+	}
+	DEBUG("%s", "-------------------------\r\n");
+
+
+
 	//inode->uid = 0xABC;
 	//ext2_set_inode_table(inode, 12);
 	//DEBUG("%s", "-------------------------\r\n");	
