@@ -169,3 +169,20 @@ void paging_init() {
 
 	DEBUG("%s", "Paging has been initialized\r\n");
 }
+
+void *virtual_to_physical(void *virt_addr) {
+	// Get current page directory
+	page_directory_t *page_dir = cur_page_dir;
+
+	// Get page table in page directory
+	page_directory_entry *page_dir_entry = &page_dir->entries[PAGE_DIR_INDEX((u32)virt_addr)];
+	page_table_t *table = (page_table_t *)GET_FRAME(*page_dir_entry);
+	
+	// Get page in table
+	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
+	u32 page_frame = (u32)GET_FRAME(*page);
+	u32 page_frame_offset = PAGE_FRAME_INDEX((u32)virt_addr);
+	u32 phys_addr = page_frame + page_frame_offset;
+
+	return (void *)phys_addr;
+}

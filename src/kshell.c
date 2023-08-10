@@ -6,6 +6,8 @@
 #include "string.h"
 #include "debug.h"
 #include "test.h"
+#include "ata.h"
+#include "heap.h"
 
 static u8 keyboard_layout_us[2][128] = {
 	// When SHIFT is NOT pressed
@@ -118,6 +120,8 @@ void run_command(const i8 *command) {
 	if (*command == 0) {
 		return;
 	}
+	extern ata_device_t primary_slave;
+	i8 *ata_buf;
 
 	if (strncmp(command, "help", 4) == 0) {
 		help(command);
@@ -127,6 +131,21 @@ void run_command(const i8 *command) {
 		clear();
 	} else if (strncmp(command, "selftest", 8) == 0) {
 		selftest();
+	} else if (strncmp(command, "read", 4) == 0) {
+		ata_buf = ata_read_sector(&primary_slave, 0);
+		if (ata_buf == NULL) {
+			DEBUG("%s", "We got NULL...\r\n");
+			return;
+		}
+		for (u32 i = 0; i < 512; ++i) {
+			DEBUG("%x\r\n", ata_buf[i]);
+		}
+	} else if (strncmp(command, "write", 5) == 0) {
+		ata_buf = malloc(512);
+		for (u32 i = 0; i < 512; ++i) {
+			ata_buf[i] = 0xA;
+		}
+		ata_write_sector(&primary_slave, 0, ata_buf);
 	} else {
 		kprintf("Invalid command\n");
 	}
@@ -202,8 +221,6 @@ void kshell(u8 scancode) {
 
 				if (ctrl_mode) {
 					if (c == 'c') {
-						//readline[readline_index] = '^';
-						//readline[readline_index] = 'C';
 						reset_readline();
 						kprintf("^C\n");
 						kprintf(PROMPT);

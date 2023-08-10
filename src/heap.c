@@ -91,8 +91,8 @@ void split_block(heap_block *block, u32 size) {
  * So first it goes a header, than after the header
  * real allocated space goes.
  */
-void *malloc(size_t size) {
-	size_t real_size;
+void *malloc(u32 size) {
+	u32 real_size;
 
 	if (size == 0) {
 		return NULL;
@@ -173,8 +173,8 @@ void free(void *ptr) {
 
 }
 
-void *realloc(void *ptr, size_t size) {
-	size_t real_size;
+void *realloc(void *ptr, u32 size) {
+	u32 real_size;
 	if (!ptr) {
 		return malloc(size);
 	} else if (ptr && size == 0) {
@@ -188,6 +188,7 @@ void *realloc(void *ptr, size_t size) {
 	if (block) {
 		block->free = false;
 		split_block(block, size);
+		memcpy((void *)(block + 1), ptr, size);
 	} else {
 		heap_block *new_block = (heap_block*)sbrk(real_size);
 		new_block->size = size;

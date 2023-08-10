@@ -22,8 +22,13 @@ all: OS
 
 OS: build/bootloader.bin build/kernel.bin
 	cat $^ > build/OS.bin
-	dd if=/dev/zero of=build/boot.iso bs=512 count=2880
-	dd if=build/OS.bin of=build/boot.iso conv=notrunc bs=512
+	dd if=/dev/zero of=build/boot.img bs=512 count=2880
+	dd if=build/OS.bin of=build/boot.img conv=notrunc bs=512
+
+disk:
+	dd if=/dev/zero of=disk.img bs=1M count=4096
+	sudo mkfs.ext2 -b 1024 -g 8192 -r 0 -d hdd disk.img
+	@echo "HDD has been created with EXT2 file system(revision 0). It has 1024 block size(bytes) and 8192 blocks per block group" 
 
 build/kernel.bin: build/kernel.elf
 	$(OBJCOPY) -O binary $^ $@		
@@ -38,13 +43,23 @@ $(LIBK): $(OBJ_SRC)
 	$(AR) rcs $@ $^
 
 run:
-	qemu-system-i386 -drive format=raw,file=build/boot.iso,if=ide,index=0,media=disk -rtc base=localtime,clock=host,driftfix=slew
+	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
+	       	-drive file=disk.img,if=ide,format=raw,media=disk,index=1\
+			-rtc base=localtime,clock=host,driftfix=slew
 
 log:
-	qemu-system-i386 -drive format=raw,file=build/boot.iso,if=ide,index=0,media=disk -rtc base=localtime,clock=host,driftfix=slew -d int -no-reboot -chardev stdio,id=char0,logfile=serial.log,signal=off -serial chardev:char0
+	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
+	    -drive file=disk.img,if=ide,format=raw,media=disk,index=1\
+		-rtc base=localtime,clock=host,driftfix=slew\
+		-d int -no-reboot\
+		-chardev stdio,id=char0,logfile=serial.log,signal=off\
+		-serial chardev:char0
 
 debug:
-	qemu-system-i386 -drive format=raw,file=build/boot.iso -boot a -s -S & gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf"
+	qemu-system-i386 -drive format=raw,file=build/boot.img\
+	       	-drive file=disk.img,if=ide,format=raw,media=disk,index=1 \
+	       	-boot a -s -S \
+		& gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf"
 
 build/interrupt.o: src/interrupt.asm
 	$(AS) -f elf32 $< -o $@
@@ -59,4 +74,4 @@ build/%.bin: src/%.asm
 	$(AS) -f bin $< -o $@
 
 clean:
-	rm -f build/*
+	rm -f build/* hdd/*

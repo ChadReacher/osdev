@@ -22,8 +22,8 @@ void heap_init();
 void *sbrk(u32 increment);
 heap_block *best_fit(u32 size);
 void split_block(heap_block *block, u32 size);
-void *malloc(size_t size);
+void *malloc(u32 size);
 void free(void *ptr);
-void *realloc(void *ptr, size_t size);
+void *realloc(void *ptr, u32 size);
 
 #endif

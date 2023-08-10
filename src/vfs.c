@@ -24,16 +24,75 @@ void vfs_init() {
 	// Should we create an empty directory(w/o fs) at the root?
 	// Will something be mounted at root?	
 
+	vfs_node_t *node = malloc(sizeof(vfs_node_t));
+	strcpy(node->name, "/");
+	node->mask = 0; 
+	node->uid = 0;
+	node->gid = 0;
+	node->inode = 0;
+	node->length = 0;
+	node->read = NULL;
+	node->write = NULL;
+	node->open = NULL; 
+	node->close = NULL; 
+	node->readdir = NULL;
+	node->finddir = NULL;
+	node->ptr = NULL;
+	node->flags = 0;
+
 	tree_node_t *tree_node_root = malloc(sizeof(tree_node_t));
-	tree_node_root->val = NULL;
+	tree_node_root->val = node;
 	tree_node_root->children = list_create();
 	tree_node_root->parent = tree_node_root;
 
-	vfs_root = NULL;
+	vfs_root = node;
 	vfs_tree->root = tree_node_root;
 	vfs_tree->sz = 1;
 
 	DEBUG("%s", "Virtual file system has been successfully initialized\r\n");
+}
+
+vfs_node_t *vfs_get_node(i8 *path) {
+	i8 *name, *path_dup;
+	list_t *children;
+	list_node_t *child;
+
+	if (!vfs_tree || !vfs_tree->root || !vfs_tree->sz 
+		|| path == NULL || path[0] != '/') {
+		return NULL;
+	}
+
+	if (!vfs_tree->root->val && !vfs_root) {
+		return NULL;
+	}
+
+	if (strlen(path) == 1 && path[0] == '/') {
+		return vfs_tree->root->val;
+	}
+
+	path_dup = strdup(path);
+	path_dup = path_dup + 1;
+	tree_node_t *current_tree_node = vfs_tree->root;	
+	bool found = false;
+
+	while ((name = strsep(&path_dup, "/")) != NULL) {
+		found = false;
+		children = current_tree_node->children;
+		for(child = children->head; child; child = child->next) {
+			tree_node_t *vvnode = (tree_node_t *)child->val;
+			vfs_node_t *vnode = (vfs_node_t*)vvnode->val;
+			if (strcmp(vnode->name, name) == 0) {
+				found = true;
+				current_tree_node = (tree_node_t *)child->val;
+				break;
+			}
+		}
+		if (!found) {
+			return NULL;
+		}
+	}
+	free(path_dup);
+	return current_tree_node->val;
 }
 
 u32 vfs_read(vfs_node_t *node, u32 offset, u32 size, i8 *buf) {
@@ -97,7 +156,7 @@ struct dirent *vfs_readdir(tree_node_t *tree_node, u32 index) {
 		if (node_is_mounpoint && tree_node->children->sz > (index - 2)) {
 			de = malloc(sizeof(struct dirent));
 			list_node_t *vfs_child_list_node = tree_node->children->head;
-			for (size_t i = 0; i < (index - 2) && vfs_child_list_node; ++i) {
+			for (u32 i = 0; i < (index - 2) && vfs_child_list_node; ++i) {
 				vfs_child_list_node = vfs_child_list_node->next;
 			}
 			vfs_node_t *vfs_node_child = (vfs_node_t *)vfs_child_list_node->val;
@@ -129,13 +188,14 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 	list_t *children;
 	list_node_t *child;
 
-	if (!vfs_tree || !vfs_tree->root || !vfs_tree->sz || path == NULL || path[0] != '/' || !vfs_node_to_mount) {
+	if (!vfs_tree || !vfs_tree->root || !vfs_tree->sz 
+		|| path == NULL || path[0] != '/' || !vfs_node_to_mount) {
 		return;
 	}
 
 	// Are we trying to mount the root?
 	if (strlen(path) == 1 && path[0] == '/') {
-		if (vfs_tree->root->val && vfs_root) {
+		if (((vfs_node_t *)(vfs_tree->root->val))->length && vfs_root) {
 			DEBUG("%s", "Vfs tree root is already mounted\r\n");
 			return;
 		}
@@ -171,11 +231,26 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 		}
 		if (!found) {
 			if (path_dup) {
-				DEBUG("Cannot mount a vfs node, because the path(%s) is not present in the VFS tree\r\n", path);
+				vfs_node_t *intermediary_node = malloc(sizeof(vfs_node_t));
+				strcpy(intermediary_node->name, name);
+				intermediary_node->mask = 0; 
+				intermediary_node->uid = 0;
+				intermediary_node->gid = 0;
+				intermediary_node->inode = 0;
+				intermediary_node->length = 0;
+				intermediary_node->read = NULL;
+				intermediary_node->write = NULL;
+				intermediary_node->open = NULL; 
+				intermediary_node->close = NULL; 
+				intermediary_node->readdir = NULL;
+				intermediary_node->finddir = NULL;
+				intermediary_node->ptr = NULL;
+				intermediary_node->flags = 0;
+				current_tree_node = generic_tree_insert_at(vfs_tree, current_tree_node, intermediary_node);
 			} else {
 				generic_tree_insert_at(vfs_tree, current_tree_node, vfs_node_to_mount);
+				break;
 			}
-			break;
 		}
 	}
 	free(path_dup);

@@ -1,8 +1,8 @@
 #include "string.h"
 #include "heap.h"
 
-size_t strlen(const i8 *str) {
-	size_t len = 0;
+u32 strlen(const i8 *str) {
+	u32 len = 0;
 	while (*str) {
 		++len;
 		++str;
@@ -11,12 +11,12 @@ size_t strlen(const i8 *str) {
 }
 
 i8 *strrev(i8 *str) {
-	size_t sz;
+	u32 sz;
 	i8 temp;
 
 	sz = strlen(str);
 
-	for (size_t i = 0; i < sz / 2; ++i) {
+	for (u32 i = 0; i < sz / 2; ++i) {
 		temp = str[i];
 		str[i] = str[sz - i - 1];
 		str[sz - i - 1] = temp;
@@ -49,8 +49,8 @@ i8 *strcpy(i8 *dest, const i8 *src) {
 	return cpy_dest;
 }
 
-i8 *strncpy(i8 *dest, const i8 *src, size_t n) {
-	size_t i;
+i8 *strncpy(i8 *dest, const i8 *src, u32 n) {
+	u32 i;
 
 	if (n == 0) {
 		return dest;
@@ -67,7 +67,7 @@ i8 *strncpy(i8 *dest, const i8 *src, size_t n) {
 	return dest;
 }
 
-size_t strcspn(const i8 *str1, const i8 *str2) {
+u32 strcspn(const i8 *str1, const i8 *str2) {
 	const i8 *init_str1 = str1;
 	const i8 *c;
 
@@ -122,7 +122,7 @@ i32 strcmp(const i8 *str1, const i8 *str2) {
 }
 
 i8 *strdup(const i8 *str) {
-	size_t len = strlen(str);
+	u32 len = strlen(str);
 	i8 *ret = malloc(len + 1);
 	if (ret) {
 		strncpy(ret, str, len + 1);

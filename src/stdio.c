@@ -21,7 +21,7 @@ void kprintf(i8 *fmt, ...) {
 
 void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
 	i8 internal_buf[2048];
-	size_t sz;
+	u32 sz;
 	i8 *p;
 	i8 *temp_s;
 

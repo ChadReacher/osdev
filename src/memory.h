@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-void *memset(void *ptr, u32 value, size_t num);
-void *memcpy(void *dst, const void* src, size_t num); 
+void *memset(void *ptr, u32 value, u32 num);
+void *memcpy(void *dst, const void* src, u32 num); 
 
 #endif

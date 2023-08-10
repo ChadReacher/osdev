@@ -4,7 +4,7 @@
 
 i8 *itoa(i32 value, i8 *str, i32 base) {
 	i32 rem;
-	size_t idx;
+	u32 idx;
 	bool negative;
 
 	idx = 0;
@@ -37,7 +37,7 @@ i8 *itoa(i32 value, i8 *str, i32 base) {
 
 i8 *utoa(u32 value, i8 *str, u32 base) {
 	i32 rem;
-	size_t idx;
+	u32 idx;
 
 	idx = 0;
 	if (value == 0) {

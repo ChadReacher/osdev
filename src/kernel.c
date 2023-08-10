@@ -18,6 +18,8 @@
 #include "string.h"
 #include "vfs.h"
 #include "pci.h"
+#include "ata.h"
+#include "ext2.h"
 
 void print_physical_memory_info();
 
@@ -37,8 +39,66 @@ void _start() {
 	print_physical_memory_info();
 	heap_init();
 	pci_init();
+	vfs_init();
+	ata_init();
+	ext2_init("/dev/hdb", "/");
+
+	DEBUG("%s", "-------------------------\r\n");
+	vfs_print();
+	DEBUG("%s", "-------------------------\r\n");
 
 
+	//DEBUG("%s", "-------------------------\r\n");
+	//vfs_node_t *got_vfs_node = vfs_get_node("/dev/hdb");
+	//DEBUG("node name - %s\r\n", got_vfs_node->name);
+	//DEBUG("date reg - %x\r\n", ((ata_device_t *)got_vfs_node->device)->data_reg);
+	//DEBUG("%s", "-------------------------\r\n");
+
+	//i8 *bufbuf = malloc(5);
+	//u32 have_read = ata_read(got_vfs_node, 0, 5, bufbuf);	
+	//DEBUG("Have read 0x%x bytes\r\n", have_read);
+	//for (u32 i = 0; i < 5; ++i) {
+	//	DEBUG("%x\r\n", bufbuf[i]);
+	//}
+	//free(bufbuf);
+
+	//DEBUG("%s", "-------------------------\r\n");
+	//got_vfs_node = vfs_get_node("/dev/sdb");
+	//DEBUG("node is %p\r\n", got_vfs_node);
+	//DEBUG("%s", "-------------------------\r\n");	
+
+	/*
+	DEBUG("%s", "-------------------------\r\n");
+	ext2_inode_table *inode = ext2_get_inode_table(12);
+	DEBUG("Mode = 0x%x\r\n", inode->mode);
+	DEBUG("Size = 0x%x\r\n", inode->size);
+	i8 *filebuf = malloc(20);
+	memset(filebuf, 0, 20);
+	ext2_read_inode_filedata(inode, 0, 20, filebuf);
+	DEBUG("%s", "File buf: \r\n");
+	DEBUG("%s\r\n", filebuf);
+	free(filebuf);
+	DEBUG("%s", "-------------------------\r\n");	
+	*/
+
+	/*
+	DEBUG("%s", "-------------------------\r\n");	
+	ext2_inode_table *inode = ext2_get_inode_table(12);
+	DEBUG("Before, size = %x\r\n", inode->size);
+	i8 *test = "testing message.";
+	strlen(test);
+	DEBUG("strlen(test) = %x\r\n", strlen(test));
+	ext2_write_inode_filedata(inode, 12, 3, strlen(test), test);
+	inode = ext2_get_inode_table(12);
+	DEBUG("After, size = %x\r\n", inode->size);
+	DEBUG("%s", "-------------------------\r\n");	
+	*/
+
+	//inode->uid = 0xABC;
+	//ext2_set_inode_table(inode, 12);
+	//DEBUG("%s", "-------------------------\r\n");	
+	//DEBUG("%x\r\n", inode->uid);
+	//DEBUG("%s", "-------------------------\r\n");
 
 	u8 *p = (u8 *)malloc(5);
 	DEBUG("Allocated 5 bytes at %p\r\n", p);
@@ -152,160 +212,9 @@ void _start() {
 	DEBUG("Init - %p, ret - %p\r\n", str_to_dup, rett);
 	free(rett);
 
-	vfs_init();
-
-	vfs_node_t *vfs_node_to_mount_root = malloc(sizeof(vfs_node_t));
-	strcpy(vfs_node_to_mount_root->name, "/");
-	vfs_node_to_mount_root->mask = 0; 
-	vfs_node_to_mount_root->uid = 0;
-	vfs_node_to_mount_root->gid = 0;
-	vfs_node_to_mount_root->inode = 0;
-	vfs_node_to_mount_root->length = 0;
-	vfs_node_to_mount_root->impl = 0;
-	vfs_node_to_mount_root->read = NULL;
-	vfs_node_to_mount_root->write = NULL;
-	vfs_node_to_mount_root->open = NULL; 
-	vfs_node_to_mount_root->close = NULL; 
-	vfs_node_to_mount_root->readdir = NULL;
-	vfs_node_to_mount_root->finddir = NULL;
-	vfs_node_to_mount_root->ptr = NULL;
-	vfs_node_to_mount_root->flags = 0x123;
-
-	DEBUG("%s", "===============\r\n");
-	DEBUG("%s", "Mounting /\r\n");
-	vfs_mount("/", vfs_node_to_mount_root);
-	DEBUG("%s", "===============\r\n");
-
-	vfs_node_t *vfs_node_to_mount = malloc(sizeof(vfs_node_t));
-	strcpy(vfs_node_to_mount->name, "home");
-	vfs_node_to_mount->mask = 0; 
-	vfs_node_to_mount->uid = 0;
-	vfs_node_to_mount->gid = 0;
-	vfs_node_to_mount->inode = 0;
-	vfs_node_to_mount->length = 0;
-	vfs_node_to_mount->impl = 0;
-	vfs_node_to_mount->read = NULL;
-	vfs_node_to_mount->write = NULL;
-	vfs_node_to_mount->open = NULL; 
-	vfs_node_to_mount->close = NULL; 
-	vfs_node_to_mount->readdir = NULL;
-	vfs_node_to_mount->finddir = NULL;
-	vfs_node_to_mount->ptr = NULL;
-	vfs_node_to_mount->flags = 0;
-
-	DEBUG("%s", "===============\r\n");
-	DEBUG("%s", "Mounting /home\r\n");
-	vfs_mount("/home", vfs_node_to_mount);
-	DEBUG("%s", "===============\r\n");
-
-	vfs_node_t *vfs_node_to_mount2 = malloc(sizeof(vfs_node_t));
-	strcpy(vfs_node_to_mount2->name, "bin");
-	vfs_node_to_mount2->mask = 0; 
-	vfs_node_to_mount2->uid = 0;
-	vfs_node_to_mount2->gid = 0;
-	vfs_node_to_mount2->inode = 0;
-	vfs_node_to_mount2->length = 0;
-	vfs_node_to_mount2->impl = 0;
-	vfs_node_to_mount2->read = NULL;
-	vfs_node_to_mount2->write = NULL;
-	vfs_node_to_mount2->open = NULL; 
-	vfs_node_to_mount2->close = NULL; 
-	vfs_node_to_mount2->readdir = NULL;
-	vfs_node_to_mount2->finddir = NULL;
-	vfs_node_to_mount2->ptr = NULL;
-	vfs_node_to_mount2->flags = 0;
-	DEBUG("%s", "===============\r\n");
-	DEBUG("%s", "Mounting /home/bin\r\n");
-	vfs_mount("/home/bin", vfs_node_to_mount2);
-	DEBUG("%s", "===============\r\n");
-
-	vfs_node_t *vfs_node_to_mount3 = malloc(sizeof(vfs_node_t));
-	vfs_node_to_mount3->mask = 0; 
-	vfs_node_to_mount3->uid = 0;
-	vfs_node_to_mount3->gid = 0;
-	vfs_node_to_mount3->inode = 0;
-	vfs_node_to_mount3->length = 0;
-	vfs_node_to_mount3->impl = 0;
-	vfs_node_to_mount3->read = NULL;
-	vfs_node_to_mount3->write = NULL;
-	vfs_node_to_mount3->open = NULL; 
-	vfs_node_to_mount3->close = NULL; 
-	vfs_node_to_mount3->readdir = NULL;
-	vfs_node_to_mount3->finddir = NULL;
-	vfs_node_to_mount3->ptr = NULL;
-	vfs_node_to_mount3->flags = 0;
-	DEBUG("%s", "===============\r\n");
-	DEBUG("%s", "Mounting /sbin\r\n");
-	strcpy(vfs_node_to_mount3->name, "sbin");
-	vfs_mount("/sbin", vfs_node_to_mount3);
-	DEBUG("%s", "===============\r\n");
-
-	vfs_node_t *vfs_node_to_mount4 = malloc(sizeof(vfs_node_t));
-	strcpy(vfs_node_to_mount4->name, "games");
-	vfs_node_to_mount4->mask = 0; 
-	vfs_node_to_mount4->uid = 0;
-	vfs_node_to_mount4->gid = 0;
-	vfs_node_to_mount4->inode = 0;
-	vfs_node_to_mount4->length = 0;
-	vfs_node_to_mount4->impl = 0;
-	vfs_node_to_mount4->read = NULL;
-	vfs_node_to_mount4->write = NULL;
-	vfs_node_to_mount4->open = NULL; 
-	vfs_node_to_mount4->close = NULL; 
-	vfs_node_to_mount4->readdir = NULL;
-	vfs_node_to_mount4->finddir = NULL;
-	vfs_node_to_mount4->ptr = NULL;
-	vfs_node_to_mount4->flags = 0;
-	DEBUG("%s", "===============\r\n");
-	DEBUG("%s", "Mounting /home/games\r\n");
-	vfs_mount("/home/games", vfs_node_to_mount4);
-	DEBUG("%s", "===============\r\n");
-
-	vfs_node_t *vfs_node_to_mount5 = malloc(sizeof(vfs_node_t));
-	strcpy(vfs_node_to_mount5->name, "games");
-	vfs_node_to_mount5->mask = 0; 
-	vfs_node_to_mount5->uid = 0;
-	vfs_node_to_mount5->gid = 0;
-	vfs_node_to_mount5->inode = 0;
-	vfs_node_to_mount5->length = 0;
-	vfs_node_to_mount5->impl = 0;
-	vfs_node_to_mount5->read = NULL;
-	vfs_node_to_mount5->write = NULL;
-	vfs_node_to_mount5->open = NULL; 
-	vfs_node_to_mount5->close = NULL; 
-	vfs_node_to_mount5->readdir = NULL;
-	vfs_node_to_mount5->finddir = NULL;
-	vfs_node_to_mount5->ptr = NULL;
-	vfs_node_to_mount5->flags = 0;
-	DEBUG("%s", "===============\r\n");
-	DEBUG("%s", "Mounting /home/games\r\n");
-	vfs_mount("/home/games", vfs_node_to_mount5);
-	DEBUG("%s", "===============\r\n");
-
-	vfs_node_t *vfs_node_to_mount6 = malloc(sizeof(vfs_node_t));
-	strcpy(vfs_node_to_mount6->name, "games");
-	vfs_node_to_mount6->mask = 0; 
-	vfs_node_to_mount6->uid = 0;
-	vfs_node_to_mount6->gid = 0;
-	vfs_node_to_mount6->inode = 0;
-	vfs_node_to_mount6->length = 0;
-	vfs_node_to_mount6->impl = 0;
-	vfs_node_to_mount6->read = NULL;
-	vfs_node_to_mount6->write = NULL;
-	vfs_node_to_mount6->open = NULL; 
-	vfs_node_to_mount6->close = NULL; 
-	vfs_node_to_mount6->readdir = NULL;
-	vfs_node_to_mount6->finddir = NULL;
-	vfs_node_to_mount6->ptr = NULL;
-	vfs_node_to_mount6->flags = 0;
-	DEBUG("%s", "===============\r\n");
-	DEBUG("%s", "Mounting /home/games/arcade/fast\r\n");
-	vfs_mount("/home/games/arcade/fast", vfs_node_to_mount6);
-	DEBUG("%s", "===============\r\n");
-
-	DEBUG("%s", "-------------------------\r\n");
-	vfs_print();
-	DEBUG("%s", "-------------------------\r\n");
+	u32 virt_a = 0xC0010000;
+	u32 phys_a = (u32)virtual_to_physical((void *)virt_a);
+	DEBUG("Translating virtual address(%x) to physical address(%x)\r\n", virt_a, phys_a);
 
 	kprintf(PROMPT);
 	for (;;) {

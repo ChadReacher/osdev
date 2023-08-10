@@ -11,6 +11,7 @@
 
 #define PAGE_DIR_INDEX(addr) ((addr) >> 22)
 #define PAGE_TABLE_INDEX(addr) (((addr) >> 12) & 0x3FF)
+#define PAGE_FRAME_INDEX(addr) ((addr) & 0xFFF)
 #define GET_FRAME(entry) ((entry) & 0xFFFFF000)
 
 #define PAGING_FLAG_PRESENT 0x01
@@ -37,5 +38,6 @@ void map_page(void *phys_addr, void *virt_addr);
 page_table_entry *get_page(virtual_address addr);
 void paging_init();
 void pagefault_handler(registers_state regs);
+void *virtual_to_physical(void *virt_addr);
 
 #endif

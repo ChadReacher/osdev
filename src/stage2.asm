@@ -2,6 +2,7 @@
 org 0x7E00
 bits 16
 
+
 %define INT_15_MAGIC_VALUE 0x534D4150
 
 second_stage_start:
@@ -148,6 +149,7 @@ entry_32bit:
 	mov ss, ax
 	mov esp, 0x90000				; Set up the stack pointer
 
+
 	; Load VBE mode info block at memory location 0x9000
 	mov esi, mode_info_block
 	mov edi, 0x9000
@@ -159,8 +161,7 @@ entry_32bit:
 	mov edi, 0x10000
 
 	mov dx, 0x1F6
-	mov al, 0x0A0
-	or al, 0
+	mov al, 0xA0
 	out dx, al
 
 	; Number of sectors to read
@@ -212,7 +213,7 @@ jump_to_kernel:
 	jmp 0x10000						; Jump to memory where we have loaded the kernel
 
 drive_num: db 0
-kernel_size_in_sectors: db 100
+kernel_size_in_sectors: db 120
 
 bits 16
 enable_a20:
@@ -296,7 +297,7 @@ gdt_end:
 
 gdtp:
 	dw gdt_end - gdt_start - 1					; Limit(size of GDT)
-	dd gdt_start								; Base of GDT
+	dd gdt_start							; Base of GDT
 
 idt:
 	dw 0

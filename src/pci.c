@@ -52,7 +52,7 @@ void pci_init() {
 }
 
 void pci_write(pci_device_t dev, u32 field, u32 value) {
-	dev.field_num = (field & 0xFC);
+	dev.field_num = (field & 0xFC) >> 2;
 	dev.enable_bit = 1;
 	port_outl(PCI_CONFIG_ADDRESS, dev.bits);
 	port_outl(PCI_CONFIG_DATA, value);

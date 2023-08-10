@@ -34,7 +34,6 @@ typedef struct vfs_node {
 	u32 flags;					// include node type(file, directory, char device, block device, pipe, symlink, mountpoint)
 	u32 inode;					// This is a device-specific - provides a way for filesystem to identify files
 	u32 length;					// Size of file, in bytes
-	u32 impl;
 
 	read_callback read;
 	write_callback write;
@@ -42,10 +41,12 @@ typedef struct vfs_node {
 	close_callback close;
 	readdir_callback readdir;	// Return n'th child of a directory 
 	finddir_callback finddir;   // Try to find a child in a directory
+	void *device;				// Possible char or block device
 	struct fs_node *ptr;		// Used by mountpoints and symlinks
 } vfs_node_t;
 
 void vfs_init();
+vfs_node_t *vfs_get_node(i8 *path);
 u32 vfs_read(vfs_node_t *node, u32 offset, u32 size, i8 *buf);
 u32 vfs_write(vfs_node_t *node, u32 offset, u32 size, i8 *buf);
 void vfs_open(vfs_node_t *node, u32 flags);
