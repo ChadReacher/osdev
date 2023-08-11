@@ -19,11 +19,12 @@ typedef struct {
 
 struct vfs_node;
 
-typedef u32 (*read_callback)(struct vfs_node* node, u32 offset, u32 size, i8* buf);
-typedef u32 (*write_callback)(struct vfs_node* node, u32 offset, u32 size, i8* buf);
-typedef u32 (*open_callback)(struct vfs_node* node, u32 flags);
-typedef u32 (*close_callback)(struct vfs_node* node);
-typedef dirent * (*readdir_callback)(struct vfs_node* node, u32 index);
+typedef u32 (*read_callback)(struct vfs_node *node, u32 offset, u32 size, i8* buf);
+typedef u32 (*write_callback)(struct vfs_node *node, u32 offset, u32 size, i8* buf);
+typedef u32 (*open_callback)(struct vfs_node *node, u32 flags);
+typedef u32 (*close_callback)(struct vfs_node *node);
+typedef void (*create_callback)(struct vfs_node *node, i8 *name, u16 permission);
+typedef dirent * (*readdir_callback)(struct vfs_node *node, u32 index);
 typedef struct vfs_node * (*finddir_callback)(struct vfs_node* node, i8 *name);
 
 typedef struct vfs_node {
@@ -39,6 +40,7 @@ typedef struct vfs_node {
 	write_callback write;
 	open_callback open;
 	close_callback close;
+	create_callback create;
 	readdir_callback readdir;	// Return n'th child of a directory 
 	finddir_callback finddir;   // Try to find a child in a directory
 	void *device;				// Possible char or block device
@@ -51,7 +53,8 @@ u32 vfs_read(vfs_node_t *node, u32 offset, u32 size, i8 *buf);
 u32 vfs_write(vfs_node_t *node, u32 offset, u32 size, i8 *buf);
 void vfs_open(vfs_node_t *node, u32 flags);
 void vfs_close(vfs_node_t *node);
-dirent *vfs_readdir(tree_node_t *node, u32 index);
+void vfs_create(i8 *name, u16 permission);
+dirent *vfs_readdir(vfs_node_t *vfs_node, u32 index);
 vfs_node_t *vfs_finddir(vfs_node_t *node, i8 *name);
 
 void vfs_mount(i8 *path, vfs_node_t *vfs_node);

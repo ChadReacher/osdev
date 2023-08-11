@@ -96,9 +96,9 @@ void ext2_write_inode_filedata(ext2_inode_table *inode, u32 inode_idx, u32 offse
 
 	u32 i = start_block;
 	u32 buf_off = 0;
+	i8 *block_buf = malloc(ext2fs->block_size);
 	while (i <= end_block) {
 		u32 left = 0, right = ext2fs->block_size;
-		i8 *block_buf = malloc(ext2fs->block_size);
 		read_inode_disk_block(inode, i, block_buf);
 		if (i == start_block) {
 			left = start_off;
@@ -109,9 +109,11 @@ void ext2_write_inode_filedata(ext2_inode_table *inode, u32 inode_idx, u32 offse
 		memcpy(block_buf + left, buffer + buf_off, (right - left + 1));
 		buf_off += (right - left + 1);
 		write_inode_disk_block(inode, i, block_buf);
-		free(block_buf);
 		++i;
+
 	}
+
+	free(block_buf);
 }
 
 u32 ext2_read_inode_filedata(ext2_inode_table *inode, u32 offset, u32 size, i8 *buffer) {
@@ -124,9 +126,9 @@ u32 ext2_read_inode_filedata(ext2_inode_table *inode, u32 offset, u32 size, i8 *
 
 	u32 i = start_block;
 	u32 buf_off = 0;
+	i8 *block_buf = malloc(ext2fs->block_size);
 	while (i <= end_block) {
 		u32 left = 0, right = ext2fs->block_size - 1;
-		i8 *block_buf = malloc(ext2fs->block_size);
 		read_inode_disk_block(inode, i, block_buf);
 		if (i == start_block) {
 			left = start_off;
@@ -136,9 +138,9 @@ u32 ext2_read_inode_filedata(ext2_inode_table *inode, u32 offset, u32 size, i8 *
 		}
 		memcpy(buffer + buf_off, block_buf + left, (right - left + 1));
 		buf_off += (right - left + 1);
-		free(block_buf);
 		++i;
 	}
+	free(block_buf);
 	return end_offset - offset;
 }
 
@@ -159,6 +161,7 @@ u32 get_real_block(ext2_inode_table *inode, u32 block_num) {
 		i8 *tmp = malloc(ext2fs->block_size);
 		read_disk_block(inode->block[12], tmp);
 		u32 nblock = ((u32 *)tmp)[block_num - 12];
+
 		free(tmp);
 		return nblock;
 	} else if (block_num < 12 + POINTERS_PER_BLOCK + POINTERS_PER_BLOCK * POINTERS_PER_BLOCK) {
@@ -174,6 +177,7 @@ u32 get_real_block(ext2_inode_table *inode, u32 block_num) {
 
 		u32 d = b - c * POINTERS_PER_BLOCK;
 		nblock = ((u32 *)tmp)[d];
+
 		free(tmp);
 		return nblock;
 	} else if (block_num < 12 + POINTERS_PER_BLOCK + POINTERS_PER_BLOCK * POINTERS_PER_BLOCK + POINTERS_PER_BLOCK * POINTERS_PER_BLOCK * POINTERS_PER_BLOCK) {
@@ -195,6 +199,7 @@ u32 get_real_block(ext2_inode_table *inode, u32 block_num) {
 
 		u32 g = e - f * POINTERS_PER_BLOCK;
 		nblock = ((u32 *)tmp)[g];
+
 		free(tmp);
 		return nblock;
 	}
@@ -207,11 +212,103 @@ u32 ext2_open(vfs_node_t *node, u32 flags) {
 	return 0;
 }
 
+void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32 disk_block) {
+	i32 a, b, c, d, e, f, g;
+	i32 iblock = inode_block;
+	u32 *tmp = malloc(ext2fs->block_size);
+
+	a = iblock - 12;
+	if (a <= 0) {
+		inode->block[0] = disk_block;
+
+		free(tmp);
+		return;
+	} 
+	b = a - 256;
+	if (b <= 0) {
+		// If the inode block entry is not allocated
+		if (*(&inode->block[12]) == 0) {
+			u32 block_num = block_alloc();
+			inode->block[12] = block_num;
+			ext2_set_inode_table(inode, inode_idx);
+		}
+		read_disk_block(inode->block[12], (i8 *)tmp);
+		((u32*)tmp)[a] = disk_block;
+		write_disk_block(inode->block[12], (i8 *)tmp);
+		tmp[a] = disk_block;
+
+		free(tmp);
+		return;
+	}
+	c = b - 256 * 256;
+	if (c <= 0) {
+		c = b / 256;
+		d = b - c * 256;
+
+		if (*(&inode->block[13]) == 0) {
+			u32 block_num = block_alloc();
+			inode->block[13] = block_num;
+			ext2_set_inode_table(inode, inode_idx);
+		}
+		read_disk_block(inode->block[13], (i8 *)tmp);
+
+		if (*(&tmp[c]) == 0) {
+			u32 block_num = block_alloc();
+			tmp[c] = block_num;
+			write_disk_block(inode->block[13], (i8 *)tmp);
+		}
+		u32 temp = tmp[c];
+		read_disk_block(temp, (i8 *)tmp);
+		tmp[d] = disk_block;
+		write_disk_block(temp, (i8 *)tmp);
+
+		free(tmp);
+		return;
+	} 
+	d = c - 256 * 256 * 256;
+	if (d <= 0) {
+		e = c / (256 * 256);
+		f = (c - e * 256 * 256) / 256;
+		g = c - e * 256 * 256 - f * 256;
+
+		if (*(&inode->block[14]) == 0) {
+			u32 block_num = block_alloc();
+			inode->block[14] = block_num;
+			ext2_set_inode_table(inode, inode_idx);
+		}
+		read_disk_block(inode->block[14], (i8 *)tmp);
+
+		if (*(&tmp[e]) == 0) {
+			u32 block_num = block_alloc();
+			tmp[e] = block_num;
+			write_disk_block(inode->block[14], (i8 *)tmp);
+		}
+		u32 temp = tmp[e];
+		read_disk_block(temp, (i8 *)tmp);
+
+		if (*(&tmp[f]) == 0) {
+			u32 block_num = block_alloc();
+			tmp[f] = block_num;
+			write_disk_block(temp, (i8 *)tmp);
+		}
+		temp = tmp[f];
+		read_disk_block(temp, (i8 *)tmp);
+		tmp[g] = disk_block;
+		write_disk_block(temp, (i8 *)tmp);
+
+		free(tmp);
+		return;
+	}
+
+	free(tmp);
+}
+
 u32 ext2_close(vfs_node_t *node) {
 	(void)node;
 	return 0;
 }
 
+// Caller can free return value.
 dirent *ext2_readdir(vfs_node_t *node, u32 index) {
 	ext2_inode_table *inode = ext2_get_inode_table(node->inode);
 	if (!(inode->mode & EXT2_S_IFDIR)) {
@@ -237,20 +334,22 @@ dirent *ext2_readdir(vfs_node_t *node, u32 index) {
 		ext2_dir *dir_entry = (ext2_dir *)(block_buf + in_block_offset);
 
 		if (dir_entry_idx == index) {
-			DEBUG("Found! Name - %s, inode - 0x%x\r\n", dir_entry->name, dir_entry->inode);
 			dirent *vfs_dir_entry = malloc(sizeof(dirent));
-			strncpy(vfs_dir_entry->name, (i8 *)dir_entry->name, dir_entry->name_len);
+			memcpy(vfs_dir_entry->name, (i8 *)dir_entry->name, dir_entry->name_len);
 			vfs_dir_entry->name[dir_entry->name_len] = '\0';
 			vfs_dir_entry->inode = dir_entry->inode;
+
 			free(block_buf);
 			free(inode);
 			return vfs_dir_entry;
 		}
 	
 		in_block_offset += dir_entry->rec_len;
-		curr_offset += in_block_offset;
+		curr_offset += dir_entry->rec_len;
+		//curr_offset += in_block_offset;
 		++dir_entry_idx;
 	}
+
 	free(block_buf);
 	free(inode);
 	return NULL;
@@ -262,7 +361,7 @@ vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name) {
 		DEBUG("%s", "It is not a directory\r\n");
 		return NULL;
 	}
-	ext2_dir *found_dirent;
+	ext2_dir *found_dirent = NULL;
 
 	u32 curr_offset = 0;
 	u32 block_offset = 0;
@@ -306,11 +405,14 @@ vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name) {
 			read_inode_disk_block(inode, block_offset, block_buf);
 		}
 	}
+
 	free(block_buf);
 	free(inode);
+
 	if (!found_dirent) {
 		return NULL;
 	}
+
 	vfs_node_t *vfs_node = malloc(sizeof(vfs_node_t));
 	inode = ext2_get_inode_table(found_dirent->inode);
 
@@ -319,6 +421,176 @@ vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name) {
 	free(found_dirent);
 	free(inode);
 	return vfs_node;
+}
+
+void ext2_create(vfs_node_t *parent, i8 *name, u16 permission) {
+	u32 inode_idx = inode_alloc(); // alloc inode in inode bitmap
+	ext2_inode_table *inode = ext2_get_inode_table(inode_idx);
+	inode->mode = EXT2_S_IFREG;
+	inode->mode |= 0xFFF & permission;
+	inode->atime = 0;
+	inode->ctime = 0;
+	inode->mtime = 0;
+	inode->dtime = 0;
+	inode->gid = 0;
+	inode->uid = 0;
+	inode->faddr = 0;
+	inode->size = ext2fs->block_size;
+	inode->blocks = 0;
+	memset(inode->block, 0, sizeof(inode->block));
+	inode->flags = 0;
+	inode->osd1 = 0;
+	inode->generation = 0;
+	inode->file_acl = 0;
+	inode->dir_acl = 0;
+	memset(inode->osd2, 0, sizeof(inode->osd2));
+
+	// Alloc inode block
+	u32 inode_block_num = block_alloc(); // alloc block in block bitmap
+	set_real_block(inode, inode_idx, 0, inode_block_num); 
+	inode->blocks = 2; 
+	ext2_set_inode_table(inode, inode_idx);
+	ext2_create_dir_entry(parent, name, inode_idx);
+}
+
+u32 inode_alloc() {
+	u32 *buf = malloc(ext2fs->block_size);
+	memset(buf, 0, ext2fs->block_size);
+	for (u32 i = 0; i < ext2fs->total_groups; ++i) {
+		if (!ext2fs->bgd_table[i].free_inodes_count) {
+			continue;
+		}
+
+		u32 inode_bitmap_block = ext2fs->bgd_table[i].inode_bitmap;
+		read_disk_block(inode_bitmap_block, (i8 *)buf);
+		for (u32 j = 0; j < ext2fs->block_size / 4; ++j) {
+			u32 sub_bitmap = buf[j];
+			if (sub_bitmap == 0xFFFFFFFF) {
+				continue;
+			}
+			for (u32 k = 0; k < 32; ++k) {
+				u32 is_free = !(sub_bitmap & (1 << k));
+				if (is_free) {
+					u32 mask = 1 << k;
+					buf[j] = buf[j] | mask;
+					write_disk_block(inode_bitmap_block, (i8 *)buf);
+					--ext2fs->bgd_table[i].free_inodes_count;
+					
+					free(buf);
+					return i * ext2fs->inodes_per_group + j * 32 + k;
+				}
+			}
+		}
+	}
+	free(buf);
+	return (u32) -1;
+}
+
+u32 block_alloc() {
+	u32 *buf = malloc(ext2fs->block_size);
+	memset(buf, 0, ext2fs->block_size);
+	for (u32 i = 0; i < ext2fs->total_groups; ++i) {
+		if (!ext2fs->bgd_table[i].free_blocks_count) {
+			continue;
+		}
+
+		u32 block_bitmap_block = ext2fs->bgd_table[i].block_bitmap;
+		read_disk_block(block_bitmap_block, (i8 *)buf);
+		for (u32 j = 0; j < ext2fs->block_size / 4; ++j) {
+			u32 sub_bitmap = buf[j];
+			if (sub_bitmap == 0xFFFFFFFF) {
+				continue;
+			}
+			for (u32 k = 0; k < 32; ++k) {
+				u32 is_free = !(sub_bitmap & (1 << k));
+				if (is_free) {
+					u32 mask = 1 << k;
+					buf[j] = buf[j] | mask;
+					write_disk_block(block_bitmap_block, (i8 *)buf);
+					--ext2fs->bgd_table[i].free_blocks_count;
+
+					free(buf);
+					return i * ext2fs->blocks_per_group + j * 32 + k;
+				}
+			}
+		}
+	}
+	free(buf);
+	return (u32) -1;
+}
+
+void ext2_create_dir_entry(vfs_node_t *parent, i8 *entry_name, u32 inode_idx) {
+	ext2_inode_table *inode = ext2_get_inode_table(parent->inode);
+	u32 curr_offset = 0;
+	u32 block_offset = 0;
+	u32 in_block_offset = 0;
+	bool found_last_entry = false;
+	u32 entry_name_len = strlen(entry_name);
+	i8 *name_buf_check = malloc(entry_name_len + 1);
+	memset(name_buf_check, 0, entry_name_len + 1);
+
+	i8 *block_buf = malloc(ext2fs->block_size);
+	read_inode_disk_block(inode, block_offset, block_buf);
+
+	while (curr_offset < inode->size) {
+		if (in_block_offset >= ext2fs->block_size) {
+			++block_offset;
+			in_block_offset = 0;
+			read_inode_disk_block(inode, block_offset, block_buf);
+		}
+
+		ext2_dir *curr_dir_entry = (ext2_dir *)(block_buf + in_block_offset);
+
+		if (curr_dir_entry->name_len == entry_name_len) {
+			memcpy(name_buf_check, curr_dir_entry->name, entry_name_len);
+			if (curr_dir_entry->inode != 0 && strcmp(entry_name, name_buf_check) == 0) {
+				DEBUG("%s", "Directory with the same name already existed.\r\n");
+				free(name_buf_check);
+				return;
+			}
+		}
+
+		if (found_last_entry) {
+			curr_dir_entry->inode = inode_idx;
+			curr_dir_entry->rec_len = (u32)block_buf + ext2fs->block_size - (u32)curr_dir_entry;
+			curr_dir_entry->name_len = entry_name_len;
+			memcpy(curr_dir_entry->name, entry_name, entry_name_len);
+			write_inode_disk_block(inode, block_offset, block_buf);
+			// Append a new ending entry
+			in_block_offset += curr_dir_entry->rec_len;
+			// Check if we are the end of block?
+			if (in_block_offset >= ext2fs->block_size) {
+				++block_offset;
+				in_block_offset = 0;
+				read_inode_disk_block(inode, block_offset, block_buf);
+			}
+			curr_dir_entry = (ext2_dir *)(block_buf + in_block_offset);
+			memset(curr_dir_entry, 0, sizeof(ext2_dir));
+			write_inode_disk_block(inode, block_offset, block_buf);
+
+			free(name_buf_check);
+			free(block_buf);
+			return;
+		}
+
+
+	
+		u32 expected_size = ((sizeof(ext2_dir) + curr_dir_entry->name_len) & 0xFFFFFFFC) + 0x4;
+		u32 real_size = curr_dir_entry->rec_len;
+		if (real_size != expected_size) {
+			found_last_entry = true;
+			curr_dir_entry->rec_len = expected_size;
+			in_block_offset += expected_size;
+			curr_offset += in_block_offset;
+			continue;
+		}
+		in_block_offset += curr_dir_entry->rec_len;
+		curr_offset += in_block_offset;
+	}
+
+	free(name_buf_check);
+	free(block_buf);
+	free(inode);
 }
 
 void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dirent, vfs_node_t *vfs_node) {
@@ -349,7 +621,7 @@ void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dir
 
 	vfs_node->read = ext2_read;
 	vfs_node->write = ext2_write;
-	vfs_node->write = ext2_write;
+	vfs_node->create = ext2_create;
 	vfs_node->open = ext2_open;
 	vfs_node->close = ext2_close;
 	vfs_node->readdir = ext2_readdir;
@@ -364,6 +636,7 @@ static void write_disk_block(u32 block, i8 *buf) {
 	vfs_write(ext2fs->disk_device, ext2fs->block_size * block, ext2fs->block_size, buf);
 }
 
+// Caller should free the memory
 ext2_inode_table *ext2_get_inode_table(u32 inode_num) {
 	u32 group = inode_num / ext2fs->inodes_per_group;
 	u32 inode_table_block = ext2fs->bgd_table[group].inode_table;
@@ -378,8 +651,8 @@ ext2_inode_table *ext2_get_inode_table(u32 inode_num) {
 	read_disk_block(inode_table_block + block_offset, buf);
 
 	memcpy(inode_table, (void *)(((u32)buf) + offset_in_block * ext2fs->superblock->inode_size), ext2fs->superblock->inode_size);
-	free(buf);
 
+	free(buf);
 	return inode_table;
 }
 
@@ -413,6 +686,7 @@ vfs_node_t *ext2_make_vfs_node(ext2_inode_table *root_inode) {
 
 	ext2_vfs_node->read = ext2_read;
 	ext2_vfs_node->write = ext2_write;
+	ext2_vfs_node->create = ext2_create;
 	ext2_vfs_node->open = ext2_open;
 	ext2_vfs_node->close = ext2_close;
 	ext2_vfs_node->readdir = ext2_readdir;

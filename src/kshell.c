@@ -6,8 +6,8 @@
 #include "string.h"
 #include "debug.h"
 #include "test.h"
-#include "ata.h"
 #include "heap.h"
+#include "vfs.h"
 
 static u8 keyboard_layout_us[2][128] = {
 	// When SHIFT is NOT pressed
@@ -36,13 +36,16 @@ static u8 keyboard_layout_us[2][128] = {
 	}
 };
 
-#define NB_DOCUMENTED_COMMANDS 4
+static i8 *cwd = "/";
+
+#define NB_DOCUMENTED_COMMANDS 5
 
 const i8 *commands[][NB_DOCUMENTED_COMMANDS] = {
 	{"help", "Display information about OS shell commands"},
 	{"date", "Print the system date and time"},
 	{"clear", "Clear the terminal screen"},
 	{"selftest", "Run test suite"},
+	{"ls", "list directories and files"},
 };
 
 i8 readline[READLINE_SIZE] = {0};
@@ -116,12 +119,26 @@ void selftest() {
 	kprintf("\nEverything is good\n");
 }
 
+void ls() {
+	u32 dir_entry_idx = 0;
+	vfs_node_t *vfs_node = vfs_get_node(cwd);
+	dirent *dir_entry;
+	while (true) {
+		dir_entry = vfs_readdir(vfs_node, dir_entry_idx);
+		if (!dir_entry) {
+			break;
+		}
+		kprintf("%s ", dir_entry->name);
+		++dir_entry_idx;
+		free(dir_entry);
+	}
+	kprintf("\n");
+}
+
 void run_command(const i8 *command) {
 	if (*command == 0) {
 		return;
 	}
-	extern ata_device_t primary_slave;
-	i8 *ata_buf;
 
 	if (strncmp(command, "help", 4) == 0) {
 		help(command);
@@ -131,21 +148,8 @@ void run_command(const i8 *command) {
 		clear();
 	} else if (strncmp(command, "selftest", 8) == 0) {
 		selftest();
-	} else if (strncmp(command, "read", 4) == 0) {
-		ata_buf = ata_read_sector(&primary_slave, 0);
-		if (ata_buf == NULL) {
-			DEBUG("%s", "We got NULL...\r\n");
-			return;
-		}
-		for (u32 i = 0; i < 512; ++i) {
-			DEBUG("%x\r\n", ata_buf[i]);
-		}
-	} else if (strncmp(command, "write", 5) == 0) {
-		ata_buf = malloc(512);
-		for (u32 i = 0; i < 512; ++i) {
-			ata_buf[i] = 0xA;
-		}
-		ata_write_sector(&primary_slave, 0, ata_buf);
+	} else if (strncmp(command, "ls", 2) == 0) {
+		ls();
 	} else {
 		kprintf("Invalid command\n");
 	}
@@ -156,7 +160,15 @@ void reset_readline() {
 	memset((void *)readline, 0, READLINE_SIZE);
 }
 
-void kshell(u8 scancode) {
+void kshell() {
+	kprintf(cwd);
+	kprintf(PROMPT);
+	for (;;) {
+		kshell_run(keyboard_get_last_scancode());
+	}
+}
+
+void kshell_run(u8 scancode) {
 	raw_scancode = scancode & ~KEYBOARD_RELEASE;
 	switch (raw_scancode) {
 		case KEY_LCTRL:
@@ -181,6 +193,7 @@ void kshell(u8 scancode) {
 				run_command((const i8*) readline);
 				strcpy(last_readline, readline);
 				reset_readline();
+				kprintf(cwd);
 				kprintf(PROMPT);
 			}
 			break;
@@ -223,10 +236,12 @@ void kshell(u8 scancode) {
 					if (c == 'c') {
 						reset_readline();
 						kprintf("^C\n");
+						kprintf(cwd);
 						kprintf(PROMPT);
 					} else if (c == 'l') {
 						clear();
 						reset_readline();
+						kprintf(cwd);
 						kprintf(PROMPT);
 					}
 				} else {

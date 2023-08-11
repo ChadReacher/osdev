@@ -240,7 +240,6 @@ u32 ata_read(vfs_node_t *node, u32 offset, u32 size, i8 *buf) {
 		buf_off = 0;
 		read_size = SECTOR_SIZE;
 
-		// THINK: Should I store in the VFS NODE the device or not?
 		i8 *ret_buf = ata_read_sector((ata_device_t*)node->device, sector_counter);
 
 		if (sector_counter == start_sector) {
@@ -256,6 +255,8 @@ u32 ata_read(vfs_node_t *node, u32 offset, u32 size, i8 *buf) {
 		buf += read_size;
 		total_read_bytes += read_size;
 		++sector_counter;
+
+		free(ret_buf);
 	}
 	return total_read_bytes;
 }
@@ -275,7 +276,6 @@ u32 ata_write(vfs_node_t *node, u32 offset, u32 size, i8 *buf) {
 		buf_offset = 0;
 		write_size = SECTOR_SIZE;
 
-		// THINK: Should I store in the VFS NODE the device or not?
 		i8 *ret_buf = ata_read_sector((ata_device_t*)node->device, sector_counter);
 
 		if (sector_counter == start_sector) {

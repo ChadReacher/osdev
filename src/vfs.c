@@ -4,6 +4,7 @@
 #include "string.h"
 #include "stdio.h"
 #include "debug.h"
+#include "memory.h"
 
 
 // TODO: Should we strip '/' from the start and the end of path? 
@@ -19,10 +20,6 @@ vfs_node_t *vfs_root = NULL;
 
 void vfs_init() {
 	vfs_tree = generic_tree_create();
-
-	// THINK:
-	// Should we create an empty directory(w/o fs) at the root?
-	// Will something be mounted at root?	
 
 	vfs_node_t *node = malloc(sizeof(vfs_node_t));
 	strcpy(node->name, "/");
@@ -71,6 +68,7 @@ vfs_node_t *vfs_get_node(i8 *path) {
 	}
 
 	path_dup = strdup(path);
+	i8 *saved_pathdup = path_dup;
 	path_dup = path_dup + 1;
 	tree_node_t *current_tree_node = vfs_tree->root;	
 	bool found = false;
@@ -88,11 +86,34 @@ vfs_node_t *vfs_get_node(i8 *path) {
 			}
 		}
 		if (!found) {
+			break;
+		}
+	}
+
+	if (found) {
+		free(saved_pathdup);
+		return current_tree_node->val;
+	}
+
+	// If we haven't found, then try to use physical fs's
+	// functions to find the node
+	vfs_node_t *node_ptr = current_tree_node->val;
+
+	node_ptr = vfs_finddir(node_ptr, name);
+	if (!node_ptr) {
+		free(saved_pathdup);
+		return NULL;
+	}
+	while ((name = strsep(&path_dup, "/")) != NULL) {
+		node_ptr = vfs_finddir(node_ptr, name);
+		if (!node_ptr) {
+			free(saved_pathdup);
 			return NULL;
 		}
 	}
-	free(path_dup);
-	return current_tree_node->val;
+
+	free(saved_pathdup);
+	return node_ptr;
 }
 
 u32 vfs_read(vfs_node_t *node, u32 offset, u32 size, i8 *buf) {
@@ -129,51 +150,49 @@ void vfs_close(vfs_node_t *node) {
 	}
 }
 
-dirent *vfs_readdir(tree_node_t *tree_node, u32 index) {
-	if (!tree_node) {
-		return NULL;
-	}
-	vfs_node_t *vfs_node = (vfs_node_t *)tree_node->val;
-
-	if (vfs_node && ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) && vfs_node->readdir) {
-		dirent *de;
-		if (index == 0) {
-			de = malloc(sizeof(dirent));
-			strcpy(de->name, ".");
-			de->inode = vfs_node->inode;
-			return de;
-		} else if (index == 1) {
-			de = malloc(sizeof(dirent));
-			strcpy(de->name, "..");
-
-			vfs_node_t *parent_vfs_node = (vfs_node_t *)tree_node->parent->val;
-			de->inode = parent_vfs_node->inode;
-			return de;
-		}
-
-		bool node_is_mounpoint = (vfs_node->flags & FS_MOUNTPOINT) == FS_MOUNTPOINT;
-
-		if (node_is_mounpoint && tree_node->children->sz > (index - 2)) {
-			de = malloc(sizeof(dirent));
-			list_node_t *vfs_child_list_node = tree_node->children->head;
-			for (u32 i = 0; i < (index - 2) && vfs_child_list_node; ++i) {
-				vfs_child_list_node = vfs_child_list_node->next;
+void vfs_create(i8 *name, u16 permission) {
+	// Get parent directory vfs node
+	i32 i = strlen(name);
+	i8 *dirname = strdup(name);
+	i8 *saved_dirname = dirname;
+	i8 *parent_path = "/";
+	while (i >= 0) {
+		if (dirname[i] == '/') {
+			if (i != 0) {
+				dirname[i] = '\0';
+				parent_path = dirname;
 			}
-			vfs_node_t *vfs_node_child = (vfs_node_t *)vfs_child_list_node->val;
-
-			de->inode = vfs_node_child->inode;
-			strcpy(de->name, vfs_node_child->name);
-			return de;
+			dirname = dirname + i + 1;
+			break;
 		}
-		
-		if (node_is_mounpoint) {
-			index -= tree_node->children->sz;
-		}
-		de = vfs_node->readdir(vfs_node, index);
+		--i;
+	}
 
+	DEBUG("Want to create a file - %s\r\n", name);
+	DEBUG("Dirname - %s\r\n", dirname);
+	DEBUG("Parent path - %s\r\n", parent_path);
+	vfs_node_t *parent_node = vfs_get_node(parent_path);
+	if (!parent_node) {
+		free(saved_dirname);
+		return;
+	}
+	DEBUG("Got parent node - %p\r\n", parent_node);
+	DEBUG("Parent node's name - %s\r\n", parent_node->name);
+	DEBUG("Parent node's flags - 0x%x\r\n", parent_node->flags);
+	DEBUG("Parent node's mask - 0x%x\r\n", parent_node->mask);
+	DEBUG("Parent node's length - %d\r\n", parent_node->length);
+	if ((parent_node->flags & FS_DIRECTORY) == FS_DIRECTORY && parent_node->create) {
+		parent_node->create(parent_node, dirname, permission);
+	}
+	free(saved_dirname);
+}
+
+dirent *vfs_readdir(vfs_node_t *vfs_node, u32 index) {
+	if (vfs_node && ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) && vfs_node->readdir) {
+		dirent *de = vfs_node->readdir(vfs_node, index);
 		return de;
 	}
-	return NULL;
+	return (dirent *)NULL;
 }
 
 vfs_node_t *vfs_finddir(vfs_node_t *node, i8 *name) {
@@ -210,6 +229,7 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 	}
 
 	path_dup = strdup(path);
+	i8 *saved_pathdup = path_dup;
 	path_dup = path_dup + 1;
 	tree_node_t *current_tree_node = vfs_tree->root;	
 	bool found = false;
@@ -253,7 +273,7 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 			}
 		}
 	}
-	free(path_dup);
+	free(saved_pathdup);
 	
 	// Trying to mount to an already existing node
 	if (found) {

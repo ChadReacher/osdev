@@ -7,6 +7,7 @@
 #define READLINE_SIZE 256
 #define PROMPT "$> "
 
-void kshell(u8 scancode);
+void kshell();
+void kshell_run(u8 scancode);
 
 #endif

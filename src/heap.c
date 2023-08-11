@@ -56,6 +56,8 @@ void *sbrk(u32 increment) {
 	if (new_boundary <= (u32)heap_max) {
 		heap_curr = (void *)new_boundary;
 		return (void*)old_boundary;
+	} else {
+		DEBUG("%s", "Ooops, we have reached the HEAP MAX\r\n");
 	}
 	return NULL;
 }

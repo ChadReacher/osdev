@@ -76,7 +76,7 @@ typedef struct {
 	u16 used_dirs_count;
 	u16 _padding;
 	u8 reserved[12];
-} ext2_block_group_descriptor;
+} __attribute__((packed)) ext2_block_group_descriptor;
 
 typedef struct {
 	u16 mode;
@@ -97,7 +97,7 @@ typedef struct {
 	u32 dir_acl;
 	u32 faddr;
 	u8 osd2[12];
-} ext2_inode_table;
+} __attribute__((packed)) ext2_inode_table;
 
 // File Format
 #define EXT2_S_IFSOCK 0xC000
@@ -133,7 +133,7 @@ typedef struct {
 	u16 rec_len;
 	u8 name_len;
 	u8 file_type;
-	u8 name[255];
+	u8 name[];
 } ext2_dir;
 
 typedef struct {
@@ -152,6 +152,7 @@ u32 ext2_read(vfs_node_t *node, u32 offset, u32 size, i8 *buffer);
 u32 ext2_write(vfs_node_t *node, u32 offset, u32 size, i8 *buffer);
 u32 ext2_open(vfs_node_t *node, u32 flags);
 u32 ext2_close(vfs_node_t *node);
+void ext2_create(vfs_node_t *node, i8 *name, u16 permission);
 dirent *ext2_readdir(vfs_node_t *node, u32 index);
 vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name);
 
@@ -168,5 +169,10 @@ void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dir
 
 void read_inode_disk_block(ext2_inode_table *inode, u32 block, i8 *buf);
 void write_inode_disk_block(ext2_inode_table *inode, u32 block, i8 *buf);
+
+u32 inode_alloc();
+u32 block_alloc();
+
+void ext2_create_dir_entry(vfs_node_t *parent, i8 *name, u32 inode_idx);
 
 #endif

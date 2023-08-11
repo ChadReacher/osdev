@@ -121,6 +121,7 @@ i32 strcmp(const i8 *str1, const i8 *str2) {
 	return c1 - c2;
 }
 
+// Caller should free the memory
 i8 *strdup(const i8 *str) {
 	u32 len = strlen(str);
 	i8 *ret = malloc(len + 1);

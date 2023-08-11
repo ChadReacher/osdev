@@ -48,11 +48,10 @@ void _start() {
 	DEBUG("%s", "-------------------------\r\n");
 
 
-	//DEBUG("%s", "-------------------------\r\n");
-	//vfs_node_t *got_vfs_node = vfs_get_node("/dev/hdb");
-	//DEBUG("node name - %s\r\n", got_vfs_node->name);
-	//DEBUG("date reg - %x\r\n", ((ata_device_t *)got_vfs_node->device)->data_reg);
-	//DEBUG("%s", "-------------------------\r\n");
+	DEBUG("%s", "-------------------------\r\n");
+	vfs_node_t *got_vfs_node = vfs_get_node("/dev/hdb");
+	DEBUG("node name - %s\r\n", got_vfs_node->name);
+	DEBUG("%s", "-------------------------\r\n");
 
 	//i8 *bufbuf = malloc(5);
 	//u32 have_read = ata_read(got_vfs_node, 0, 5, bufbuf);	
@@ -62,10 +61,15 @@ void _start() {
 	//}
 	//free(bufbuf);
 
-	//DEBUG("%s", "-------------------------\r\n");
-	//got_vfs_node = vfs_get_node("/dev/sdb");
-	//DEBUG("node is %p\r\n", got_vfs_node);
-	//DEBUG("%s", "-------------------------\r\n");	
+	DEBUG("%s", "-------------------------\r\n");
+	got_vfs_node = vfs_get_node("/dev/sdb");
+	DEBUG("node is %p\r\n", got_vfs_node);
+	DEBUG("%s", "-------------------------\r\n");	
+
+	DEBUG("%s", "-------------------------\r\n");
+	got_vfs_node = vfs_get_node("/bin/proc");
+	DEBUG("node is %p\r\n", got_vfs_node);
+	DEBUG("%s", "-------------------------\r\n");	
 
 	/*
 	DEBUG("%s", "-------------------------\r\n");
@@ -97,12 +101,17 @@ void _start() {
 
 	DEBUG("%s", "-------------------------\r\n");	
 	extern vfs_node_t *vfs_root;
-	dirent *dir_entry = ext2_readdir(vfs_root, 0);
+	dirent *dir_entry;
 	u32 dir_entry_idx = 0;
-	while (dir_entry) {
-		DEBUG("Got dir entry idx %d, name - %s, inode - 0x%x\r\n", dir_entry_idx, dir_entry->name, dir_entry->inode);
+	while (true) {
 		dir_entry = ext2_readdir(vfs_root, dir_entry_idx);
+		if (!dir_entry) {
+			break;
+		}
+		DEBUG("Got dir entry idx %d, name - %s, inode - 0x%x\r\n", dir_entry_idx, dir_entry->name, dir_entry->inode);
 		++dir_entry_idx;
+
+		free(dir_entry);
 	}
 	DEBUG("%s", "-------------------------\r\n");
 
@@ -121,6 +130,10 @@ void _start() {
 	DEBUG("%s", "-------------------------\r\n");
 
 
+	DEBUG("%s", "-------------------------\r\n");
+	vfs_create("/test2.txt", 0);
+	//vfs_create("/usr/data/test2.txt", 0);
+	DEBUG("%s", "-------------------------\r\n");	
 
 	//inode->uid = 0xABC;
 	//ext2_set_inode_table(inode, 12);
@@ -244,10 +257,7 @@ void _start() {
 	u32 phys_a = (u32)virtual_to_physical((void *)virt_a);
 	DEBUG("Translating virtual address(%x) to physical address(%x)\r\n", virt_a, phys_a);
 
-	kprintf(PROMPT);
-	for (;;) {
-		kshell(keyboard_get_last_scancode());
-	}
+	kshell();	
 }
 
 void print_physical_memory_info() {
