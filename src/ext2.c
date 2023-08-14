@@ -75,7 +75,7 @@ u32 ext2_read(vfs_node_t *node, u32 offset, u32 size, i8 *buffer) {
 }
 
 u32 ext2_write(vfs_node_t *node, u32 offset, u32 size, i8 *buffer) {
-	ext2_inode_table *inode = ext2_get_inode_table(node->inode);
+	ext2_inode_table *inode = ext2_get_inode_table(node->inode);	
 	ext2_write_inode_filedata(inode, node->inode, offset, size, buffer);
 	return size;
 }
@@ -219,7 +219,7 @@ void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32
 
 	a = iblock - 12;
 	if (a <= 0) {
-		inode->block[0] = disk_block;
+		inode->block[inode_block] = disk_block;
 
 		free(tmp);
 		return;
@@ -346,7 +346,6 @@ dirent *ext2_readdir(vfs_node_t *node, u32 index) {
 	
 		in_block_offset += dir_entry->rec_len;
 		curr_offset += dir_entry->rec_len;
-		//curr_offset += in_block_offset;
 		++dir_entry_idx;
 	}
 
@@ -435,7 +434,7 @@ void ext2_create(vfs_node_t *parent, i8 *name, u16 permission) {
 	inode->gid = 0;
 	inode->uid = 0;
 	inode->faddr = 0;
-	inode->size = ext2fs->block_size;
+	inode->size = 0;
 	inode->blocks = 0;
 	memset(inode->block, 0, sizeof(inode->block));
 	inode->flags = 0;
@@ -451,6 +450,63 @@ void ext2_create(vfs_node_t *parent, i8 *name, u16 permission) {
 	inode->blocks = 2; 
 	ext2_set_inode_table(inode, inode_idx);
 	ext2_create_dir_entry(parent, name, inode_idx);
+
+	// Update parent inode's size 
+	ext2_inode_table *parent_inode = ext2_get_inode_table(parent->inode);
+	parent_inode->links_count++;
+	ext2_set_inode_table(parent_inode, parent->inode);
+}
+
+void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
+	ext2_inode_table *parent_inode = ext2_get_inode_table(parent_node->inode);
+
+	u32 curr_offset = 0;
+	u32 block_offset = 0;
+	u32 in_block_offset = 0;
+
+	u32 entry_name_len = strlen(entry_name);
+	i8 *name_buf_check = malloc(entry_name_len + 1);
+	memset(name_buf_check, 0, entry_name_len + 1);
+
+	i8 *block_buf = malloc(ext2fs->block_size);
+	read_inode_disk_block(parent_inode, block_offset, block_buf);
+
+	while (curr_offset < parent_inode->size) {
+		if (in_block_offset >= ext2fs->block_size) {
+			++block_offset;
+			in_block_offset = 0;
+			read_inode_disk_block(parent_inode, block_offset, block_buf);
+		}
+
+		ext2_dir *curr_dir_entry = (ext2_dir *)(block_buf + in_block_offset);
+
+		if (curr_dir_entry->name_len == entry_name_len) {
+			memcpy(name_buf_check, curr_dir_entry->name, entry_name_len);
+			if (curr_dir_entry->inode != 0 && strcmp(entry_name, name_buf_check) == 0) {
+				// For now it is jsut sets inode to zero.
+				curr_dir_entry->inode = 0;
+				write_inode_disk_block(parent_inode, block_offset, block_buf);
+				break;
+			}
+		}
+
+		u32 expected_size = ((sizeof(ext2_dir) + curr_dir_entry->name_len) & 0xFFFFFFFC) + 0x4;
+		u32 real_size = curr_dir_entry->rec_len;
+		if (real_size != expected_size) {
+			break;
+		}
+		in_block_offset += curr_dir_entry->rec_len;
+		curr_offset += in_block_offset;
+	}
+
+	free(parent_inode);
+	parent_inode = ext2_get_inode_table(parent_node->inode);
+	--parent_inode->links_count;
+	ext2_set_inode_table(parent_inode, parent_node->inode);
+
+	free(name_buf_check);
+	free(block_buf);
+	free(parent_inode);
 }
 
 u32 inode_alloc() {
@@ -544,8 +600,10 @@ void ext2_create_dir_entry(vfs_node_t *parent, i8 *entry_name, u32 inode_idx) {
 		if (curr_dir_entry->name_len == entry_name_len) {
 			memcpy(name_buf_check, curr_dir_entry->name, entry_name_len);
 			if (curr_dir_entry->inode != 0 && strcmp(entry_name, name_buf_check) == 0) {
-				DEBUG("%s", "Directory with the same name already existed.\r\n");
+				DEBUG("%s", "File with the same name already existed in the directory.\r\n");
 				free(name_buf_check);
+				free(block_buf);
+				free(inode);
 				return;
 			}
 		}
@@ -570,6 +628,7 @@ void ext2_create_dir_entry(vfs_node_t *parent, i8 *entry_name, u32 inode_idx) {
 
 			free(name_buf_check);
 			free(block_buf);
+			free(inode);
 			return;
 		}
 
@@ -687,6 +746,7 @@ vfs_node_t *ext2_make_vfs_node(ext2_inode_table *root_inode) {
 	ext2_vfs_node->read = ext2_read;
 	ext2_vfs_node->write = ext2_write;
 	ext2_vfs_node->create = ext2_create;
+	ext2_vfs_node->unlink = ext2_unlink;
 	ext2_vfs_node->open = ext2_open;
 	ext2_vfs_node->close = ext2_close;
 	ext2_vfs_node->readdir = ext2_readdir;

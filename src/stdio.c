@@ -1,6 +1,6 @@
 #include "types.h"
 #include "stdio.h"
-#include "k_stdlib.h"
+#include "stdlib.h"
 #include "screen.h"
 #include "memory.h"
 #include "string.h"

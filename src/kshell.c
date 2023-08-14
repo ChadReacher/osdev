@@ -1,5 +1,6 @@
 #include "kshell.h"
 #include "stdio.h"
+#include "stdlib.h"
 #include "memory.h"
 #include "cmos.h"
 #include "screen.h"
@@ -8,6 +9,8 @@
 #include "test.h"
 #include "heap.h"
 #include "vfs.h"
+
+i8 *make_absolute_path(i8 *rel_path);
 
 static u8 keyboard_layout_us[2][128] = {
 	// When SHIFT is NOT pressed
@@ -36,9 +39,9 @@ static u8 keyboard_layout_us[2][128] = {
 	}
 };
 
-static i8 *cwd = "/";
+static i8 cwd[100] = {0};
 
-#define NB_DOCUMENTED_COMMANDS 5
+#define NB_DOCUMENTED_COMMANDS 10
 
 const i8 *commands[][NB_DOCUMENTED_COMMANDS] = {
 	{"help", "Display information about OS shell commands"},
@@ -46,6 +49,11 @@ const i8 *commands[][NB_DOCUMENTED_COMMANDS] = {
 	{"clear", "Clear the terminal screen"},
 	{"selftest", "Run test suite"},
 	{"ls", "list directories and files"},
+	{"touch", "Create an empty file(required full path)"},
+	{"cat", "Print file's content"},
+	{"write", "Write contents to the file.\nUsage: write FILE OFFSET CONTENT"},
+	{"cd", "Change current working directory"},
+	{"rm", "Delete the file"}
 };
 
 i8 readline[READLINE_SIZE] = {0};
@@ -122,6 +130,9 @@ void selftest() {
 void ls() {
 	u32 dir_entry_idx = 0;
 	vfs_node_t *vfs_node = vfs_get_node(cwd);
+	if (!vfs_node) {
+		return;
+	}
 	dirent *dir_entry;
 	while (true) {
 		dir_entry = vfs_readdir(vfs_node, dir_entry_idx);
@@ -133,6 +144,140 @@ void ls() {
 		free(dir_entry);
 	}
 	kprintf("\n");
+}
+
+void touch(const i8 *command) {
+	command += 6;
+	vfs_create((i8 *)command, 0);
+}
+
+void cat(i8 *command) {
+	i8 *rel_path = command + 4;
+	if (!*rel_path) {
+		return;
+	}
+
+	i8 *abs_path;
+	if (rel_path[0] == '/') {
+		abs_path = rel_path;
+	} else {
+		abs_path = make_absolute_path(rel_path);
+	}
+	vfs_node_t *vfs_node = vfs_get_node(abs_path);
+	if (rel_path[0] != '/') {
+		free(abs_path);
+	}
+
+	if (!vfs_node) {
+		kprintf("[cat]: have not found the file.\n");
+		return;
+	} else if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
+		kprintf("[cat]: given file is a directory.\n");
+		return;
+	}
+
+	u8 have_read = 0, offset = 0, size = 10;
+	i8 *buf = malloc(10);
+	memset(buf, 10, 0);
+
+	while ((have_read = vfs_read(vfs_node, offset, size, buf)) != 0) {
+		for (u32 i = 0; i < have_read; ++i) {
+			kprintf("%c", buf[i]);
+		}
+		memset(buf, 10, 0);
+		offset += have_read;
+	}
+
+	free(buf);
+}
+
+void write(i8 *command) {
+	command = command + 6;
+	i8 *rel_path = strsep(&command, " ");
+	if (!*rel_path) {
+		return;
+	}
+
+	i8 *abs_path;
+	if (rel_path[0] == '/') {
+		abs_path = rel_path;
+	} else {
+		abs_path = make_absolute_path(rel_path);
+	}
+	DEBUG("Trying to write to %s \r\n", abs_path);
+	vfs_node_t *vfs_node = vfs_get_node(abs_path);
+	if (rel_path[0] != '/') {
+		free(abs_path);
+	}
+
+	if (!vfs_node) {
+		kprintf("[write]: have not found the file.\n");
+		return;
+	} else if ((vfs_node->flags & FS_FILE) != FS_FILE) {
+		kprintf("[write]: given file is not a regular file.\n");
+		return;
+	}
+
+	i8 *offset_str = strsep(&command, " ");
+	u32 offset = atoi(offset_str);
+	i8 *content = command;
+
+	DEBUG("Offset - %x \r\n", offset);
+	DEBUG("Content - %s \r\n", content);
+
+	vfs_write(vfs_node, offset, strlen(content), content);
+}
+
+void cd(i8 *command) {
+	i8 *rel_path = command + 3;
+	if (!*rel_path) {
+		return;
+	}
+
+	i8 *abs_path;
+	if (rel_path[0] == '/') {
+		abs_path = rel_path;
+	} else {
+		abs_path = make_absolute_path(rel_path);
+	}
+	vfs_node_t *target_vfs_node = vfs_get_node(abs_path);
+	
+
+	if (!target_vfs_node) {
+		if (rel_path[0] != '/') {
+			free(abs_path);
+		}
+		kprintf("Such path does not exist.\n");
+		return;
+	} else if ((target_vfs_node->flags & FS_DIRECTORY) != FS_DIRECTORY) {
+		if (rel_path[0] != '/') {
+			free(abs_path);
+		}
+		kprintf("Given file is not a directory.\n");
+		return;
+	}
+
+	memset(cwd, 0, 100);
+	memcpy(cwd, abs_path, strlen(abs_path));
+	if (rel_path[0] != '/') {
+		free(abs_path);
+	}
+}
+
+void rm(i8 *command) {
+	i8 *rel_path = command + 3;
+	if (!*rel_path) {
+		return;
+	}
+
+	i8 *abs_path;
+	if (rel_path[0] == '/') {
+		abs_path = rel_path;
+	} else {
+		abs_path = make_absolute_path(rel_path);
+	}
+
+	vfs_unlink(abs_path);
 }
 
 void run_command(const i8 *command) {
@@ -150,6 +295,16 @@ void run_command(const i8 *command) {
 		selftest();
 	} else if (strncmp(command, "ls", 2) == 0) {
 		ls();
+	} else if (strncmp(command, "touch", 2) == 0) {
+		touch(command);
+	} else if (strncmp(command, "cat", 3) == 0) {
+		cat((i8 *)command);
+	} else if (strncmp(command, "write", 5) == 0) {
+		write((i8 *)command);
+	} else if (strncmp(command, "cd", 2) == 0) {
+		cd((i8 *)command);
+	} else if (strncmp(command, "rm", 2) == 0) {
+		rm((i8 *)command);
 	} else {
 		kprintf("Invalid command\n");
 	}
@@ -161,6 +316,7 @@ void reset_readline() {
 }
 
 void kshell() {
+	cwd[0] = '/';
 	kprintf(cwd);
 	kprintf(PROMPT);
 	for (;;) {
@@ -251,4 +407,26 @@ void kshell_run(u8 scancode) {
 			}
 			break;
 	}
+}
+
+// Caller should free the memory
+i8 *make_absolute_path(i8 *rel_path) {
+	i8 *abs_path = malloc(strlen(cwd) + 1 + strlen(rel_path) + 1);
+	memset(abs_path, 0, strlen(cwd) + 1 + strlen(rel_path) + 1);
+
+	memcpy(abs_path, cwd, strlen(cwd));
+
+	if (strlen(cwd) != 1) {
+		abs_path[strlen(abs_path)] = '/';
+	}
+	strcat(abs_path, rel_path);
+
+	DEBUG("Try to canonilize path - %s\r\n", abs_path);
+	i8 *canonilized_path = canonilize_path(abs_path);
+	DEBUG("Canonilized path is - %s\r\n", canonilized_path);
+	if (abs_path) {
+		free(abs_path);
+	}
+
+	return canonilized_path;
 }

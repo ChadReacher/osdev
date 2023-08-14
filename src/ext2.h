@@ -153,6 +153,7 @@ u32 ext2_write(vfs_node_t *node, u32 offset, u32 size, i8 *buffer);
 u32 ext2_open(vfs_node_t *node, u32 flags);
 u32 ext2_close(vfs_node_t *node);
 void ext2_create(vfs_node_t *node, i8 *name, u16 permission);
+void ext2_unlink(vfs_node_t *node, i8 *name);
 dirent *ext2_readdir(vfs_node_t *node, u32 index);
 vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name);
 
@@ -174,5 +175,6 @@ u32 inode_alloc();
 u32 block_alloc();
 
 void ext2_create_dir_entry(vfs_node_t *parent, i8 *name, u32 inode_idx);
+void rewrite_bgds();
 
 #endif

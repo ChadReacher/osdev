@@ -20,6 +20,7 @@
 #include "pci.h"
 #include "ata.h"
 #include "ext2.h"
+#include "memory.h"
 
 void print_physical_memory_info();
 
@@ -48,39 +49,32 @@ void _start() {
 	DEBUG("%s", "-------------------------\r\n");
 
 
-	DEBUG("%s", "-------------------------\r\n");
-	vfs_node_t *got_vfs_node = vfs_get_node("/dev/hdb");
-	DEBUG("node name - %s\r\n", got_vfs_node->name);
-	DEBUG("%s", "-------------------------\r\n");
+	//DEBUG("%s", "-------------------------\r\n");
+	//vfs_node_t *got_vfs_node = vfs_get_node("/dev/hdb");
+	//DEBUG("node name - %s\r\n", got_vfs_node->name);
+	//DEBUG("%s", "-------------------------\r\n");
 
-	//i8 *bufbuf = malloc(5);
-	//u32 have_read = ata_read(got_vfs_node, 0, 5, bufbuf);	
-	//DEBUG("Have read 0x%x bytes\r\n", have_read);
-	//for (u32 i = 0; i < 5; ++i) {
-	//	DEBUG("%x\r\n", bufbuf[i]);
-	//}
-	//free(bufbuf);
+	//DEBUG("%s", "-------------------------\r\n");
+	//got_vfs_node = vfs_get_node("/dev/sdb");
+	//DEBUG("node is %p\r\n", got_vfs_node);
+	//DEBUG("%s", "-------------------------\r\n");	
 
-	DEBUG("%s", "-------------------------\r\n");
-	got_vfs_node = vfs_get_node("/dev/sdb");
-	DEBUG("node is %p\r\n", got_vfs_node);
-	DEBUG("%s", "-------------------------\r\n");	
-
-	DEBUG("%s", "-------------------------\r\n");
-	got_vfs_node = vfs_get_node("/bin/proc");
-	DEBUG("node is %p\r\n", got_vfs_node);
-	DEBUG("%s", "-------------------------\r\n");	
+	//DEBUG("%s", "-------------------------\r\n");
+	//got_vfs_node = vfs_get_node("/bin/proc");
+	//DEBUG("node is %p\r\n", got_vfs_node);
+	//DEBUG("%s", "-------------------------\r\n");	
 
 	/*
 	DEBUG("%s", "-------------------------\r\n");
-	ext2_inode_table *inode = ext2_get_inode_table(12);
-	DEBUG("Mode = 0x%x\r\n", inode->mode);
-	DEBUG("Size = 0x%x\r\n", inode->size);
-	i8 *filebuf = malloc(20);
-	memset(filebuf, 0, 20);
-	ext2_read_inode_filedata(inode, 0, 20, filebuf);
+	i8 *filebuf = malloc(5);
+	memset(filebuf, 0, 5);
+	u8 have_read = vfs_read(vfs_get_node("/hi.txt"), 17, 5, filebuf);
+	DEBUG("Have read - %d\r\n", have_read);
 	DEBUG("%s", "File buf: \r\n");
-	DEBUG("%s\r\n", filebuf);
+	for (u32 i = 0; i < 5; ++i) {
+		DEBUG("%x\r\n", filebuf[i]);
+	}
+	//DEBUG("%s\r\n", filebuf);
 	free(filebuf);
 	DEBUG("%s", "-------------------------\r\n");	
 	*/
@@ -99,46 +93,18 @@ void _start() {
 	*/
 
 
-	DEBUG("%s", "-------------------------\r\n");	
-	extern vfs_node_t *vfs_root;
-	dirent *dir_entry;
-	u32 dir_entry_idx = 0;
-	while (true) {
-		dir_entry = ext2_readdir(vfs_root, dir_entry_idx);
-		if (!dir_entry) {
-			break;
-		}
-		DEBUG("Got dir entry idx %d, name - %s, inode - 0x%x\r\n", dir_entry_idx, dir_entry->name, dir_entry->inode);
-		++dir_entry_idx;
-
-		free(dir_entry);
-	}
-	DEBUG("%s", "-------------------------\r\n");
-
-	DEBUG("%s", "-------------------------\r\n");
-	DEBUG("%s", "Trying to find a file 'hi.txt'\r\n");
-	vfs_node_t *file_node = ext2_finddir(vfs_root, "hi.txt");
-	if (file_node != NULL) {
-		DEBUG("Found a vfs node - %s\r\n", file_node->name);
-		DEBUG("Mask - 0x%x\r\n", file_node->mask);
-		DEBUG("Flags - 0x%x\r\n", file_node->flags);
-		DEBUG("UID - 0x%x\r\n", file_node->uid);
-		DEBUG("GID - 0x%x\r\n", file_node->gid);
-		DEBUG("Inode - 0x%x\r\n", file_node->inode);
-		DEBUG("Length - 0x%x\r\n", file_node->length);
-	}
-	DEBUG("%s", "-------------------------\r\n");
-
-
-	DEBUG("%s", "-------------------------\r\n");
-	vfs_create("/test2.txt", 0);
-	//vfs_create("/usr/data/test2.txt", 0);
-	DEBUG("%s", "-------------------------\r\n");	
-
-	//inode->uid = 0xABC;
-	//ext2_set_inode_table(inode, 12);
-	//DEBUG("%s", "-------------------------\r\n");	
-	//DEBUG("%x\r\n", inode->uid);
+	//DEBUG("%s", "-------------------------\r\n");
+	//DEBUG("%s", "Trying to find a file 'hi.txt'\r\n");
+	//vfs_node_t *file_node = ext2_finddir(vfs_root, "hi.txt");
+	//if (file_node != NULL) {
+	//	DEBUG("Found a vfs node - %s\r\n", file_node->name);
+	//	DEBUG("Mask - 0x%x\r\n", file_node->mask);
+	//	DEBUG("Flags - 0x%x\r\n", file_node->flags);
+	//	DEBUG("UID - 0x%x\r\n", file_node->uid);
+	//	DEBUG("GID - 0x%x\r\n", file_node->gid);
+	//	DEBUG("Inode - 0x%x\r\n", file_node->inode);
+	//	DEBUG("Length - 0x%x\r\n", file_node->length);
+	//}
 	//DEBUG("%s", "-------------------------\r\n");
 
 	u8 *p = (u8 *)malloc(5);
@@ -252,6 +218,35 @@ void _start() {
 	DEBUG("Init - %s, ret - %s\r\n", str_to_dup, rett);
 	DEBUG("Init - %p, ret - %p\r\n", str_to_dup, rett);
 	free(rett);
+
+	DEBUG("%s", "Testing strcat\r\n");
+	i8 *str_to_cat = malloc(7);
+	memset(str_to_cat, 0, 7);
+	memcpy(str_to_cat, "cat", 3);
+	i8 *another_str_to_cat = "man";
+	DEBUG("First str - %s, second str - %s\r\n", str_to_cat, another_str_to_cat);
+	i8 *concatenated_str = strcat(str_to_cat, another_str_to_cat);
+	DEBUG("Result of strcat - %s\r\n", concatenated_str);
+
+	i8 *complicated_path = "/usr/data/bin";
+	DEBUG("Canonilize path - %s\r\n", complicated_path);
+	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
+
+	complicated_path = "/usr/data/./bin";
+	DEBUG("Canonilize path - %s\r\n", complicated_path);
+	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
+
+	complicated_path = "/usr/data/..";
+	DEBUG("Canonilize path - %s\r\n", complicated_path);
+	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
+
+	complicated_path = "/usr/..";
+	DEBUG("Canonilize path - %s\r\n", complicated_path);
+	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
+
+	complicated_path = "/..";
+	DEBUG("Canonilize path - %s\r\n", complicated_path);
+	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
 
 	u32 virt_a = 0xC0010000;
 	u32 phys_a = (u32)virtual_to_physical((void *)virt_a);

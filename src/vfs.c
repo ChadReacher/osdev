@@ -5,6 +5,7 @@
 #include "stdio.h"
 #include "debug.h"
 #include "memory.h"
+#include "list.h"
 
 
 // TODO: Should we strip '/' from the start and the end of path? 
@@ -29,6 +30,8 @@ void vfs_init() {
 	node->inode = 0;
 	node->length = 0;
 	node->read = NULL;
+	node->create = NULL;
+	node->unlink = NULL;
 	node->write = NULL;
 	node->open = NULL; 
 	node->close = NULL; 
@@ -49,6 +52,7 @@ void vfs_init() {
 	DEBUG("%s", "Virtual file system has been successfully initialized\r\n");
 }
 
+// Given a full absolute path, returns a corresponding vfs node in VFS tree
 vfs_node_t *vfs_get_node(i8 *path) {
 	i8 *name, *path_dup;
 	list_t *children;
@@ -77,8 +81,8 @@ vfs_node_t *vfs_get_node(i8 *path) {
 		found = false;
 		children = current_tree_node->children;
 		for(child = children->head; child; child = child->next) {
-			tree_node_t *vvnode = (tree_node_t *)child->val;
-			vfs_node_t *vnode = (vfs_node_t*)vvnode->val;
+			tree_node_t *tree_node = (tree_node_t *)child->val;
+			vfs_node_t *vnode = (vfs_node_t*)tree_node->val;
 			if (strcmp(vnode->name, name) == 0) {
 				found = true;
 				current_tree_node = (tree_node_t *)child->val;
@@ -176,11 +180,7 @@ void vfs_create(i8 *name, u16 permission) {
 		free(saved_dirname);
 		return;
 	}
-	DEBUG("Got parent node - %p\r\n", parent_node);
-	DEBUG("Parent node's name - %s\r\n", parent_node->name);
-	DEBUG("Parent node's flags - 0x%x\r\n", parent_node->flags);
-	DEBUG("Parent node's mask - 0x%x\r\n", parent_node->mask);
-	DEBUG("Parent node's length - %d\r\n", parent_node->length);
+
 	if ((parent_node->flags & FS_DIRECTORY) == FS_DIRECTORY && parent_node->create) {
 		parent_node->create(parent_node, dirname, permission);
 	}
@@ -200,6 +200,39 @@ vfs_node_t *vfs_finddir(vfs_node_t *node, i8 *name) {
 		return node->finddir(node, name);
 	}
 	return (vfs_node_t *)NULL;
+}
+
+void vfs_unlink(i8 *name) {
+	// Get parent directory vfs node
+	i32 i = strlen(name);
+	i8 *dirname = strdup(name);
+	i8 *saved_dirname = dirname;
+	i8 *parent_path = "/";
+	while (i >= 0) {
+		if (dirname[i] == '/') {
+			if (i != 0) {
+				dirname[i] = '\0';
+				parent_path = dirname;
+			}
+			dirname = dirname + i + 1;
+			break;
+		}
+		--i;
+	}
+
+	DEBUG("Want to delete a file - %s\r\n", name);
+	DEBUG("Dirname - %s\r\n", dirname);
+	DEBUG("Parent path - %s\r\n", parent_path);
+	vfs_node_t *parent_node = vfs_get_node(parent_path);
+	if (!parent_node) {
+		free(saved_dirname);
+		return;
+	}
+
+	if ((parent_node->flags & FS_DIRECTORY) == FS_DIRECTORY && parent_node->unlink) {
+		parent_node->unlink(parent_node, dirname);
+	}
+	free(saved_dirname);
 }
 
 void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
@@ -257,15 +290,18 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 				intermediary_node->uid = 0;
 				intermediary_node->gid = 0;
 				intermediary_node->inode = 0;
-				intermediary_node->length = 0;
+				intermediary_node->length = 0; 
 				intermediary_node->read = NULL;
 				intermediary_node->write = NULL;
-				intermediary_node->open = NULL; 
-				intermediary_node->close = NULL; 
+				intermediary_node->create = NULL;
+				intermediary_node->unlink = NULL;
+				intermediary_node->open = NULL;
+				intermediary_node->close = NULL;
+				intermediary_node->create = NULL;
 				intermediary_node->readdir = NULL;
 				intermediary_node->finddir = NULL;
 				intermediary_node->ptr = NULL;
-				intermediary_node->flags = 0;
+				intermediary_node->flags = FS_DIRECTORY;
 				current_tree_node = generic_tree_insert_at(vfs_tree, current_tree_node, intermediary_node);
 			} else {
 				generic_tree_insert_at(vfs_tree, current_tree_node, vfs_node_to_mount);
@@ -313,4 +349,57 @@ void vfs_print() {
 	vfs_node_t *vfs_node = (vfs_node_t *)root->val;
 	DEBUG("'%s'\r\n", vfs_node->name);
 	vfs_print_node(vfs_tree->root);
+}
+
+// Caller should free the memory
+i8 *canonilize_path(i8 *full_path) {
+	if (!full_path || full_path[0] != '/') {
+		return NULL;
+	}
+	list_t *tokens_list = list_create();
+	i8 *str = strdup(full_path);
+	i8 *rest = str;
+	i8 *token;
+	while ((token = strsep(&rest, "/")) != NULL) {
+		if (strcmp(token, ".") == 0) {
+			continue;
+		} else if (strcmp(token, "..") == 0) {
+			if (tokens_list->sz > 0) {
+				free(list_remove_back(tokens_list));
+			}
+		} else {
+			list_insert_back(tokens_list, strdup(token));
+		}
+	}
+
+	if (tokens_list->sz == 0) {
+		i8 *canonilized_path = malloc(2);
+		canonilized_path[0] = '/';
+		canonilized_path[1] = '\0';
+
+		list_destroy(tokens_list);
+		free(str);
+		return canonilized_path;
+	}
+
+	i8 *canonilized_path = malloc(256);
+	memset(canonilized_path, 0, 256);
+
+	// Remove and free the ""(empty) string
+	// i.e the result of the first separating before "/"
+	if (tokens_list->sz > 1) {
+		free(list_remove_front(tokens_list));
+	}
+
+	while (tokens_list->sz) {
+		list_node_t *node = list_remove_front(tokens_list);
+		i8 *temp = (i8 *)node->val;
+		strcat(canonilized_path, "/");
+		strcat(canonilized_path, temp);
+		free(node);
+	}
+
+	list_destroy(tokens_list);
+	free(str);
+	return canonilized_path;
 }

@@ -1,7 +1,7 @@
 #include "types.h"
 #include "keyboard.h"
 #include "stdio.h"
-#include "k_stdlib.h"
+#include "stdlib.h"
 #include "port.h"
 #include "screen.h"
 #include "debug.h"

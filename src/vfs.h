@@ -26,6 +26,7 @@ typedef u32 (*close_callback)(struct vfs_node *node);
 typedef void (*create_callback)(struct vfs_node *node, i8 *name, u16 permission);
 typedef dirent * (*readdir_callback)(struct vfs_node *node, u32 index);
 typedef struct vfs_node * (*finddir_callback)(struct vfs_node* node, i8 *name);
+typedef void (*unlink_callback)(struct vfs_node *node, i8 *name);
 
 typedef struct vfs_node {
 	i8 name[256];				// The filename
@@ -41,6 +42,7 @@ typedef struct vfs_node {
 	open_callback open;
 	close_callback close;
 	create_callback create;
+	unlink_callback unlink;
 	readdir_callback readdir;	// Return n'th child of a directory 
 	finddir_callback finddir;   // Try to find a child in a directory
 	void *device;				// Possible char or block device
@@ -56,9 +58,12 @@ void vfs_close(vfs_node_t *node);
 void vfs_create(i8 *name, u16 permission);
 dirent *vfs_readdir(vfs_node_t *vfs_node, u32 index);
 vfs_node_t *vfs_finddir(vfs_node_t *node, i8 *name);
+void vfs_unlink(i8 *name);
 
 void vfs_mount(i8 *path, vfs_node_t *vfs_node);
 void vfs_print_node(tree_node_t *node);
 void vfs_print();
+
+i8 *canonilize_path(i8 *full_path);
 
 #endif
