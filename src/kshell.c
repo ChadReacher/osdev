@@ -81,7 +81,7 @@ void help(const i8 *command) {
 		}
 	}
 
-	kprintf("No help for this command\n");
+	kprintf("[help]: no help for this command\n");
 }
 
 void date() {
@@ -177,7 +177,6 @@ void cat(i8 *command) {
 	} else {
 		abs_path = make_absolute_path(rel_path);
 	}
-	DEBUG("[CAT]: path - %s\r\n", abs_path);
 	vfs_node_t *vfs_node = vfs_get_node(abs_path);
 	if (rel_path[0] != '/') {
 		free(abs_path);
@@ -191,7 +190,6 @@ void cat(i8 *command) {
 		return;
 	}
 
-	DEBUG("[CAT]: inode - %d\r\n", vfs_node->inode);
 	u8 have_read = 0, offset = 0, size = 10;
 	i8 *buf = malloc(10);
 	memset(buf, 10, 0);
@@ -220,7 +218,6 @@ void write(i8 *command) {
 	} else {
 		abs_path = make_absolute_path(rel_path);
 	}
-	DEBUG("Trying to write to %s \r\n", abs_path);
 	vfs_node_t *vfs_node = vfs_get_node(abs_path);
 	if (rel_path[0] != '/') {
 		free(abs_path);
@@ -237,10 +234,6 @@ void write(i8 *command) {
 	i8 *offset_str = strsep(&command, " ");
 	u32 offset = atoi(offset_str);
 	i8 *content = command;
-
-	DEBUG("Offset - %x \r\n", offset);
-	DEBUG("Content - %s \r\n", content);
-	DEBUG("Write vfs node - %d \r\n", vfs_node->inode);
 
 	vfs_write(vfs_node, offset, strlen(content), content);
 }
@@ -264,13 +257,13 @@ void cd(i8 *command) {
 		if (rel_path[0] != '/') {
 			free(abs_path);
 		}
-		kprintf("Such path does not exist.\n");
+		kprintf("[cd]: such path does not exist.\n");
 		return;
 	} else if ((target_vfs_node->flags & FS_DIRECTORY) != FS_DIRECTORY) {
 		if (rel_path[0] != '/') {
 			free(abs_path);
 		}
-		kprintf("Given file is not a directory.\n");
+		kprintf("[cd]: given file is not a directory.\n");
 		return;
 	}
 
@@ -462,9 +455,7 @@ i8 *make_absolute_path(i8 *rel_path) {
 	}
 	strcat(abs_path, rel_path);
 
-	DEBUG("Try to canonilize path - %s\r\n", abs_path);
 	i8 *canonilized_path = canonilize_path(abs_path);
-	DEBUG("Canonilized path is - %s\r\n", canonilized_path);
 	if (abs_path) {
 		free(abs_path);
 	}

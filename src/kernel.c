@@ -48,7 +48,6 @@ void _start() {
 	vfs_print();
 	DEBUG("%s", "-------------------------\r\n");
 
-
 	//DEBUG("%s", "-------------------------\r\n");
 	//vfs_node_t *got_vfs_node = vfs_get_node("/dev/hdb");
 	//DEBUG("node name - %s\r\n", got_vfs_node->name);

@@ -75,6 +75,7 @@ void ext2_init(i8 *device_path, i8 *mountpoint) {
 u32 ext2_read(vfs_node_t *node, u32 offset, u32 size, i8 *buffer) {
 	ext2_inode_table *inode = ext2_get_inode_table(node->inode);
 	u32 have_read = ext2_read_inode_filedata(inode, offset, size, buffer);
+	free(inode);
 	return have_read;
 }
 
@@ -122,6 +123,13 @@ void ext2_write_inode_filedata(ext2_inode_table *inode, u32 inode_idx, u32 offse
 }
 
 u32 ext2_read_inode_filedata(ext2_inode_table *inode, u32 offset, u32 size, i8 *buffer) {
+	if (size == 0) {
+		return 0;
+	} else if (offset >= inode->size) {
+		return 0;
+	} else if (buffer == NULL) {
+		return 0;
+	}
 	u32 start_block = offset / ext2fs->block_size;
 	u32 end_offset = (offset + size <= inode->size) ? (offset + size) : (inode->size);
 	u32 end_block = end_offset / ext2fs->block_size;
@@ -554,7 +562,7 @@ void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
 		if (curr_dir_entry->name_len == entry_name_len) {
 			memcpy(name_buf_check, curr_dir_entry->name, entry_name_len);
 			if (curr_dir_entry->inode != 0 && strcmp(entry_name, name_buf_check) == 0) {
-				// For now it is jsut sets inode to zero.
+				// For now inode is 0
 				curr_dir_entry->inode = 0;
 				write_inode_disk_block(parent_inode, block_offset, block_buf);
 				break;
