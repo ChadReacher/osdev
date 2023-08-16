@@ -47,17 +47,6 @@ void ata_device_detect(ata_device_t *dev, u32 primary) {
 	u16 lba_low = port_inb(dev->lba_low);	
 	u16 lba_high = port_inb(dev->lba_high);
 
-	DEBUG("lba_low = %x, lba_high = %x\r\n", lba_low, lba_high);
-	if (lba_low == 0x14 && lba_high == 0xEB) {
-		DEBUG("%s", "ATADEV_PATAPI\r\n");
-	} else if (lba_low == 0x69 && lba_high == 0x96) {
-		DEBUG("%s", "ATADEV_SATAPI\r\n");
-	} else if (lba_low == 0x0 && lba_high == 0x0) {
-		DEBUG("%s", "ATADEV_PATA\r\n");
-	} else if (lba_low == 0x3C && lba_high == 0xC3) {
-		DEBUG("%s", "ATADEV_SATA\r\n");
-	}
-
 	if (lba_low != 0 || lba_high != 0) {
 		DEBUG("%s", "This device is not an ATA hard disk drive\r\n");
 		return;
@@ -325,12 +314,6 @@ vfs_node_t *ata_create_device(ata_device_t *dev) {
 	i8 *name = dev->mountpoint + strlen(dev->mountpoint) - 1 - 2;
 	strcpy(ata_dev_vfs_node->name, name);
 	
-	/*
-	strcpy(ata_dev_vfs_node->name, "ata device ");
-	u32 name_len = strlen(ata_dev_vfs_node->name);
-	ata_dev_vfs_node->name[name_len] = dev->mountpoint[strlen(dev->mountpoint) - 1];
-	ata_dev_vfs_node->name[name_len + 1] = '\0';
-	*/
 	DEBUG("Name of vfs node - %s\r\n", ata_dev_vfs_node->name);
 	ata_dev_vfs_node->flags = FS_BLOCKDEVICE;
 	ata_dev_vfs_node->read = ata_read;

@@ -134,7 +134,7 @@ typedef struct {
 	u8 name_len;
 	u8 file_type;
 	u8 name[];
-} ext2_dir;
+} __attribute__((packed)) ext2_dir;
 
 typedef struct {
 	vfs_node_t *disk_device;

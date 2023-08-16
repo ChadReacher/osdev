@@ -48,7 +48,6 @@ void ext2_init(i8 *device_path, i8 *mountpoint) {
 	ext2fs->bgd_table = malloc(block_group_descs_in_blocks * ext2fs->block_size);
 
 	DEBUG("bgd_table = %x\r\n", ext2fs->bgd_table);
-	DEBUG("first inode - %x\r\n", ext2fs->superblock->first_inode);
 
 	for (u32 i = 0; i < block_group_descs_in_blocks; ++i) {
 		read_disk_block(2 + i, (((i8 *)ext2fs->bgd_table) + i * ext2fs->block_size));
@@ -63,9 +62,14 @@ void ext2_init(i8 *device_path, i8 *mountpoint) {
 	DEBUG("links_count = %x\r\n", root_inode->links_count);
 	DEBUG("blocks = %x\r\n", root_inode->blocks);
 	DEBUG("flags = %x\r\n", root_inode->flags);
-	
+
 	vfs_node_t *ext2_vfs_node = ext2_make_vfs_node(root_inode);
 	vfs_mount(mountpoint, ext2_vfs_node);
+
+	block_alloc();
+	inode_alloc();
+
+	free(root_inode);
 }
 
 u32 ext2_read(vfs_node_t *node, u32 offset, u32 size, i8 *buffer) {
@@ -96,7 +100,9 @@ void ext2_write_inode_filedata(ext2_inode_table *inode, u32 inode_idx, u32 offse
 
 	u32 i = start_block;
 	u32 buf_off = 0;
+
 	i8 *block_buf = malloc(ext2fs->block_size);
+	memset(block_buf, 0, ext2fs->block_size);
 	while (i <= end_block) {
 		u32 left = 0, right = ext2fs->block_size;
 		read_inode_disk_block(inode, i, block_buf);
@@ -110,7 +116,6 @@ void ext2_write_inode_filedata(ext2_inode_table *inode, u32 inode_idx, u32 offse
 		buf_off += (right - left + 1);
 		write_inode_disk_block(inode, i, block_buf);
 		++i;
-
 	}
 
 	free(block_buf);
@@ -127,6 +132,7 @@ u32 ext2_read_inode_filedata(ext2_inode_table *inode, u32 offset, u32 size, i8 *
 	u32 i = start_block;
 	u32 buf_off = 0;
 	i8 *block_buf = malloc(ext2fs->block_size);
+	memset(block_buf, 0, ext2fs->block_size);
 	while (i <= end_block) {
 		u32 left = 0, right = ext2fs->block_size - 1;
 		read_inode_disk_block(inode, i, block_buf);
@@ -229,6 +235,7 @@ void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32
 		// If the inode block entry is not allocated
 		if (*(&inode->block[12]) == 0) {
 			u32 block_num = block_alloc();
+			DEBUG("Allocated block - %d\r\n", block_num);
 			inode->block[12] = block_num;
 			ext2_set_inode_table(inode, inode_idx);
 		}
@@ -247,6 +254,7 @@ void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32
 
 		if (*(&inode->block[13]) == 0) {
 			u32 block_num = block_alloc();
+			DEBUG("Allocated block - %d\r\n", block_num);
 			inode->block[13] = block_num;
 			ext2_set_inode_table(inode, inode_idx);
 		}
@@ -254,6 +262,7 @@ void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32
 
 		if (*(&tmp[c]) == 0) {
 			u32 block_num = block_alloc();
+			DEBUG("Allocated block - %d\r\n", block_num);
 			tmp[c] = block_num;
 			write_disk_block(inode->block[13], (i8 *)tmp);
 		}
@@ -273,6 +282,7 @@ void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32
 
 		if (*(&inode->block[14]) == 0) {
 			u32 block_num = block_alloc();
+			DEBUG("Allocated block - %d\r\n", block_num);
 			inode->block[14] = block_num;
 			ext2_set_inode_table(inode, inode_idx);
 		}
@@ -280,6 +290,7 @@ void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32
 
 		if (*(&tmp[e]) == 0) {
 			u32 block_num = block_alloc();
+			DEBUG("Allocated block - %d\r\n", block_num);
 			tmp[e] = block_num;
 			write_disk_block(inode->block[14], (i8 *)tmp);
 		}
@@ -288,6 +299,7 @@ void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32
 
 		if (*(&tmp[f]) == 0) {
 			u32 block_num = block_alloc();
+			DEBUG("Allocated block - %d\r\n", block_num);
 			tmp[f] = block_num;
 			write_disk_block(temp, (i8 *)tmp);
 		}
@@ -424,6 +436,7 @@ vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name) {
 
 void ext2_create(vfs_node_t *parent, i8 *name, u16 permission) {
 	u32 inode_idx = inode_alloc(); // alloc inode in inode bitmap
+	DEBUG("Inode allocated - %d\r\n", inode_idx);
 	ext2_inode_table *inode = ext2_get_inode_table(inode_idx);
 	inode->mode = EXT2_S_IFREG;
 	inode->mode |= 0xFFF & permission;
@@ -446,6 +459,7 @@ void ext2_create(vfs_node_t *parent, i8 *name, u16 permission) {
 
 	// Alloc inode block
 	u32 inode_block_num = block_alloc(); // alloc block in block bitmap
+	DEBUG("Allocated block - %d\r\n", inode_block_num);
 	set_real_block(inode, inode_idx, 0, inode_block_num); 
 	inode->blocks = 2; 
 	ext2_set_inode_table(inode, inode_idx);
@@ -455,6 +469,63 @@ void ext2_create(vfs_node_t *parent, i8 *name, u16 permission) {
 	ext2_inode_table *parent_inode = ext2_get_inode_table(parent->inode);
 	parent_inode->links_count++;
 	ext2_set_inode_table(parent_inode, parent->inode);
+}
+
+void ext2_mkdir(vfs_node_t *parent_node, i8 *entry_name, u16 permission) {
+	u32 inode_idx = inode_alloc(); // alloc inode in inode bitmap
+	DEBUG("Got new inode - %d\r\n", inode_idx);
+	ext2_inode_table *inode = ext2_get_inode_table(inode_idx);
+	inode->mode = EXT2_S_IFDIR;
+	inode->mode |= 0xFFF & permission;
+	inode->atime = 0;
+	inode->ctime = 0;
+	inode->mtime = 0;
+	inode->dtime = 0;
+	inode->gid = 0;
+	inode->uid = 0;
+	inode->faddr = 0;
+	inode->size = ext2fs->block_size;
+	inode->blocks = 0;
+	memset(inode->block, 0, sizeof(inode->block));
+	inode->links_count = 2;
+	inode->flags = 0;
+	inode->osd1 = 0;
+	inode->generation = 0;
+	inode->file_acl = 0;
+	inode->dir_acl = 0;
+	memset(inode->osd2, 0, sizeof(inode->osd2));
+
+	// Alloc inode block
+	u32 inode_block_num = block_alloc(); // alloc block in block bitmap
+	set_real_block(inode, inode_idx, 0, inode_block_num); 
+	inode->blocks = 2; 
+	ext2_set_inode_table(inode, inode_idx);
+	ext2_create_dir_entry(parent_node, entry_name, inode_idx);
+
+	i8 *block_buf = malloc(ext2fs->block_size);
+	read_inode_disk_block(inode, 0, block_buf);
+	memset(block_buf, 0, ext2fs->block_size);
+
+	ext2_dir *link_to_curr_dir = (ext2_dir *)block_buf;
+	link_to_curr_dir->inode = inode_idx;
+	link_to_curr_dir->name_len = 1;
+	link_to_curr_dir->file_type = 0;
+	memcpy(link_to_curr_dir->name, ".", 1);
+	link_to_curr_dir->rec_len = ((sizeof(ext2_dir) + link_to_curr_dir->name_len) & 0xFFFFFFFC) + 0x4;
+
+	ext2_dir *link_to_parent_dir = (ext2_dir *)(block_buf + link_to_curr_dir->rec_len);
+	link_to_parent_dir->inode = parent_node->inode;
+	link_to_parent_dir->name_len = 2;
+	link_to_parent_dir->file_type = 0;
+	memcpy(link_to_parent_dir->name, "..", 2);
+	link_to_parent_dir->rec_len = (u32)block_buf + ext2fs->block_size - (u32)link_to_parent_dir;
+
+	write_inode_disk_block(inode, 0, block_buf);
+
+	// Update parent inode's size 
+	ext2_inode_table *parent_inode = ext2_get_inode_table(parent_node->inode);
+	parent_inode->links_count++;
+	ext2_set_inode_table(parent_inode, parent_node->inode);
 }
 
 void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
@@ -560,8 +631,8 @@ u32 block_alloc() {
 			for (u32 k = 0; k < 32; ++k) {
 				u32 is_free = !(sub_bitmap & (1 << k));
 				if (is_free) {
-					u32 mask = 1 << k;
-					buf[j] = buf[j] | mask;
+					u32 mask = (1 << k);
+					buf[j] = (buf[j] | mask);
 					write_disk_block(block_bitmap_block, (i8 *)buf);
 					--ext2fs->bgd_table[i].free_blocks_count;
 
@@ -644,7 +715,7 @@ void ext2_create_dir_entry(vfs_node_t *parent, i8 *entry_name, u32 inode_idx) {
 			continue;
 		}
 		in_block_offset += curr_dir_entry->rec_len;
-		curr_offset += in_block_offset;
+		curr_offset += curr_dir_entry->rec_len;
 	}
 
 	free(name_buf_check);
@@ -681,6 +752,7 @@ void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dir
 	vfs_node->read = ext2_read;
 	vfs_node->write = ext2_write;
 	vfs_node->create = ext2_create;
+	vfs_node->mkdir = ext2_mkdir;
 	vfs_node->open = ext2_open;
 	vfs_node->close = ext2_close;
 	vfs_node->readdir = ext2_readdir;
@@ -746,6 +818,7 @@ vfs_node_t *ext2_make_vfs_node(ext2_inode_table *root_inode) {
 	ext2_vfs_node->read = ext2_read;
 	ext2_vfs_node->write = ext2_write;
 	ext2_vfs_node->create = ext2_create;
+	ext2_vfs_node->mkdir = ext2_mkdir;
 	ext2_vfs_node->unlink = ext2_unlink;
 	ext2_vfs_node->open = ext2_open;
 	ext2_vfs_node->close = ext2_close;

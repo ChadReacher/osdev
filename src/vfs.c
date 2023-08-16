@@ -187,6 +187,39 @@ void vfs_create(i8 *name, u16 permission) {
 	free(saved_dirname);
 }
 
+void vfs_mkdir(i8 *name, u16 permission) {
+	// Get parent directory vfs node
+	i32 i = strlen(name);
+	i8 *dirname = strdup(name);
+	i8 *saved_dirname = dirname;
+	i8 *parent_path = "/";
+	while (i >= 0) {
+		if (dirname[i] == '/') {
+			if (i != 0) {
+				dirname[i] = '\0';
+				parent_path = dirname;
+			}
+			dirname = dirname + i + 1;
+			break;
+		}
+		--i;
+	}
+
+	DEBUG("Want to create a file - %s\r\n", name);
+	DEBUG("Dirname - %s\r\n", dirname);
+	DEBUG("Parent path - %s\r\n", parent_path);
+	vfs_node_t *parent_node = vfs_get_node(parent_path);
+	if (!parent_node) {
+		free(saved_dirname);
+		return;
+	}
+
+	if ((parent_node->flags & FS_DIRECTORY) == FS_DIRECTORY && parent_node->mkdir) {
+		parent_node->mkdir(parent_node, dirname, permission);
+	}
+	free(saved_dirname);
+}
+
 dirent *vfs_readdir(vfs_node_t *vfs_node, u32 index) {
 	if (vfs_node && ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) && vfs_node->readdir) {
 		dirent *de = vfs_node->readdir(vfs_node, index);

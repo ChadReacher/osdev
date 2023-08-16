@@ -41,7 +41,7 @@ static u8 keyboard_layout_us[2][128] = {
 
 static i8 cwd[100] = {0};
 
-#define NB_DOCUMENTED_COMMANDS 10
+#define NB_DOCUMENTED_COMMANDS 11
 
 const i8 *commands[][NB_DOCUMENTED_COMMANDS] = {
 	{"help", "Display information about OS shell commands"},
@@ -49,11 +49,12 @@ const i8 *commands[][NB_DOCUMENTED_COMMANDS] = {
 	{"clear", "Clear the terminal screen"},
 	{"selftest", "Run test suite"},
 	{"ls", "list directories and files"},
-	{"touch", "Create an empty file(required full path)"},
+	{"touch", "Create an empty file"},
 	{"cat", "Print file's content"},
 	{"write", "Write contents to the file.\nUsage: write FILE OFFSET CONTENT"},
 	{"cd", "Change current working directory"},
-	{"rm", "Delete the file"}
+	{"rm", "Delete the file"},
+	{"mkdir", "Make a new diretory"}
 };
 
 i8 readline[READLINE_SIZE] = {0};
@@ -146,9 +147,22 @@ void ls() {
 	kprintf("\n");
 }
 
-void touch(const i8 *command) {
-	command += 6;
-	vfs_create((i8 *)command, 0);
+void touch(i8 *command) {
+	i8 *rel_path = command + 6;
+	if (!*rel_path) {
+		return;
+	}
+
+	i8 *abs_path;
+	if (rel_path[0] == '/') {
+		abs_path = rel_path;
+	} else {
+		abs_path = make_absolute_path(rel_path);
+	}
+	vfs_create(abs_path, 0);
+	if (rel_path[0] != '/') {
+		free(abs_path);
+	}
 }
 
 void cat(i8 *command) {
@@ -163,6 +177,7 @@ void cat(i8 *command) {
 	} else {
 		abs_path = make_absolute_path(rel_path);
 	}
+	DEBUG("[CAT]: path - %s\r\n", abs_path);
 	vfs_node_t *vfs_node = vfs_get_node(abs_path);
 	if (rel_path[0] != '/') {
 		free(abs_path);
@@ -176,6 +191,7 @@ void cat(i8 *command) {
 		return;
 	}
 
+	DEBUG("[CAT]: inode - %d\r\n", vfs_node->inode);
 	u8 have_read = 0, offset = 0, size = 10;
 	i8 *buf = malloc(10);
 	memset(buf, 10, 0);
@@ -224,6 +240,7 @@ void write(i8 *command) {
 
 	DEBUG("Offset - %x \r\n", offset);
 	DEBUG("Content - %s \r\n", content);
+	DEBUG("Write vfs node - %d \r\n", vfs_node->inode);
 
 	vfs_write(vfs_node, offset, strlen(content), content);
 }
@@ -259,6 +276,7 @@ void cd(i8 *command) {
 
 	memset(cwd, 0, 100);
 	memcpy(cwd, abs_path, strlen(abs_path));
+
 	if (rel_path[0] != '/') {
 		free(abs_path);
 	}
@@ -278,6 +296,27 @@ void rm(i8 *command) {
 	}
 
 	vfs_unlink(abs_path);
+	if (rel_path[0] != '/') {
+		free(abs_path);
+	}
+}
+
+void mkdir(i8 *command) {
+	i8 *rel_path = command + 6;
+	if (!*rel_path) {
+		return;
+	}
+
+	i8 *abs_path;
+	if (rel_path[0] == '/') {
+		abs_path = rel_path;
+	} else {
+		abs_path = make_absolute_path(rel_path);
+	}
+	vfs_mkdir(abs_path, 0);
+	if (rel_path[0] != '/') {
+		free(abs_path);
+	}
 }
 
 void run_command(const i8 *command) {
@@ -296,7 +335,7 @@ void run_command(const i8 *command) {
 	} else if (strncmp(command, "ls", 2) == 0) {
 		ls();
 	} else if (strncmp(command, "touch", 2) == 0) {
-		touch(command);
+		touch((i8 *)command);
 	} else if (strncmp(command, "cat", 3) == 0) {
 		cat((i8 *)command);
 	} else if (strncmp(command, "write", 5) == 0) {
@@ -305,6 +344,8 @@ void run_command(const i8 *command) {
 		cd((i8 *)command);
 	} else if (strncmp(command, "rm", 2) == 0) {
 		rm((i8 *)command);
+	} else if (strncmp(command, "mkdir", 5) == 0) {
+		mkdir((i8 *)command);
 	} else {
 		kprintf("Invalid command\n");
 	}
