@@ -70,14 +70,25 @@ u32 ext2_read(vfs_node_t *node, u32 offset, u32 size, i8 *buffer) {
 u32 ext2_write(vfs_node_t *node, u32 offset, u32 size, i8 *buffer) {
 	ext2_inode_table *inode = ext2_get_inode_table(node->inode);	
 	ext2_write_inode_filedata(inode, node->inode, offset, size, buffer);
+	free(inode);
 	return size;
 }
 
 void ext2_write_inode_filedata(ext2_inode_table *inode, u32 inode_idx, u32 offset, u32 size, i8 *buffer) {
+	if (size == 0) {
+		return;
+	} else if (buffer == NULL) {
+		return;
+	}
 	// If we are increasing the file size, 
 	// then rewrite inode size
 	if (offset + size > inode->size) {
 		inode->size = offset + size;
+		u32 inode_size_in_blocks = inode->size / 1024;
+		if (inode->size % 1024 != 0) {
+			++inode_size_in_blocks;
+		}
+		inode->blocks = inode_size_in_blocks * 2;
 		ext2_set_inode_table(inode, inode_idx);
 	}
 	u32 start_block = offset / ext2fs->block_size;
@@ -360,6 +371,7 @@ vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name) {
 	ext2_inode_table *inode = ext2_get_inode_table(node->inode);
 	if (!(inode->mode & EXT2_S_IFDIR)) {
 		DEBUG("%s", "It is not a directory\r\n");
+		free(inode);
 		return NULL;
 	}
 	ext2_dir *found_dirent = NULL;
@@ -474,6 +486,7 @@ void ext2_create(vfs_node_t *parent, i8 *name, u16 permission) {
 	ext2_inode_table *parent_inode = ext2_get_inode_table(parent->inode);
 	parent_inode->links_count++;
 	ext2_set_inode_table(parent_inode, parent->inode);
+	free(parent_inode);
 }
 
 void ext2_mkdir(vfs_node_t *parent_node, i8 *entry_name, u16 permission) {
@@ -529,6 +542,10 @@ void ext2_mkdir(vfs_node_t *parent_node, i8 *entry_name, u16 permission) {
 	ext2_inode_table *parent_inode = ext2_get_inode_table(parent_node->inode);
 	parent_inode->links_count++;
 	ext2_set_inode_table(parent_inode, parent_node->inode);
+
+	free(block_buf);
+	free(inode);
+	free(parent_inode);
 }
 
 void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
@@ -655,7 +672,7 @@ void inode_free(u32 inode) {
 	// Which group it belongs to
 	u32 group_idx = inode / ext2fs->inodes_per_group;
 	u32 inode_block = ext2fs->bgd_table[group_idx].inode_bitmap; 
-	read_disk_block(inode_block, buf); 
+	read_disk_block(inode_block, (i8 *)buf); 
 	// Which sub_bitmap it belongs to 
 	u32 sub_bitmap_idx = (inode - ext2fs->inodes_per_group * group_idx) / 32; 
 	// Index in sub_bitmap
@@ -664,7 +681,7 @@ void inode_free(u32 inode) {
 	
 	u32 mask = ~(1 << idx);
 	buf[sub_bitmap_idx] = buf[sub_bitmap_idx] & mask;
-	write_disk_block(inode_block, buf);
+	write_disk_block(inode_block, (i8 *)buf);
 	++ext2fs->bgd_table[group_idx].free_inodes_count;
 	free(buf);
 }
@@ -675,7 +692,7 @@ void block_free(u32 block) {
 	// Which group it belongs to
 	u32 group_idx = block / ext2fs->blocks_per_group;
 	u32 bitmap_block = ext2fs->bgd_table[group_idx].block_bitmap; 
-	read_disk_block(bitmap_block, buf); 
+	read_disk_block(bitmap_block, (i8 *)buf); 
 	// Which sub_bitmap it belongs to 
 	u32 sub_bitmap_idx = (block - ext2fs->blocks_per_group * group_idx) / 32; 
 	// Index in sub_bitmap
@@ -684,7 +701,7 @@ void block_free(u32 block) {
 	
 	u32 mask = ~(1 << idx);
 	buf[sub_bitmap_idx] = buf[sub_bitmap_idx] & mask;
-	write_disk_block(bitmap_block, buf);
+	write_disk_block(bitmap_block, (i8 *)buf);
 	++ext2fs->bgd_table[group_idx].free_blocks_count;
 	free(buf);
 }

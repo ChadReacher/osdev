@@ -209,8 +209,9 @@ void _start() {
 	memcpy(str_to_cat, "cat", 3);
 	i8 *another_str_to_cat = "man";
 	DEBUG("First str - %s, second str - %s\r\n", str_to_cat, another_str_to_cat);
-	i8 *concatenated_str = strcat(str_to_cat, another_str_to_cat);
-	DEBUG("Result of strcat - %s\r\n", concatenated_str);
+	strcat(str_to_cat, another_str_to_cat);
+	DEBUG("Result of strcat - %s\r\n", str_to_cat);
+	free(str_to_cat);
 
 	i8 *complicated_path = "/usr/data/bin";
 	DEBUG("Canonilize path - %s\r\n", complicated_path);

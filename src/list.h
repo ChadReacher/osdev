@@ -20,7 +20,7 @@ list_node_t *list_insert_front(list_t *list, void *val);
 void list_insert_back(list_t *list, void *val);
 list_node_t *list_remove_front(list_t *list);
 list_node_t *list_remove_back(list_t *list);
-void list_remove_node(list_t *list, list_node_t *node);
+list_node_t *list_remove_node(list_t *list, list_node_t *node);
 void list_destroy(list_t *list);
 
 #endif

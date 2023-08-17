@@ -179,9 +179,6 @@ void vfs_create(i8 *name, u16 permission) {
 		--i;
 	}
 
-	DEBUG("Want to create a file with path - %s\r\n", name);
-	DEBUG("Dirname - %s\r\n", dirname);
-	DEBUG("Parent path - %s\r\n", parent_path);
 	vfs_node_t *parent_node = vfs_get_node(parent_path);
 	if (!parent_node) {
 		free(saved_dirname);
@@ -309,13 +306,10 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 
 	while ((name = strsep(&path_dup, "/")) != NULL) {
 		found = false;
-		DEBUG("Get from strsep - %s, %c, (%x)\r\n", name, *name, *name);
 		children = current_tree_node->children;
-		DEBUG("Children of '%s' are:\r\n", ((vfs_node_t*)current_tree_node->val)->name);
 		for(child = children->head; child; child = child->next) {
 			tree_node_t *vvnode = (tree_node_t *)child->val;
 			vfs_node_t *vnode = (vfs_node_t*)vvnode->val;
-			DEBUG("Vnode child name : %s\r\n", vnode->name);
 			if (strcmp(vnode->name, name) == 0) {
 				found = true;
 				current_tree_node = (tree_node_t *)child->val;
@@ -337,7 +331,6 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 				intermediary_node->unlink = NULL;
 				intermediary_node->open = NULL;
 				intermediary_node->close = NULL;
-				intermediary_node->create = NULL;
 				intermediary_node->readdir = NULL;
 				intermediary_node->finddir = NULL;
 				intermediary_node->ptr = NULL;

@@ -131,7 +131,6 @@ i8 *strdup(const i8 *str) {
 	return ret;
 }
 
-// Caller should free the memory
 i8 *strcat(i8 *dest, const i8 *src) {
 	u32 dest_len = strlen(dest);
 	u32 i;

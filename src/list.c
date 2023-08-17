@@ -61,6 +61,7 @@ void list_insert_back(list_t *list, void *val) {
 	return;
 }
 
+// Caller should free the memory
 list_node_t *list_remove_front(list_t *list) {
 	if (!list || !list->head) {
 		return NULL;
@@ -79,6 +80,7 @@ list_node_t *list_remove_front(list_t *list) {
 	return save;
 }
 
+// Caller should free the memory
 list_node_t *list_remove_back(list_t *list) {
 	if (!list || !list->tail) {
 		return NULL;
@@ -97,21 +99,22 @@ list_node_t *list_remove_back(list_t *list) {
 	return save;
 }
 
-void list_remove_node(list_t *list, list_node_t *node) {
+// Caller should free the memory
+list_node_t *list_remove_node(list_t *list, list_node_t *node) {
 	if (!list || !list->head) {
 		return;
 	}
 
 	if (list->head == node) {
-		list_remove_front(list);	
+		return list_remove_front(list);	
 	} else if (list->tail == node) {
-		list_remove_back(list);
+		return list_remove_back(list);
 	} else {
 		// 1 - [2] - 3
 		node->next->prev = node->prev;
 		node->prev->next = node->next;
 		--list->sz;
-		free(node);
+		return node;
 	}
 }
 
