@@ -27,7 +27,7 @@ OS: build/bootloader.bin build/kernel.bin
 
 disk:
 	dd if=/dev/zero of=disk.img bs=1M count=4096
-	mkfs.ext2 -b 1024 -g 8192 -r 0 -d hdd disk.img
+	mkfs.ext2 -b 1024 -g 8192 -i 1024 -r 0 -d hdd disk.img
 	@echo "HDD has been created with EXT2 file system(revision 0). It has 1024 block size(bytes) and 8192 blocks per block group" 
 
 build/kernel.bin: build/kernel.elf
@@ -59,7 +59,8 @@ debug:
 	qemu-system-i386 -drive format=raw,file=build/boot.img\
 	       	-drive file=disk.img,if=ide,format=raw,media=disk,index=1 \
 	       	-boot a -s -S \
-		& gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf" -ex "br _start" -ex "layout src" -ex "continue" -ex "next"
+		& gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf"\
+	       	-ex "br _start" -ex "layout src" -ex "continue" -ex "next"\
 
 build/interrupt.o: src/interrupt.asm
 	$(AS) -f elf32 $< -o $@

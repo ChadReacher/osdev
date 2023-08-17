@@ -47,22 +47,7 @@ void _start() {
 	DEBUG("%s", "-------------------------\r\n");
 	vfs_print();
 	DEBUG("%s", "-------------------------\r\n");
-
-	//DEBUG("%s", "-------------------------\r\n");
-	//vfs_node_t *got_vfs_node = vfs_get_node("/dev/hdb");
-	//DEBUG("node name - %s\r\n", got_vfs_node->name);
-	//DEBUG("%s", "-------------------------\r\n");
-
-	//DEBUG("%s", "-------------------------\r\n");
-	//got_vfs_node = vfs_get_node("/dev/sdb");
-	//DEBUG("node is %p\r\n", got_vfs_node);
-	//DEBUG("%s", "-------------------------\r\n");	
-
-	//DEBUG("%s", "-------------------------\r\n");
-	//got_vfs_node = vfs_get_node("/bin/proc");
-	//DEBUG("node is %p\r\n", got_vfs_node);
-	//DEBUG("%s", "-------------------------\r\n");	
-
+	
 	/*
 	DEBUG("%s", "-------------------------\r\n");
 	i8 *filebuf = malloc(5);

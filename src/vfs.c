@@ -155,8 +155,15 @@ void vfs_close(vfs_node_t *node) {
 }
 
 void vfs_create(i8 *name, u16 permission) {
+	if (!name) {
+		return;
+	} else if (name[0] != '/') {
+		return;
+	} else if (strlen(name) == 1 && name[0] == '/') {
+		return;
+	}
 	// Get parent directory vfs node
-	i32 i = strlen(name);
+	i32 i = strlen(name) - 1;
 	i8 *dirname = strdup(name);
 	i8 *saved_dirname = dirname;
 	i8 *parent_path = "/";
@@ -172,7 +179,7 @@ void vfs_create(i8 *name, u16 permission) {
 		--i;
 	}
 
-	DEBUG("Want to create a file - %s\r\n", name);
+	DEBUG("Want to create a file with path - %s\r\n", name);
 	DEBUG("Dirname - %s\r\n", dirname);
 	DEBUG("Parent path - %s\r\n", parent_path);
 	vfs_node_t *parent_node = vfs_get_node(parent_path);

@@ -174,7 +174,8 @@ void write_inode_disk_block(ext2_inode_table *inode, u32 block, i8 *buf);
 u32 inode_alloc();
 u32 block_alloc();
 
-void ext2_create_dir_entry(vfs_node_t *parent, i8 *name, u32 inode_idx);
+bool ext2_create_dir_entry(vfs_node_t *parent, i8 *name, u32 inode_idx);
+void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32 disk_block);
 void rewrite_bgds();
 
 #endif
