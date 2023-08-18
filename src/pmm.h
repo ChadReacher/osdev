@@ -24,5 +24,6 @@ void mark_memory_as_free(u32 base_address, u32 size);
 void mark_memory_as_used(u32 base_address, u32 size);
 void *allocate_blocks(u32 num_blocks);
 void free_blocks(void *address, u32 num_blocks);
+void print_physical_memory_info();
 
 #endif

@@ -2,7 +2,6 @@
 #include "pci.h"
 #include "port.h"
 #include "heap.h"
-#include "memory.h"
 #include "string.h"
 #include "debug.h"
 #include "paging.h"

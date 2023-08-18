@@ -6,13 +6,24 @@
 #include "screen.h"
 #include "debug.h"
 
-u8 last_scancode = 0;
+#define RING_BUFFER_SIZE 8
 
-u8 keyboard_get_last_scancode() {
-	u8 scancode;
+u8 scancodes[RING_BUFFER_SIZE];
+u8 buffer_len = 0;
+u8 read_idx = 0;
+u8 write_idx = 0;
 
-	scancode = last_scancode;
-	last_scancode = 0;
+u8 keyboard_get_scancode() {
+	if (buffer_len == 0) {
+		return 0;
+	}
+	u8 scancode = scancodes[read_idx++];
+	--buffer_len;
+
+	if (read_idx == RING_BUFFER_SIZE) {
+		read_idx = 0;
+	}
+
 	return scancode;
 }
 
@@ -21,8 +32,19 @@ static void keyboard_handler() {
 
 	status = port_inb(KEYBOARD_STATUS_PORT);
 	if (status & 0x01) { // Is output buffer full?
-		last_scancode = port_inb(KEYBOARD_DATA_PORT);
-		DEBUG("Received scancode: %d\r\n", last_scancode);	
+		u8 scancode = port_inb(KEYBOARD_DATA_PORT);
+
+		if (buffer_len == RING_BUFFER_SIZE) {
+			DEBUG("%s", "Ring buffer is full.\r\n");
+			return;
+		}
+
+		scancodes[write_idx++] = scancode;
+		++buffer_len;
+
+		if (write_idx == RING_BUFFER_SIZE) {
+			write_idx = 0;
+		}
 	}
 }
 

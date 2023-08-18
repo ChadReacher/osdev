@@ -5,11 +5,12 @@
 #include "isr.h"
 
 #define INT_SYSCALL "int $0x80"
-#define NB_SYSCALLS  4
-#define SYSCALL_TEST 0
-#define SYSCALL_READ 1
-#define SYSCALL_OPEN 2
-#define SYSCALL_CLOSE 3
+#define NB_SYSCALLS  5
+#define SYSCALL_TEST	0
+#define SYSCALL_READ	1
+#define SYSCALL_WRITE	2
+#define SYSCALL_OPEN	3
+#define SYSCALL_CLOSE	4
 
 typedef void (*syscall_handler_t)(registers_state *regs_state);
 

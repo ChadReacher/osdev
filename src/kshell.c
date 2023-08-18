@@ -1,7 +1,7 @@
 #include "kshell.h"
 #include "stdio.h"
 #include "stdlib.h"
-#include "memory.h"
+#include "string.h"
 #include "cmos.h"
 #include "screen.h"
 #include "string.h"
@@ -354,7 +354,7 @@ void kshell() {
 	kprintf(cwd);
 	kprintf(PROMPT);
 	for (;;) {
-		kshell_run(keyboard_get_last_scancode());
+		kshell_run(keyboard_get_scancode());
 	}
 }
 

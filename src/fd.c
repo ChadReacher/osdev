@@ -1,5 +1,6 @@
 #include "fd.h"
 #include "vfs.h"
+#include "string.h"
 
 file fds[NB_DESCRIPTORS] = {0};
 

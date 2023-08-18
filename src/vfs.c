@@ -4,7 +4,6 @@
 #include "string.h"
 #include "stdio.h"
 #include "debug.h"
-#include "memory.h"
 #include "list.h"
 
 
@@ -356,11 +355,13 @@ void vfs_print() {
 	if (!vfs_tree || !vfs_tree->root->val) {
 		return;
 	}
+	DEBUG("%s", "-------------------------\r\n");
 	DEBUG("Size of VFS tree: %x\r\n", vfs_tree->sz);
 	tree_node_t *root = vfs_tree->root;
 	vfs_node_t *vfs_node = (vfs_node_t *)root->val;
 	DEBUG("'%s'\r\n", vfs_node->name);
 	vfs_print_node(vfs_tree->root);
+	DEBUG("%s", "-------------------------\r\n");
 }
 
 // Caller should free the memory

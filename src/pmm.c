@@ -1,6 +1,5 @@
 #include "pmm.h"
-#include "memory.h"
-#include "screen.h"
+#include "string.h"
 #include "debug.h"
 
 u32 *memory_map = 0;
@@ -113,6 +112,7 @@ void pmm_init() {
 	DEBUG("Number of used or reserved 4K blocks: %x\r\n", used_blocks);
 	DEBUG("Number of free 4K blocks: %x\r\n", (total_blocks - used_blocks));
 	DEBUG("Total amount of 4K blocks: %x\r\n", total_blocks);
+	print_physical_memory_info();
 }
 
 void _pmm_init(u32 start_address, u32 size) {
@@ -174,3 +174,37 @@ void free_blocks(void *address, u32 num_blocks) {
 	used_blocks -= num_blocks;
 }
 
+void print_physical_memory_info() {
+	memory_map_entry *mmap_entry;
+	u32 num_entries;
+
+	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
+	num_entries = *((u32 *)BIOS_NUM_ENTRIES);
+
+	DEBUG("%s", "Physical memory info: \r\n");
+	DEBUG("Total number of entries: %d\r\n", num_entries);
+	for (u8 i = 0; i < num_entries; ++i) {
+		serial_printf("Region: %x | Base: %x | Length: %x | Type(%d): ", i, (u32)mmap_entry->base_address, (u32)mmap_entry->length, mmap_entry->type);
+		switch (mmap_entry->type) {
+			case 1:
+				serial_printf("Available Memory");
+				break;
+			case 2:
+				serial_printf("Reserved Memory");
+				break;
+			case 3:
+				serial_printf("ACPI Reclaim Memory");
+				break;
+			case 4:
+				serial_printf("ACPI NVS Memory");
+				break;
+			default:
+				serial_printf("Undefined Memory");
+				break;
+		}
+		serial_printf("\r\n");
+		++mmap_entry; 
+	}
+	--mmap_entry;
+	DEBUG("Total amount of memory(in bytes): %x\r\n", (u32)mmap_entry->base_address + (u32)mmap_entry->length - 1);
+}

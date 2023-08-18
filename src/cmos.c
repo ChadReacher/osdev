@@ -1,7 +1,6 @@
 #include "cmos.h"
+#include "string.h"
 #include "port.h"
-#include "memory.h"
-#include "stdio.h"
 #include "debug.h"
 
 bool rtc_values_are_not_equal(cmos_rtc_t left, cmos_rtc_t right) {

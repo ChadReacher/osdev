@@ -1,5 +1,5 @@
-#include "memory.h"
 #include "screen.h"
+#include "string.h"
 #include "debug.h"
 
 static const u32 background_color = 0x00263238; // Grey color

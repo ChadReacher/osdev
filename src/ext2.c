@@ -3,7 +3,6 @@
 #include "vfs.h"
 #include "debug.h"
 #include "string.h"
-#include "memory.h"
 #include "fcntl.h"
 
 ext2_fs *ext2fs = NULL;

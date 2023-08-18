@@ -3,6 +3,9 @@
 
 #include "types.h"
 
+void *memset(void *ptr, u32 value, u32 num);
+void *memcpy(void *dst, const void* src, u32 num); 
+
 u32 strlen(const i8 *str);
 i8 *strrev(i8 *str);
 u8 strncmp(const i8 *left, const i8 *right, i32 len);

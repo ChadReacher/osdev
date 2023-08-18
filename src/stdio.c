@@ -1,8 +1,6 @@
-#include "types.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "screen.h"
-#include "memory.h"
 #include "string.h"
 #include "serial.h"
 

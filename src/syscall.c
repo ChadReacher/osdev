@@ -5,6 +5,8 @@
 #include "vfs.h"
 #include "debug.h"
 #include "fcntl.h"
+#include "string.h"
+#include "keyboard.h"
 
 extern file fds[NB_DESCRIPTORS];
 
@@ -50,6 +52,10 @@ void syscall_open(registers_state *regs) {
 			vfs_create(filename, mode);
 			vfs_node = vfs_get_node(filename);
 		}
+	} else if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
+		DEBUG("Cannot open a directory - %s\r\n", filename);
+		regs->eax = -1;
+		return;
 	}
 
 	i32 fd = fd_get();
@@ -90,7 +96,7 @@ void syscall_read(registers_state *regs) {
 	u32 count = regs->edx;
 
 	if (fd == FD_STDIN) {
-		u8 scancode = keyboard_get_last_scancode();
+		u8 scancode = keyboard_get_scancode();
 		if (scancode) {
 			buf[0] = scancode;
 		}
@@ -120,3 +126,4 @@ void syscall_read(registers_state *regs) {
 
 	regs->eax = have_read;
 }
+

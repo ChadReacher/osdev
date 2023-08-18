@@ -44,7 +44,7 @@
 #define UP_ARROW 0x48
 #define DOWN_ARROW 0x50
 
-u8 keyboard_get_last_scancode();
+u8 keyboard_get_scancode();
 void keyboard_init();
 
 #endif

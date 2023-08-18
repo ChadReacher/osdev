@@ -1,9 +1,8 @@
 #include "heap.h"
 #include "pmm.h"
 #include "paging.h"
-#include "stdio.h"
 #include "debug.h"
-#include "memory.h"
+#include "string.h"
 
 void *heap_start = NULL;
 void *heap_curr = NULL;

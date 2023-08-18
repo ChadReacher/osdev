@@ -1,5 +1,5 @@
 #include "paging.h"
-#include "memory.h"
+#include "string.h"
 #include "stdio.h"
 #include "screen.h"
 #include "debug.h"

@@ -20,17 +20,13 @@
 #include "pci.h"
 #include "ata.h"
 #include "ext2.h"
-#include "memory.h"
 #include "open.h"
 #include "close.h"
 #include "read.h"
 #include "fcntl.h"
 
-void print_physical_memory_info();
-
 void _start() {
 	serial_init();
-	DEBUG("%s", "OS has started\r\n");
 
 	isr_init();
 	syscall_init();
@@ -48,133 +44,93 @@ void _start() {
 	ata_init();
 	ext2_init("/dev/hdb", "/");
 
-	DEBUG("%s", "-------------------------\r\n");
+	kprintf("/----------------------------------------------\\\n");
+	kprintf("\t\tWelcome to the OS.\n");
+	kprintf("\\----------------------------------------------/\n");
+
 	vfs_print();
-	DEBUG("%s", "-------------------------\r\n");
 	
 	u32 ret_fd, sz, have_read;
 	i8 *buff;
 
-	kprintf("O_RDONLY\n");
+	DEBUG("%s", "O_RDONLY\r\n");
 	ret_fd = open("/hi.txt", O_RDONLY, 0);
-	kprintf("Got ret_fd - %d\n", ret_fd);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
-	kprintf("Have read - %d, %s\n", have_read, buff);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
 	free(buff);
 	close(ret_fd);
 
-	kprintf("O_WRONLY\n");
+	DEBUG("%s", "O_WRONLY\r\n");
 	ret_fd = open("/hi.txt", O_WRONLY, 0);
-	kprintf("Got ret_fd - %d\n", ret_fd);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
-	kprintf("Have read - %d, %s\n", have_read, buff);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
 	free(buff);
 	close(ret_fd);
 
-	kprintf("O_RDWR\n");
+	DEBUG("%s", "O_RDWR\r\n");
 	ret_fd = open("/hi.txt", O_RDWR, 0);
-	kprintf("Got ret_fd - %d\n", ret_fd);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
-	kprintf("Have read - %d, %s\n", have_read, buff);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
 	free(buff);
 	close(ret_fd);
 
-	kprintf("O_APPEND\n");
+	DEBUG("%s", "O_APPEND\r\n");
 	ret_fd = open("/hi.txt", O_APPEND, 0);
-	kprintf("Got ret_fd - %d\n", ret_fd);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
-	kprintf("Have read - %d, %s\n", have_read, buff);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
 	free(buff);
 	close(ret_fd);
 
-	kprintf("O_CREAT\n");
+	DEBUG("%s", "O_CREAT\r\n");
 	ret_fd = open("/hi.txt", O_CREAT, 0);
-	kprintf("Got ret_fd - %d\n", ret_fd);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
-	kprintf("Have read - %d, %s\n", have_read, buff);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
 	free(buff);
 	close(ret_fd);
 
-	kprintf("O_TRUNC\n");
+	DEBUG("%s", "O_TRUNC\r\n");
 	ret_fd = open("/hi.txt", O_TRUNC, 0);
-	kprintf("Got ret_fd - %d\n", ret_fd);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
-	kprintf("Have read - %d, %s\n", have_read, buff);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
 	free(buff);
 	close(ret_fd);
 
-	kprintf("O_CREAT /sky\n");
+	DEBUG("%s", "O_CREAT /sky\r\n");
 	ret_fd = open("/sky", O_CREAT, 0);
-	kprintf("Got ret_fd - %d\n", ret_fd);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
-	kprintf("Have read - %d, %s\n", have_read, buff);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
 	free(buff);
 	close(ret_fd);
 
 	/*
-	DEBUG("%s", "-------------------------\r\n");
-	i8 *filebuf = malloc(5);
-	memset(filebuf, 0, 5);
-	u8 have_read = vfs_read(vfs_get_node("/hi.txt"), 17, 5, filebuf);
-	DEBUG("Have read - %d\r\n", have_read);
-	DEBUG("%s", "File buf: \r\n");
-	for (u32 i = 0; i < 5; ++i) {
-		DEBUG("%x\r\n", filebuf[i]);
-	}
-	//DEBUG("%s\r\n", filebuf);
-	free(filebuf);
-	DEBUG("%s", "-------------------------\r\n");	
-	*/
-
-	/*
-	DEBUG("%s", "-------------------------\r\n");	
-	ext2_inode_table *inode = ext2_get_inode_table(12);
-	DEBUG("Before, size = %x\r\n", inode->size);
-	i8 *test = "testing message.";
-	strlen(test);
-	DEBUG("strlen(test) = %x\r\n", strlen(test));
-	ext2_write_inode_filedata(inode, 12, 3, strlen(test), test);
-	inode = ext2_get_inode_table(12);
-	DEBUG("After, size = %x\r\n", inode->size);
-	DEBUG("%s", "-------------------------\r\n");	
-	*/
-
-
-	//DEBUG("%s", "-------------------------\r\n");
-	//DEBUG("%s", "Trying to find a file 'hi.txt'\r\n");
-	//vfs_node_t *file_node = ext2_finddir(vfs_root, "hi.txt");
-	//if (file_node != NULL) {
-	//	DEBUG("Found a vfs node - %s\r\n", file_node->name);
-	//	DEBUG("Mask - 0x%x\r\n", file_node->mask);
-	//	DEBUG("Flags - 0x%x\r\n", file_node->flags);
-	//	DEBUG("UID - 0x%x\r\n", file_node->uid);
-	//	DEBUG("GID - 0x%x\r\n", file_node->gid);
-	//	DEBUG("Inode - 0x%x\r\n", file_node->inode);
-	//	DEBUG("Length - 0x%x\r\n", file_node->length);
-	//}
-	//DEBUG("%s", "-------------------------\r\n");
-
 	u8 *p = (u8 *)malloc(5);
 	DEBUG("Allocated 5 bytes at %p\r\n", p);
 	for (u8 i = 1; i < 6; ++i) {
@@ -199,8 +155,6 @@ void _start() {
 	DEBUG("%s", "\r\n");
 	free((void*)p);
 	DEBUG("%s", "Freed 5 bytes with p\r\n");
-
-
 
 	list_t *list = list_create();
 	list_insert_front(list, (void*)5);
@@ -316,46 +270,7 @@ void _start() {
 	complicated_path = "/..";
 	DEBUG("Canonilize path - %s\r\n", complicated_path);
 	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
-
-	u32 virt_a = 0xC0010000;
-	u32 phys_a = (u32)virtual_to_physical((void *)virt_a);
-	DEBUG("Translating virtual address(%x) to physical address(%x)\r\n", virt_a, phys_a);
+	*/
 
 	kshell();	
-}
-
-void print_physical_memory_info() {
-	memory_map_entry *mmap_entry;
-	u32 num_entries;
-
-	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
-	num_entries = *((u32 *)BIOS_NUM_ENTRIES);
-
-	kprintf("Physical memory info: ");
-	kprintf("Total number of entries: %d\n", num_entries);
-	for (u8 i = 0; i < num_entries; ++i) {
-		kprintf("Region: %x | Base: %x | Length: %x | Type(%d): ", i, (u32)mmap_entry->base_address, (u32)mmap_entry->length, mmap_entry->type);
-		switch (mmap_entry->type) {
-			case 1:
-				kprintf("Available Memory");
-				break;
-			case 2:
-				kprintf("Reserved Memory");
-				break;
-			case 3:
-				kprintf("ACPI Reclaim Memory");
-				break;
-			case 4:
-				kprintf("ACPI NVS Memory");
-				break;
-			default:
-				kprintf("Undefined Memory");
-				break;
-		}
-		kprintf("\n");
-		++mmap_entry; 
-	}
-	kprintf("\n");
-	--mmap_entry;
-	kprintf("Total amount of memory(in bytes): %x\n", (u32)mmap_entry->base_address + (u32)mmap_entry->length - 1);
 }

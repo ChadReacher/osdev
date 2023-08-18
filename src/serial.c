@@ -1,7 +1,7 @@
 #include "serial.h"
 #include "port.h"
 #include "stdarg.h"
-#include "memory.h"
+#include "string.h"
 #include "stdio.h"
 #include "debug.h"
 #include "panic.h"
