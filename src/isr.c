@@ -136,7 +136,7 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 
 void isr_handler(registers_state regs) {
 	if (regs.int_number == SYSCALL) {
-		syscall_handler(regs);
+		syscall_handler(&regs);
 		return;
 	}
 

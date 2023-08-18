@@ -50,6 +50,13 @@ typedef struct vfs_node {
 	void *device;				// Possible char or block device
 } vfs_node_t;
 
+typedef struct {
+	vfs_node_t *vfs_node;
+	u32 offset;
+	i32 flags;
+	bool used;
+} file;
+
 void vfs_init();
 vfs_node_t *vfs_get_node(i8 *path);
 u32 vfs_read(vfs_node_t *node, u32 offset, u32 size, i8 *buf);

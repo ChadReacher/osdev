@@ -21,6 +21,9 @@
 #include "ata.h"
 #include "ext2.h"
 #include "memory.h"
+#include "open.h"
+#include "close.h"
+#include "read.h"
 
 void print_physical_memory_info();
 
@@ -48,6 +51,35 @@ void _start() {
 	vfs_print();
 	DEBUG("%s", "-------------------------\r\n");
 	
+	u32 ret_fd, sz, have_read;
+	i8 *buff;
+
+	ret_fd = open("/hi.txt", 0, 0);
+	kprintf("Got ret_fd - %d\n", ret_fd);
+
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	have_read = read(ret_fd, buff, sz);
+	kprintf("Have read - %d, %s\n", have_read, buff);
+	free(buff);
+
+	sz = 3;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	have_read = read(ret_fd, buff, sz);
+	kprintf("Have read - %d, %s\n", have_read, buff);
+	free(buff);
+
+	sz = 5;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	have_read = read(ret_fd, buff, sz);
+	kprintf("Have read - %d, %s\n", have_read, buff);
+	free(buff);
+
+	close(ret_fd);
+
 	/*
 	DEBUG("%s", "-------------------------\r\n");
 	i8 *filebuf = malloc(5);
