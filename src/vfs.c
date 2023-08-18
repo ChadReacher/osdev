@@ -23,22 +23,8 @@ void vfs_init() {
 	vfs_tree = generic_tree_create();
 
 	vfs_node_t *node = malloc(sizeof(vfs_node_t));
+	memset(node, 0, sizeof(vfs_node_t));
 	strcpy(node->name, "/");
-	node->mask = 0; 
-	node->uid = 0;
-	node->gid = 0;
-	node->inode = 0;
-	node->length = 0;
-	node->read = NULL;
-	node->create = NULL;
-	node->unlink = NULL;
-	node->write = NULL;
-	node->open = NULL; 
-	node->close = NULL; 
-	node->readdir = NULL;
-	node->finddir = NULL;
-	node->ptr = NULL;
-	node->flags = 0;
 
 	tree_node_t *tree_node_root = malloc(sizeof(tree_node_t));
 	tree_node_root->val = node;
@@ -314,7 +300,7 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 			if (path_dup) {
 				vfs_node_t *intermediary_node = malloc(sizeof(vfs_node_t));
 				strcpy(intermediary_node->name, name);
-				intermediary_node->mask = 0; 
+				intermediary_node->permission_mask = 0; 
 				intermediary_node->uid = 0;
 				intermediary_node->gid = 0;
 				intermediary_node->inode = 0;
@@ -327,7 +313,6 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 				intermediary_node->close = NULL;
 				intermediary_node->readdir = NULL;
 				intermediary_node->finddir = NULL;
-				intermediary_node->ptr = NULL;
 				intermediary_node->flags = FS_DIRECTORY;
 				current_tree_node = generic_tree_insert_at(vfs_tree, current_tree_node, intermediary_node);
 			} else {

@@ -311,6 +311,8 @@ void ata_handler(registers_state regs) {
 
 vfs_node_t *ata_create_device(ata_device_t *dev) {
 	vfs_node_t *ata_dev_vfs_node = malloc(sizeof(vfs_node_t));
+	memset(ata_dev_vfs_node, 0, sizeof(vfs_node_t));
+
 	i8 *name = dev->mountpoint + strlen(dev->mountpoint) - 1 - 2;
 	strcpy(ata_dev_vfs_node->name, name);
 	

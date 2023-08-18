@@ -427,8 +427,9 @@ vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name) {
 	}
 
 	vfs_node_t *vfs_node = malloc(sizeof(vfs_node_t));
+	memset(vfs_node, 0, sizeof(vfs_node_t));
+	
 	inode = ext2_get_inode_table(found_dirent->inode);
-
 	ext2_create_vfs_node_from_file(inode, found_dirent, vfs_node);
 
 	free(found_dirent);
@@ -860,7 +861,7 @@ void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dir
 	vfs_node->uid = inode->uid;
 	vfs_node->gid = inode->gid;
 	vfs_node->length = inode->size;
-	vfs_node->mask = inode->mode & 0xFFF;
+	vfs_node->permission_mask = inode->mode & 0xFFF;
 	vfs_node->flags = 0;
 	if ((inode->mode & EXT2_S_IFREG) == EXT2_S_IFREG) {
 		vfs_node->flags |= FS_FILE;
@@ -879,6 +880,7 @@ void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dir
 	vfs_node->read = ext2_read;
 	vfs_node->write = ext2_write;
 	vfs_node->create = ext2_create;
+	vfs_node->unlink = ext2_unlink;
 	vfs_node->mkdir = ext2_mkdir;
 	vfs_node->open = ext2_open;
 	vfs_node->close = ext2_close;
@@ -933,9 +935,11 @@ void ext2_set_inode_table(ext2_inode_table *inode, u32 inode_num) {
 
 vfs_node_t *ext2_make_vfs_node(ext2_inode_table *root_inode) {
 	vfs_node_t *ext2_vfs_node = malloc(sizeof(vfs_node_t));
+	memset(ext2_vfs_node, 0, sizeof(vfs_node_t));
+
 	strcpy(ext2_vfs_node->name, "/");
-	ext2_vfs_node->device = ext2fs;
-	ext2_vfs_node->mask = root_inode->mode & 0xFFF;
+	ext2_vfs_node->device = ext2fs->disk_device;
+	ext2_vfs_node->permission_mask = root_inode->mode & 0xFFF;
 	ext2_vfs_node->uid = root_inode->uid;
 	ext2_vfs_node->gid = root_inode->gid;
 	ext2_vfs_node->flags |= FS_DIRECTORY;
