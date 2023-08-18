@@ -102,7 +102,7 @@ list_node_t *list_remove_back(list_t *list) {
 // Caller should free the memory
 list_node_t *list_remove_node(list_t *list, list_node_t *node) {
 	if (!list || !list->head) {
-		return;
+		return NULL;
 	}
 
 	if (list->head == node) {

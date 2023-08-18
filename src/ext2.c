@@ -551,6 +551,7 @@ void ext2_mkdir(vfs_node_t *parent_node, i8 *entry_name, u16 permission) {
 void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
 	ext2_inode_table *parent_inode = ext2_get_inode_table(parent_node->inode);
 
+	ext2_dir *prev_dir_entry = NULL;
 	u32 curr_offset = 0;
 	u32 block_offset = 0;
 	u32 in_block_offset = 0;
@@ -574,27 +575,64 @@ void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
 		if (curr_dir_entry->name_len == entry_name_len) {
 			memcpy(name_buf_check, curr_dir_entry->name, entry_name_len);
 			if (curr_dir_entry->inode != 0 && strcmp(entry_name, name_buf_check) == 0) {
-				// For now inode is 0
-				curr_dir_entry->inode = 0;
+				// Get the next direntry
+				in_block_offset += curr_dir_entry->rec_len;
+				curr_offset += curr_dir_entry->rec_len;
+				if (curr_offset >= parent_inode->size) {
+					// We are the last entry in a whole directory
+					// Point to the end of the block
+					prev_dir_entry->rec_len = (u32)block_buf + ext2fs->block_size - (u32)prev_dir_entry;
+				} else if (in_block_offset >= ext2fs->block_size) {
+					// We are the last entry in current inode block
+					// Point to the end of the current block
+					prev_dir_entry->rec_len = (u32)block_buf + ext2fs->block_size - (u32)prev_dir_entry;
+				} else {
+					// We are have the next direntry
+					// Update rec_len of prev direntry to the next direntry
+					//ext2_dir *next_dir_entry = (ext2_dir *)(block_buf + in_block_offset);
+					prev_dir_entry->rec_len = prev_dir_entry->rec_len + curr_dir_entry->rec_len;
+				}
 				write_inode_disk_block(parent_inode, block_offset, block_buf);
-				break;
+
+				// Reset first inode disk block
+				ext2_inode_table *inode_to_delete = ext2_get_inode_table(curr_dir_entry->inode);
+				// Free disk blocks
+				for (u32 i = 0; i < inode_to_delete->blocks / 2; ++i) {
+					block_free(inode_to_delete->block[i]);
+				}
+
+				for (u32 i = 0; i < inode_to_delete->blocks / 2; ++i) {
+					set_real_block(inode_to_delete, curr_dir_entry->inode, i, 0);
+				}
+
+				memset(inode_to_delete, 0, sizeof(ext2_inode_table));
+				ext2_set_inode_table(inode_to_delete, curr_dir_entry->inode);
+				// Free inode
+				inode_free(curr_dir_entry->inode);
+
+				memset(curr_dir_entry, 0, curr_dir_entry->rec_len);
+				write_inode_disk_block(parent_inode, block_offset, block_buf);
+
+				free(inode_to_delete);
+				free(block_buf);
+				free(name_buf_check);
+				free(parent_inode);
+
+
+				parent_inode = ext2_get_inode_table(parent_node->inode);
+				--parent_inode->links_count;
+				ext2_set_inode_table(parent_inode, parent_node->inode);
+				free(parent_inode);
+				return;
 			}
 		}
 
-		u32 expected_size = ((sizeof(ext2_dir) + curr_dir_entry->name_len) & 0xFFFFFFFC) + 0x4;
-		u32 real_size = curr_dir_entry->rec_len;
-		if (real_size != expected_size) {
-			break;
-		}
 		in_block_offset += curr_dir_entry->rec_len;
-		curr_offset += in_block_offset;
+		curr_offset += curr_dir_entry->rec_len;
+		prev_dir_entry = curr_dir_entry;
 	}
 
-	free(parent_inode);
-	parent_inode = ext2_get_inode_table(parent_node->inode);
-	--parent_inode->links_count;
-	ext2_set_inode_table(parent_inode, parent_node->inode);
-
+	DEBUG("Can't find a %s filename in the 'parent' directory\r\n", entry_name);
 	free(name_buf_check);
 	free(block_buf);
 	free(parent_inode);
@@ -766,12 +804,11 @@ bool ext2_create_dir_entry(vfs_node_t *parent, i8 *entry_name, u32 inode_idx) {
 			free(parent_inode);
 			return true;
 		}
-
-
 	
 		u32 expected_size = ((sizeof(ext2_dir) + curr_dir_entry->name_len) & 0xFFFFFFFC) + 0x4;
 		u32 real_size = curr_dir_entry->rec_len;
-		if (real_size != expected_size) {
+		// Are we at the last entry? 
+		if (((u32)curr_dir_entry + real_size) == ((u32)block_buf + ext2fs->block_size)) {
 			found_last_entry = true;
 
 			curr_dir_entry->rec_len = expected_size;

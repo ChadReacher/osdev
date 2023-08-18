@@ -209,9 +209,6 @@ void vfs_mkdir(i8 *name, u16 permission) {
 		--i;
 	}
 
-	DEBUG("Want to create a file - %s\r\n", name);
-	DEBUG("Dirname - %s\r\n", dirname);
-	DEBUG("Parent path - %s\r\n", parent_path);
 	vfs_node_t *parent_node = vfs_get_node(parent_path);
 	if (!parent_node) {
 		free(saved_dirname);
@@ -257,9 +254,6 @@ void vfs_unlink(i8 *name) {
 		--i;
 	}
 
-	DEBUG("Want to delete a file - %s\r\n", name);
-	DEBUG("Dirname - %s\r\n", dirname);
-	DEBUG("Parent path - %s\r\n", parent_path);
 	vfs_node_t *parent_node = vfs_get_node(parent_path);
 	if (!parent_node) {
 		free(saved_dirname);

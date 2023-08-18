@@ -197,7 +197,6 @@ void cat(i8 *command) {
 	while ((have_read = vfs_read(vfs_node, offset, size, buf)) != 0) {
 		for (u32 i = 0; i < have_read; ++i) {
 			kprintf("%c", buf[i]);
-			DEBUG("%x\r\n", buf[i]);
 		}
 		memset(buf, 10, 0);
 		offset += have_read;
