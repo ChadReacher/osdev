@@ -24,6 +24,7 @@
 #include "open.h"
 #include "close.h"
 #include "read.h"
+#include "fcntl.h"
 
 void print_physical_memory_info();
 
@@ -54,30 +55,81 @@ void _start() {
 	u32 ret_fd, sz, have_read;
 	i8 *buff;
 
-	ret_fd = open("/hi.txt", 0, 0);
+	kprintf("O_RDONLY\n");
+	ret_fd = open("/hi.txt", O_RDONLY, 0);
 	kprintf("Got ret_fd - %d\n", ret_fd);
-
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
 	kprintf("Have read - %d, %s\n", have_read, buff);
 	free(buff);
+	close(ret_fd);
 
-	sz = 3;
+	kprintf("O_WRONLY\n");
+	ret_fd = open("/hi.txt", O_WRONLY, 0);
+	kprintf("Got ret_fd - %d\n", ret_fd);
+	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
 	kprintf("Have read - %d, %s\n", have_read, buff);
 	free(buff);
+	close(ret_fd);
 
-	sz = 5;
+	kprintf("O_RDWR\n");
+	ret_fd = open("/hi.txt", O_RDWR, 0);
+	kprintf("Got ret_fd - %d\n", ret_fd);
+	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
 	kprintf("Have read - %d, %s\n", have_read, buff);
 	free(buff);
+	close(ret_fd);
 
+	kprintf("O_APPEND\n");
+	ret_fd = open("/hi.txt", O_APPEND, 0);
+	kprintf("Got ret_fd - %d\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	have_read = read(ret_fd, buff, sz);
+	kprintf("Have read - %d, %s\n", have_read, buff);
+	free(buff);
+	close(ret_fd);
+
+	kprintf("O_CREAT\n");
+	ret_fd = open("/hi.txt", O_CREAT, 0);
+	kprintf("Got ret_fd - %d\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	have_read = read(ret_fd, buff, sz);
+	kprintf("Have read - %d, %s\n", have_read, buff);
+	free(buff);
+	close(ret_fd);
+
+	kprintf("O_TRUNC\n");
+	ret_fd = open("/hi.txt", O_TRUNC, 0);
+	kprintf("Got ret_fd - %d\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	have_read = read(ret_fd, buff, sz);
+	kprintf("Have read - %d, %s\n", have_read, buff);
+	free(buff);
+	close(ret_fd);
+
+	kprintf("O_CREAT /sky\n");
+	ret_fd = open("/sky", O_CREAT, 0);
+	kprintf("Got ret_fd - %d\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	have_read = read(ret_fd, buff, sz);
+	kprintf("Have read - %d, %s\n", have_read, buff);
+	free(buff);
 	close(ret_fd);
 
 	/*

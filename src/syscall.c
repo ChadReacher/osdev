@@ -4,6 +4,7 @@
 #include "fd.h"
 #include "vfs.h"
 #include "debug.h"
+#include "fcntl.h"
 
 extern file fds[NB_DESCRIPTORS];
 
@@ -41,9 +42,14 @@ void syscall_open(registers_state *regs) {
 	u32 oflags = regs->ecx;
 	u32 mode = regs->edx;
 
-	vfs_node_t *vfs_node = vfs_get_node(filename);
+	vfs_node_t *vfs_node;
+
+	vfs_node = vfs_get_node(filename);
 	if (!vfs_node) {
-		return;
+		if (oflags & O_CREAT) {
+			vfs_create(filename, mode);
+			vfs_node = vfs_get_node(filename);
+		}
 	}
 
 	i32 fd = fd_get();
@@ -101,6 +107,11 @@ void syscall_read(registers_state *regs) {
 	file *f = &fds[fd];
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
+		regs->eax = 0;
+		return;
+	}
+	if (f->flags & O_WRONLY) {
+		DEBUG("%s", "Cannot read file with O_WRONLY flag\r\n");
 		regs->eax = 0;
 		return;
 	}

@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "string.h"
 #include "memory.h"
+#include "fcntl.h"
 
 ext2_fs *ext2fs = NULL;
 
@@ -220,8 +221,19 @@ u32 get_real_block(ext2_inode_table *inode, u32 block_num) {
 }
 
 u32 ext2_open(vfs_node_t *node, u32 flags) {
-	(void)node;
-	(void)flags;
+	if (flags & O_TRUNC) {
+		ext2_inode_table *inode_to_trunc = ext2_get_inode_table(node->inode);
+		// Free disk blocks
+		for (u32 i = 0; i < inode_to_trunc->blocks / 2; ++i) {
+			block_free(inode_to_trunc->block[i]);
+		}
+		for (u32 i = 0; i < inode_to_trunc->blocks / 2; ++i) {
+			set_real_block(inode_to_trunc, node->inode, i, 0);
+		}
+
+		inode_to_trunc->size = 0;
+		ext2_set_inode_table(inode_to_trunc, node->inode);
+	}
 	return 0;
 }
 
