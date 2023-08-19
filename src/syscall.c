@@ -20,6 +20,7 @@ void syscall_init() {
 	syscall_register_handler(SYSCALL_READ, syscall_read);
 	syscall_register_handler(SYSCALL_WRITE, syscall_write);
 	syscall_register_handler(SYSCALL_LSEEK, syscall_lseek);
+	syscall_register_handler(SYSCALL_UNLINK, syscall_unlink);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
@@ -199,4 +200,10 @@ void syscall_lseek(registers_state *regs) {
 	}
 
 	regs->eax = f->offset;
+}
+
+void syscall_unlink(registers_state *regs) {
+	i8 *filename = regs->ebx;
+	i32 ret = vfs_unlink(filename);
+	regs->eax = ret;
 }

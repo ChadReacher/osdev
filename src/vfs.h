@@ -27,7 +27,7 @@ typedef void (*create_callback)(struct vfs_node *node, i8 *name, u16 permission)
 typedef void (*mkdir_callback)(struct vfs_node *node, i8 *name, u16 permission);
 typedef dirent * (*readdir_callback)(struct vfs_node *node, u32 index);
 typedef struct vfs_node * (*finddir_callback)(struct vfs_node* node, i8 *name);
-typedef void (*unlink_callback)(struct vfs_node *node, i8 *name);
+typedef i32 (*unlink_callback)(struct vfs_node *node, i8 *name);
 
 typedef struct vfs_node {
 	i8 name[256];				// The filename
@@ -67,7 +67,7 @@ void vfs_create(i8 *name, u16 permission);
 void vfs_mkdir(i8 *name, u16 permission);
 dirent *vfs_readdir(vfs_node_t *vfs_node, u32 index);
 vfs_node_t *vfs_finddir(vfs_node_t *node, i8 *name);
-void vfs_unlink(i8 *name);
+i32 vfs_unlink(i8 *name);
 
 void vfs_mount(i8 *path, vfs_node_t *vfs_node);
 void vfs_print_node(tree_node_t *node);

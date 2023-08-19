@@ -560,7 +560,7 @@ void ext2_mkdir(vfs_node_t *parent_node, i8 *entry_name, u16 permission) {
 	free(parent_inode);
 }
 
-void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
+i32 ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
 	ext2_inode_table *parent_inode = ext2_get_inode_table(parent_node->inode);
 
 	ext2_dir *prev_dir_entry = NULL;
@@ -635,7 +635,8 @@ void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
 				--parent_inode->links_count;
 				ext2_set_inode_table(parent_inode, parent_node->inode);
 				free(parent_inode);
-				return;
+
+				return 0;
 			}
 		}
 
@@ -648,6 +649,7 @@ void ext2_unlink(vfs_node_t *parent_node, i8 *entry_name) {
 	free(name_buf_check);
 	free(block_buf);
 	free(parent_inode);
+	return -1;
 }
 
 u32 inode_alloc() {

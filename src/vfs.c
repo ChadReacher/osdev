@@ -221,7 +221,10 @@ vfs_node_t *vfs_finddir(vfs_node_t *node, i8 *name) {
 	return (vfs_node_t *)NULL;
 }
 
-void vfs_unlink(i8 *name) {
+i32 vfs_unlink(i8 *name) {
+	if (!name) {
+		return -1;
+	}
 	// Get parent directory vfs node
 	i32 i = strlen(name);
 	i8 *dirname = strdup(name);
@@ -242,13 +245,16 @@ void vfs_unlink(i8 *name) {
 	vfs_node_t *parent_node = vfs_get_node(parent_path);
 	if (!parent_node) {
 		free(saved_dirname);
-		return;
+		return -1;
 	}
 
 	if ((parent_node->flags & FS_DIRECTORY) == FS_DIRECTORY && parent_node->unlink) {
-		parent_node->unlink(parent_node, dirname);
+		i32 ret = parent_node->unlink(parent_node, dirname);
+		free(saved_dirname);
+		return ret;
 	}
 	free(saved_dirname);
+	return -1;
 }
 
 void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {

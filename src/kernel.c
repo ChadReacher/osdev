@@ -26,6 +26,7 @@
 #include "fcntl.h"
 #include "write.h"
 #include "lseek.h"
+#include "unlink.h"
 
 void _start() {
 	serial_init();
@@ -306,6 +307,16 @@ void _start() {
 
 	free(buff);
 	close(ret_fd);
+
+
+	DEBUG("%s", "TESTING UNLINK SYSCALL\r\n");
+	DEBUG("%s", "Try to delete /sky\r\n");
+	i32 ret_unlink = unlink("/sky");
+	DEBUG("ret_unlink - %d\r\n", ret_unlink);
+
+	DEBUG("%s", "Try to delete /soil\r\n");
+	ret_unlink = unlink("/soil");
+	DEBUG("ret_unlink - %d\r\n", ret_unlink);
 
 	/*
 	u8 *p = (u8 *)malloc(5);
