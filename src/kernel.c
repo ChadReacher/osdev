@@ -24,6 +24,7 @@
 #include "close.h"
 #include "read.h"
 #include "fcntl.h"
+#include "write.h"
 
 void _start() {
 	serial_init();
@@ -50,22 +51,69 @@ void _start() {
 
 	vfs_print();
 	
-	u32 ret_fd, sz, have_read;
+	u32 ret_fd, sz, have_read, have_written;
 	i8 *buff;
 
+	DEBUG("%s", "TESTING WRITE SYSCALL\r\n");
+
+	DEBUG("%s", "O_WRONLY for stdin\r\n");
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = 'c';
+	buff[0] = 'd';
+	have_written = write(0, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+	free(buff);
+
+	DEBUG("%s", "O_WRONLY for stdout\r\n");
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(1, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+	free(buff);
+
+	DEBUG("%s", "O_WRONLY for stderr\r\n");
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(2, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+	free(buff);
+
 	DEBUG("%s", "O_RDONLY\r\n");
-	ret_fd = open("/hi.txt", O_RDONLY, 0);
+	ret_fd = open("/sky", O_RDONLY, 0);
 	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
-	have_read = read(ret_fd, buff, sz);
-	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
 	free(buff);
 	close(ret_fd);
 
 	DEBUG("%s", "O_WRONLY\r\n");
-	ret_fd = open("/hi.txt", O_WRONLY, 0);
+	ret_fd = open("/sky", O_WRONLY, 0);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+	free(buff);
+	close(ret_fd);
+
+	DEBUG("%s", "Read written data\r\n");
+	ret_fd = open("/sky", O_RDONLY, 0);
 	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
@@ -75,8 +123,22 @@ void _start() {
 	free(buff);
 	close(ret_fd);
 
+	
 	DEBUG("%s", "O_RDWR\r\n");
-	ret_fd = open("/hi.txt", O_RDWR, 0);
+	ret_fd = open("/sky", O_RDWR, 0);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+	free(buff);
+	close(ret_fd);
+
+	DEBUG("%s", "Read written data\r\n");
+	ret_fd = open("/sky", O_RDONLY, 0);
 	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
@@ -87,29 +149,71 @@ void _start() {
 	close(ret_fd);
 
 	DEBUG("%s", "O_APPEND\r\n");
-	ret_fd = open("/hi.txt", O_APPEND, 0);
+	ret_fd = open("/sky", O_APPEND, 0);
 	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
-	have_read = read(ret_fd, buff, sz);
-	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
 	free(buff);
 	close(ret_fd);
 
 	DEBUG("%s", "O_CREAT\r\n");
-	ret_fd = open("/hi.txt", O_CREAT, 0);
+	ret_fd = open("/sky", O_CREAT, 0);
 	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
 	memset(buff, 0, sz + 1);
-	have_read = read(ret_fd, buff, sz);
-	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
 	free(buff);
 	close(ret_fd);
 
 	DEBUG("%s", "O_TRUNC\r\n");
-	ret_fd = open("/hi.txt", O_TRUNC, 0);
+	ret_fd = open("/sky", O_TRUNC, 0);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+	free(buff);
+	close(ret_fd);
+
+	DEBUG("%s", "O_WRONLY serveral times\r\n");
+	ret_fd = open("/sky", O_WRONLY, 0);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
+
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = 'c';
+	buff[1] = 'd';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+
+	buff[0] = 'a';
+	buff[1] = 'b';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+
+	buff[0] = '!';
+	buff[1] = '!';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+
+	free(buff);
+	close(ret_fd);
+
+	DEBUG("%s", "Read written data\r\n");
+	ret_fd = open("/sky", O_RDONLY, 0);
 	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);
@@ -119,8 +223,48 @@ void _start() {
 	free(buff);
 	close(ret_fd);
 
-	DEBUG("%s", "O_CREAT /sky\r\n");
-	ret_fd = open("/sky", O_CREAT, 0);
+	DEBUG("%s", "O_WRONLY overwrites\r\n");
+	ret_fd = open("/sky", O_WRONLY, 0);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
+
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = 'C';
+	buff[1] = 'D';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+	free(buff);
+	close(ret_fd);
+
+	DEBUG("%s", "Read written data\r\n");
+	ret_fd = open("/sky", O_RDONLY, 0);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	have_read = read(ret_fd, buff, sz);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+	free(buff);
+	close(ret_fd);
+
+
+	DEBUG("%s", "O_WRONLY with O_APPEND\r\n");
+	ret_fd = open("/sky", O_WRONLY | O_APPEND, 0);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
+
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+	buff[0] = '?';
+	buff[1] = '?';
+	have_written = write(ret_fd, buff, sz);
+	DEBUG("Have written - %d\r\n", have_written);
+	free(buff);
+	close(ret_fd);
+
+	DEBUG("%s", "Read written data\r\n");
+	ret_fd = open("/sky", O_RDONLY, 0);
 	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
 	buff = malloc(sz + 1);

@@ -205,7 +205,7 @@ void cat(i8 *command) {
 	free(buf);
 }
 
-void write(i8 *command) {
+static void write(i8 *command) {
 	command = command + 6;
 	i8 *rel_path = strsep(&command, " ");
 	if (!*rel_path) {

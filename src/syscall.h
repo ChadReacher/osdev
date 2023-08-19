@@ -21,5 +21,6 @@ void syscall_test(registers_state *regs);
 void syscall_open(registers_state *regs);
 void syscall_close(registers_state *regs);
 void syscall_read(registers_state *regs);
+void syscall_write(registers_state *regs);
 
 #endif
