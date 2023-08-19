@@ -177,6 +177,9 @@ void *virtual_to_physical(void *virt_addr) {
 	// Get page table in page directory
 	page_directory_entry *page_dir_entry = &page_dir->entries[PAGE_DIR_INDEX((u32)virt_addr)];
 	page_table_t *table = (page_table_t *)GET_FRAME(*page_dir_entry);
+	if (!table) {
+		return NULL;
+	}
 	
 	// Get page in table
 	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];

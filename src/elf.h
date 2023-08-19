@@ -30,7 +30,7 @@ typedef struct elf_header {
 	u16 sh_size;
 	u16 sh_num;
 	u16 strtab_idx;
-} __attribute((packed)) elf_header_t;
+} __attribute__((packed)) elf_header_t;
 
 // Type of segment
 #define PT_NULL 0x0
@@ -51,6 +51,19 @@ typedef struct elf_program_header {
 	u32 flags;
 	u32 align;
 } __attribute__((packed)) elf_program_header_t;
+
+typedef struct elf_section_header {
+	u32 name;
+	u32 type;
+	u32 flags;
+	u32 addr;
+	u32 offset;
+	u32 size;
+	u32 link;
+	u32 info;
+	u32 addralign;
+	u32 entsize;
+} __attribute__((packed)) elf_section_header_t;
 
 elf_header_t *elf_load(u32 *data);
 i32 is_elf(elf_header_t *elf);

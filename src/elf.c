@@ -33,8 +33,6 @@ elf_header_t *elf_load(u32 *data) {
 
 	elf_program_header_t* program_header = (elf_program_header_t*)((u32)data + elf->phoff);
 
-	elf->entry += 0x100000;
-
 	for (u32 i = 0; i < elf->ph_num; ++i) {
 		DEBUG("Program header: type - %d, vaddr = %p\r\n",
 				program_header[i].type,
@@ -61,14 +59,13 @@ void load_segment(u32 *data, elf_program_header_t *program_header) {
 		paging_flags |= PAGING_FLAG_WRITEABLE;
 	}
 
-	vaddr += 0x100000;
-
-	map_page(virtual_to_physical((void *)vaddr), (void *)vaddr);	
-	
 	if (memsz == 0) {
 		return;
 	}
 
-	memcpy((void *)vaddr, &data[offset], filesz);
+	void *paddr = allocate_blocks(1);
+	map_page(paddr, (void *)vaddr);	
+
+	memcpy((void *)vaddr, (void *)((u32)data + offset), filesz);
 	memset((void *)(vaddr + filesz), 0, memsz - filesz);
 }

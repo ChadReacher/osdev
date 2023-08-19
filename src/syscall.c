@@ -40,7 +40,7 @@ void syscall_handler(registers_state *regs) {
 
 
 void syscall_test(registers_state *regs) {
-	kprintf("Hello from syscall_test(), %s\n", regs->ebx + 0x100000);
+	kprintf("Hello from syscall_test(), %s\n", regs->ebx);
 }
 
 void syscall_open(registers_state *regs) {

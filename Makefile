@@ -79,4 +79,4 @@ build/%.bin: src/%.asm
 	$(AS) -f bin $< -o $@
 
 clean:
-	rm -f build/* 
+	rm -f build/*
