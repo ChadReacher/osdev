@@ -68,5 +68,6 @@ typedef struct elf_section_header {
 elf_header_t *elf_load(u32 *data);
 i32 is_elf(elf_header_t *elf);
 void load_segment(u32 *data, elf_program_header_t *program_header);
+void elf_unload(elf_header_t *elf);
 
 #endif

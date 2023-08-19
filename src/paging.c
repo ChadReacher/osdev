@@ -82,12 +82,26 @@ void map_page(void *phys_addr, void *virt_addr) {
 	*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
 }
 
+void unmap_page(void *virt_addr) {
+	page_table_entry *page = get_page((u32)virt_addr);
+
+	u32 page_frame = (*page & 0xFFFFF000);
+	free_blocks((void *)page_frame, 1);
+
+	*page &= ~PAGING_FLAG_PRESENT;	
+	*page = ((*page & ~0xFFFFF000) | 0);
+
+	// Flush TLB
+	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
+}
+
 void paging_init() {
 	register_interrupt_handler(14, pagefault_handler);
 
 	/* Probably we wouldn't need it, as we have already
 	 * created page directory and page table with 
-	 * identity mapping to the first 4 MB
+	 * identity mapping to the first 4 MB in the 'kernel_entry.asm'
 	 *
 	// Create top level page table(page directory)
 	page_directory_t *dir = (page_directory_t *)allocate_blocks(1);

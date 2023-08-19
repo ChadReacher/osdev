@@ -65,7 +65,18 @@ void load_segment(u32 *data, elf_program_header_t *program_header) {
 
 	void *paddr = allocate_blocks(1);
 	map_page(paddr, (void *)vaddr);	
+	DEBUG("Mapped vaddr %p to paddr %p\r\n", (void*)vaddr, paddr);
 
 	memcpy((void *)vaddr, (void *)((u32)data + offset), filesz);
 	memset((void *)(vaddr + filesz), 0, memsz - filesz);
+}
+
+void elf_unload(elf_header_t *elf) {
+	elf_program_header_t* program_header = (elf_program_header_t*)((u32)elf + elf->phoff);
+	for (u32 i = 0; i < elf->ph_num; ++i) {
+		if (program_header[i].type == PT_LOAD) {
+			u32 vaddr = program_header[i].vaddr; // Offset in memory
+			unmap_page((void *)vaddr);
+		}
+	}
 }

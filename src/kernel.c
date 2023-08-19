@@ -330,7 +330,6 @@ void _start() {
 	u32 init_fd = open("/init", O_RDONLY, 0);
 	read(init_fd, (i8 *)data, vfs_node->length);
 	elf_header_t *elf = elf_load(data);
-	free(data);
 
 	if (elf) {
 		DEBUG("Loaded elf entry at 0x%p\r\n", elf->entry);
@@ -338,6 +337,8 @@ void _start() {
 		callable *c = (callable *)(elf->entry);
 		i32 res = c();
 		DEBUG("Return code - %d\r\n", res);
+		elf_unload(elf);
+		free(elf);
 	}
 
 
