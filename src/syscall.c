@@ -7,7 +7,7 @@
 #include "fcntl.h"
 #include "string.h"
 #include "keyboard.h"
-#include "string.h"
+#include "screen.h"
 
 extern file fds[NB_DESCRIPTORS];
 
@@ -19,6 +19,7 @@ void syscall_init() {
 	syscall_register_handler(SYSCALL_CLOSE, syscall_close);
 	syscall_register_handler(SYSCALL_READ, syscall_read);
 	syscall_register_handler(SYSCALL_WRITE, syscall_write);
+	syscall_register_handler(SYSCALL_LSEEK, syscall_lseek);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
@@ -160,12 +161,42 @@ void syscall_write(registers_state *regs) {
 		return;
 	}
 	if ((f->flags & O_APPEND) == O_APPEND) {
-		u32 have_written = vfs_write(f->vfs_node, f->vfs_node->length, count, buf);
-		f->offset += have_written;
-		regs->eax = have_written;
-	} else {
-		u32 have_written = vfs_write(f->vfs_node, f->offset, count, buf);
-		f->offset += have_written;
-		regs->eax = have_written;
+		f->offset = f->vfs_node->length;
 	}
+	u32 have_written = vfs_write(f->vfs_node, f->offset, count, buf);
+	f->offset += have_written;
+	regs->eax = have_written;
+}
+
+void syscall_lseek(registers_state *regs) {
+	i32 fd = regs->ebx;
+	i32 offset = regs->ecx;
+	i32 whence = regs->edx;
+
+	if (fd < 3 || fd >= NB_DESCRIPTORS) {
+		DEBUG("Invalid file descriptor - %d\r\n", fd);
+		regs->eax = 0;
+		return;
+	}
+
+	file *f = &fds[fd];
+
+	if (!f->used || !f->vfs_node) {
+		DEBUG("Bad descriptor - %d\r\n", fd);
+		regs->eax = 0;
+		return;
+	}
+	if (whence == SEEK_SET) {
+		f->offset = offset;
+	} else if (whence == SEEK_CUR) {
+		f->offset += offset;
+	} else if (whence == SEEK_END) {
+		f->offset = f->vfs_node->length + offset;
+	} else {
+		DEBUG("Invalid whence argument - %d\r\n", whence);
+		regs->eax = -1;
+		return;
+	}
+
+	regs->eax = f->offset;
 }

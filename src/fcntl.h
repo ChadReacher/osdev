@@ -30,4 +30,9 @@
 #define S_IWOTH 0x0002
 #define S_IXOTH 0x0001
 
+// lseek 'whence' symbolic constants
+#define SEEK_SET 1
+#define SEEK_CUR 2
+#define SEEK_END 3
+
 #endif

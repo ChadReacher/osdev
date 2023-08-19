@@ -25,6 +25,7 @@
 #include "read.h"
 #include "fcntl.h"
 #include "write.h"
+#include "lseek.h"
 
 void _start() {
 	serial_init();
@@ -264,6 +265,7 @@ void _start() {
 	close(ret_fd);
 
 	DEBUG("%s", "Read written data\r\n");
+
 	ret_fd = open("/sky", O_RDONLY, 0);
 	DEBUG("Got ret_fd - %d\r\n", ret_fd);
 	sz = 2;
@@ -271,6 +273,37 @@ void _start() {
 	memset(buff, 0, sz + 1);
 	have_read = read(ret_fd, buff, sz);
 	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+	free(buff);
+	close(ret_fd);
+
+	DEBUG("%s", "TESTING LSEEK SYSCALL\r\n");
+
+	ret_fd = open("/sky", O_RDONLY, 0);
+	DEBUG("Got ret_fd - %d\r\n", ret_fd);
+	sz = 2;
+	buff = malloc(sz + 1);
+	memset(buff, 0, sz + 1);
+
+	DEBUG("%s", "SEEK_SET with 2\r\n");
+	lseek(ret_fd, 2, SEEK_SET);	
+	have_read = read(ret_fd, buff, sz);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+
+	DEBUG("%s", "SEEK_CUR with 2\r\n");
+	lseek(ret_fd, 2, SEEK_CUR);	
+	have_read = read(ret_fd, buff, sz);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+
+	DEBUG("%s", "SEET_SET with 0\r\n");
+	lseek(ret_fd, 0, SEEK_SET);	
+	have_read = read(ret_fd, buff, sz);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+
+	DEBUG("%s", "SEET_END with 5\r\n");
+	lseek(ret_fd, 5, SEEK_END);	
+	have_read = read(ret_fd, buff, sz);
+	DEBUG("Have read - %d, %s\r\n", have_read, buff);
+
 	free(buff);
 	close(ret_fd);
 
