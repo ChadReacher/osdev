@@ -27,6 +27,7 @@
 #include "write.h"
 #include "lseek.h"
 #include "unlink.h"
+#include "elf.h"
 
 void _start() {
 	serial_init();
@@ -55,6 +56,10 @@ void _start() {
 	
 	u32 ret_fd, sz, have_read, have_written;
 	i8 *buff;
+
+	DEBUG("%s", "Create file 'sky' with open syscall(O_CREAT flag)\r\n");
+	ret_fd = open("/sky", O_CREAT, 0);
+	close(ret_fd);
 
 	DEBUG("%s", "TESTING WRITE SYSCALL\r\n");
 
@@ -317,6 +322,24 @@ void _start() {
 	DEBUG("%s", "Try to delete /soil\r\n");
 	ret_unlink = unlink("/soil");
 	DEBUG("ret_unlink - %d\r\n", ret_unlink);
+
+
+	vfs_node_t *vfs_node = vfs_get_node("/init");
+	u32 *data = malloc(vfs_node->length);
+	memset((i8 *)data, 0, vfs_node->length);
+	u32 init_fd = open("/init", O_RDONLY, 0);
+	read(init_fd, (i8 *)data, vfs_node->length);
+	elf_header_t *elf = elf_load(data);
+	free(data);
+
+	if (elf) {
+		DEBUG("Loaded elf entry at 0x%p\r\n", elf->entry);
+		typedef int callable(void);
+		callable *c = (callable *)(elf->entry);
+		i32 res = c();
+		DEBUG("Return code - %d\r\n", res);
+	}
+
 
 	/*
 	u8 *p = (u8 *)malloc(5);

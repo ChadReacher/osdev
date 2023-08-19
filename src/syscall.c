@@ -40,7 +40,7 @@ void syscall_handler(registers_state *regs) {
 
 
 void syscall_test(registers_state *regs) {
-	kprintf("Hello from syscall_test(), %s\n", regs->ebx);
+	kprintf("Hello from syscall_test(), %s\n", regs->ebx + 0x100000);
 }
 
 void syscall_open(registers_state *regs) {
@@ -203,7 +203,7 @@ void syscall_lseek(registers_state *regs) {
 }
 
 void syscall_unlink(registers_state *regs) {
-	i8 *filename = regs->ebx;
+	i8 *filename = (i8 *)regs->ebx;
 	i32 ret = vfs_unlink(filename);
 	regs->eax = ret;
 }

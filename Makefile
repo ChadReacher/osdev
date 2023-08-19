@@ -18,17 +18,21 @@ OBJ_SRC = $(C_SRC:src/%.c=build/%.o)
 OBJ_SRC := $(filter-out build/kernel.o, $(OBJ_SRC))
 BIN_SRC = $(ASM_SRC:src/%.asm=build/%.bin)
 
-all: OS
+all: OS disk.img
 
-OS: build/bootloader.bin build/kernel.bin
+OS: build/bootloader.bin build/kernel.bin 
 	cat $^ > build/OS.bin
 	dd if=/dev/zero of=build/boot.img bs=512 count=2880
 	dd if=build/OS.bin of=build/boot.img conv=notrunc bs=512
 
-disk:
+disk.img: hdd/init
 	dd if=/dev/zero of=disk.img bs=1M count=4096
+	cp init/init hdd/init
 	mkfs.ext2 -b 1024 -g 8192 -i 1024 -r 0 -d hdd disk.img
 	@echo "HDD has been created with EXT2 file system(revision 0). It has 1024 block size(bytes) and 8192 blocks per block group" 
+
+hdd/init: $(LIBK)
+	cd init && make clean && make
 
 build/kernel.bin: build/kernel.elf
 	$(OBJCOPY) -O binary $^ $@		
