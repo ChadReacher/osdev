@@ -8,7 +8,6 @@
 #include <debug.h>
 #include <heap.h>
 #include <vfs.h>
-//#include <test.h>
 
 i8 *make_absolute_path(i8 *rel_path);
 
@@ -124,7 +123,7 @@ void selftest() {
 	__asm__ ("int3");
 	kprintf("\n[Syscalls]\n");
 	kprintf("  Invoking syscalls:\n");
-	//test("kernel shell");
+	__asm__ __volatile__ ("int $0x80" : : "a"(0), "b"("kernel shell"));
 	kprintf("\nEverything is good\n");
 }
 

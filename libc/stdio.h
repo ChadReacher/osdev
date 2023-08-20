@@ -4,7 +4,11 @@
 #include "stdarg.h"
 #include "types.h"
 
-void kprintf(i8 *fmt, ...);
-void kvsprintf(i8 *buf, i8 *fmt, va_list args);
+#define stdin 0
+#define stdout 1
+#define stderr 2
+
+void printf(const i8 *fmt, ...);
+void vsprintf(i8 *buf, const i8 *fmt, va_list args);
 
 #endif

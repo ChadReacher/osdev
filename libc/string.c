@@ -1,5 +1,4 @@
 #include "string.h"
-#include "heap.h"
 
 void *memset(void *ptr, u32 value, u32 num) {
 	u8 *c_ptr;
@@ -144,14 +143,15 @@ i32 strcmp(const i8 *str1, const i8 *str2) {
 }
 
 // Caller should free the memory
-i8 *strdup(const i8 *str) {
-	u32 len = strlen(str);
-	i8 *ret = malloc(len + 1);
-	if (ret) {
-		strncpy(ret, str, len + 1);
-	}
-	return ret;
-}
+// Uncomment when we have 'malloc'
+//i8 *strdup(const i8 *str) {
+//	u32 len = strlen(str);
+//	i8 *ret = malloc(len + 1);
+//	if (ret) {
+//		strncpy(ret, str, len + 1);
+//	}
+//	return ret;
+//}
 
 i8 *strcat(i8 *dest, const i8 *src) {
 	u32 dest_len = strlen(dest);

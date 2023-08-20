@@ -15,8 +15,9 @@
 #include <ata.h>
 #include <ext2.h>
 #include <elf.h>
-//#include <kshell.h>
+#include <kshell.h>
 #include <string.h>
+
 //#include <list.h>
 //#include <generic_tree.h>
 
@@ -476,5 +477,5 @@ void _start() {
 	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
 	*/
 
-	//kshell();	
+	kshell();	
 }

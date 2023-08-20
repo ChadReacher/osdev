@@ -1,29 +1,26 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
-#include "screen.h"
+#include "unistd.h"
 
-void kprintf(i8 *fmt, ...) {
-	if (!fmt) {
-		return;
-	}
+void printf(const i8 *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	i8 internal_buf[2048];
 	memset(internal_buf, 0, sizeof internal_buf);
-	kvsprintf(internal_buf, fmt, args);	
-	screen_print_string(internal_buf);
+	vsprintf(internal_buf, fmt, args);	
+	write(STDOUT_FILENO, internal_buf, strlen(internal_buf));
 	va_end(args);
 }
 
-void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
+void vsprintf(i8 *buf, const i8 *fmt, va_list args) {
 	i8 internal_buf[2048];
 	u32 sz;
 	i8 *p;
 	i8 *temp_s;
 	i8 c;
 
-	for (p = fmt; *p; ++p) {
+	for (p = (i8 *)fmt; *p; ++p) {
 		if (*p != '%') {
 			*buf = *p;
 			++buf;

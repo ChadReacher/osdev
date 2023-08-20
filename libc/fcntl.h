@@ -1,6 +1,8 @@
 #ifndef FCNTL_H
 #define FCNTL_H
 
+#include "types.h"
+
 // Open a file for reading only
 #define O_RDONLY 0x0000
 // Open a file for writing only
@@ -34,5 +36,7 @@
 #define SEEK_SET 1
 #define SEEK_CUR 2
 #define SEEK_END 3
+
+u32 open(i8 *filename, u32 oflags, u32 mode);
 
 #endif
