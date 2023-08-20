@@ -1,33 +1,24 @@
-#include "types.h"
-#include "isr.h"
-#include "timer.h"
-#include "keyboard.h"
-#include "screen.h"
-#include "stdio.h"
-#include "serial.h"
-#include "debug.h"
-#include "bios_memory_map.h"
-#include "pmm.h"
-#include "paging.h"
-#include "cmos.h"
-#include "kshell.h"
-#include "syscall.h"
-#include "heap.h"
-#include "list.h"
-#include "generic_tree.h"
-#include "string.h"
-#include "vfs.h"
-#include "pci.h"
-#include "ata.h"
-#include "ext2.h"
-#include "open.h"
-#include "close.h"
-#include "read.h"
-#include "fcntl.h"
-#include "write.h"
-#include "lseek.h"
-#include "unlink.h"
-#include "elf.h"
+#include <types.h>
+#include <serial.h>
+#include <debug.h>
+#include <isr.h>
+#include <syscall.h>
+#include <timer.h>
+#include <keyboard.h>
+#include <cmos.h>
+#include <pmm.h>
+#include <paging.h>
+#include <screen.h>
+#include <heap.h>
+#include <pci.h>
+#include <vfs.h>
+#include <ata.h>
+#include <ext2.h>
+#include <elf.h>
+//#include <kshell.h>
+#include <string.h>
+//#include <list.h>
+//#include <generic_tree.h>
 
 void _start() {
 	serial_init();
@@ -41,7 +32,6 @@ void _start() {
 	pmm_init();
 	paging_init();
 	screen_clear();
-	print_physical_memory_info();
 	heap_init();
 	pci_init();
 	vfs_init();
@@ -54,6 +44,7 @@ void _start() {
 
 	vfs_print();
 	
+	/*
 	u32 ret_fd, sz, have_read, have_written;
 	i8 *buff;
 
@@ -324,11 +315,13 @@ void _start() {
 	DEBUG("ret_unlink - %d\r\n", ret_unlink);
 
 
-	vfs_node_t *vfs_node = vfs_get_node("/init");
+	*/
+	vfs_node_t *vfs_node = vfs_get_node("/bin/init");
 	u32 *data = malloc(vfs_node->length);
 	memset((i8 *)data, 0, vfs_node->length);
-	u32 init_fd = open("/init", O_RDONLY, 0);
-	read(init_fd, (i8 *)data, vfs_node->length);
+	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
+	//u32 init_fd = open("/bin/init", O_RDONLY, 0);
+	//read(init_fd, (i8 *)data, vfs_node->length);
 	elf_header_t *elf = elf_load(data);
 
 	if (elf) {
@@ -340,7 +333,6 @@ void _start() {
 		elf_unload(elf);
 		free(elf);
 	}
-
 
 	/*
 	u8 *p = (u8 *)malloc(5);
@@ -484,5 +476,5 @@ void _start() {
 	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
 	*/
 
-	kshell();	
+	//kshell();	
 }

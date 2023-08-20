@@ -5,50 +5,114 @@ LD = $(TOOLCHAIN_SRC)/i386-elf-ld
 OBJCOPY = $(TOOLCHAIN_SRC)/i386-elf-objcopy
 AS = nasm
 AR = ar
+C_FLAGS = -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector\
+		  -I ./include/ -I ./libc
 
-C_FLAGS = -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector
-
+LIBC = build/libc.a
 LIBK = build/libk.a
 
-C_SRC = $(wildcard src/*.c)
-HEADERS = $(wildcard src/*.h)
-ASM_SRC = src/stage1.asm src/stage2.asm src/font.asm
+LIBC_OBJ = $(shell find libc/ -type f -name "*c")
+LIBC_OBJ := $(LIBC_OBJ:libc/%.c=%.c)
+LIBC_OBJ := $(LIBC_OBJ:sys/%.c=%.c)
+LIBC_OBJ := $(LIBC_OBJ:%.c=build/libc/%.o)
+LIBK_OBJ = build/libk/stdio.o build/libk/stdlib.o build/libk/string.o build/libk/ctype.o
 
-OBJ_SRC = $(C_SRC:src/%.c=build/%.o)
-OBJ_SRC := $(filter-out build/kernel.o, $(OBJ_SRC))
-BIN_SRC = $(ASM_SRC:src/%.asm=build/%.bin)
+HEADERS = $(wildcard include/*.h)
+ASM_SRC = src/boot/stage1.asm src/boot/stage2.asm src/boot/font.asm
 
-all: OS disk.img
+C_SRC += $(wildcard src/core/*.c)
+C_SRC := $(C_SRC:src/core/%.c=%.c)
 
-OS: build/bootloader.bin build/kernel.bin 
+C_SRC += $(wildcard src/dev/*.c)
+C_SRC := $(C_SRC:src/dev/%.c=%.c)
+
+C_SRC += $(wildcard src/fs/*.c)
+C_SRC := $(C_SRC:src/fs/%.c=%.c)
+
+C_SRC += $(wildcard src/ds/*.c)
+C_SRC := $(C_SRC:src/ds/%.c=%.c)
+
+C_SRC += $(wildcard src/mmu/*.c)
+C_SRC := $(C_SRC:src/mmu/%.c=%.c)
+
+KERNEL_OBJECTS = $(C_SRC:%.c=build/%.o)
+KERNEL_OBJECTS := $(filter-out build/kernel.o, $(KERNEL_OBJECTS))
+BIN_SRC = $(ASM_SRC:src/boot/%.asm=build/%.bin)
+
+
+all: prepare OS
+
+.PHONY: prepare
+prepare:
+	mkdir -p build/libc
+	mkdir -p build/libk
+
+.PHONY: OS
+OS: build/bootloader.bin build/kernel.bin
 	cat $^ > build/OS.bin
 	dd if=/dev/zero of=build/boot.img bs=512 count=2880
 	dd if=build/OS.bin of=build/boot.img conv=notrunc bs=512
 
-disk.img: hdd/init
+.PHONY: disk
+disk: userland
 	dd if=/dev/zero of=disk.img bs=1M count=4096
-	cp init/init hdd/init
-	mkfs.ext2 -b 1024 -g 8192 -i 1024 -r 0 -d hdd disk.img
+	mkfs.ext2 -b 1024 -g 8192 -i 1024 -r 0 -d userland/hdd/ disk.img
 	@echo "HDD has been created with EXT2 file system(revision 0). It has 1024 block size(bytes) and 8192 blocks per block group" 
 
-hdd/init: $(LIBK)
-	cd init && make clean && make
-
-build/kernel.bin: build/kernel.elf
-	$(OBJCOPY) -O binary $^ $@		
+.PHONY: userland
+userland: $(LIBC)
+	mkdir -p userland/bin
+	$(MAKE) -C userland/init/ clean
+	$(MAKE) -C userland/init/
+	cp userland/init/init userland/bin
+	cp -r userland/bin userland/hdd/
 
 build/bootloader.bin: $(BIN_SRC)
 	cat $^ > build/bootloader.bin
 
-build/kernel.elf: build/kernel_entry.o build/kernel.o build/interrupt.o $(LIBK)
+build/%.bin: src/boot/%.asm
+	$(AS) -f bin $< -o $@
+
+build/kernel.bin: build/kernel.elf
+	$(OBJCOPY) -O binary $^ $@		
+
+build/kernel.elf: build/kernel_entry.o build/kernel.o build/interrupt.o $(KERNEL_OBJECTS) $(LIBK)
 	$(LD) -Tkernel_linker.ld $^ -o $@
 
-$(LIBK): $(OBJ_SRC)
-	$(AR) rcs $@ $^
+build/kernel_entry.o: src/boot/kernel_entry.asm
+	$(AS) -f elf32 $< -o $@
+
+build/kernel.o: src/kernel.c
+	$(CC) $(C_FLAGS) -c $< -o $@
+
+build/interrupt.o: src/boot/interrupt.asm
+	$(AS) -f elf32 $< -o $@
+
+dirs-y = src/core src/fs src/ds src/dev src/mmu
+
+$(KERNEL_OBJECTS): $(dirs-y)
+
+$(dirs-y): $(patsubst %, %/Makefile, $(dirs-y))
+	@$(MAKE) -C $@
+
+$(LIBK): $(LIBK_OBJ)
+	$(AR) -rcs $@ $^
+
+build/libk/%.o: libk/%.c
+	$(CC) -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector -I ./include/ -c $< -o $@
+
+$(LIBC): $(LIBC_OBJ)
+	$(AR) -rcs $@ $^
+
+build/libc/%.o: libc/%.c
+	$(CC) -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector -I ./include/ -c $< -o $@
+
+build/libc/%.o: libc/sys/%.c
+	$(CC) -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector -I ./include/ -c $< -o $@
 
 run:
 	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
-	       	-drive file=disk.img,if=ide,format=raw,media=disk,index=1\
+	    -drive file=disk.img,if=ide,format=raw,media=disk,index=1\
 		-rtc base=localtime,clock=host,driftfix=slew
 
 log:
@@ -66,17 +130,6 @@ debug:
 		& gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf"\
 	       	-ex "br _start" -ex "layout src" -ex "continue" -ex "next"\
 
-build/interrupt.o: src/interrupt.asm
-	$(AS) -f elf32 $< -o $@
-
-build/kernel_entry.o: src/kernel_entry.asm
-	$(AS) -f elf32 $< -o $@
-
-build/%.o: src/%.c
-	$(CC) $(C_FLAGS) -c $< -o $@
-
-build/%.bin: src/%.asm
-	$(AS) -f bin $< -o $@
-
+.PHONY: clean
 clean:
-	rm -f build/*
+	rm -rf build/* disk.img userland/bin/* userland/hdd/*
