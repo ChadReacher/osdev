@@ -1,7 +1,9 @@
 #include <types.h>
 #include <serial.h>
 #include <debug.h>
+#include <gdt.h>
 #include <isr.h>
+#include <tss.h>
 #include <syscall.h>
 #include <timer.h>
 #include <keyboard.h>
@@ -10,6 +12,7 @@
 #include <paging.h>
 #include <screen.h>
 #include <heap.h>
+//#include <process.h>
 #include <pci.h>
 #include <vfs.h>
 #include <ata.h>
@@ -18,13 +21,14 @@
 #include <kshell.h>
 #include <string.h>
 
-//#include <list.h>
-//#include <generic_tree.h>
+extern void jump_usermode();
 
 void _start() {
 	serial_init();
 
+	gdt_init();
 	isr_init();
+	tss_init(5, 0x10, 0);
 	syscall_init();
 	irq_init();
 	timer_init(50);
@@ -44,8 +48,38 @@ void _start() {
 	kprintf("\\----------------------------------------------/\n");
 
 	vfs_print();
-	
+
+	vfs_node_t *vfs_node = vfs_get_node("/bin/init");
+	u32 *data = malloc(vfs_node->length);
+	memset((i8 *)data, 0, vfs_node->length);
+	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
+	elf_header_t *elf = elf_load(data);
+
+	if (elf) {
+		DEBUG("Loaded elf entry at 0x%p\r\n", elf->entry);
+		typedef int callable(void);
+		callable *c = (callable *)(elf->entry);
+		i32 res = c();
+		DEBUG("Return code - %d\r\n", res);
+		elf_unload(elf);
+		free(elf);
+	}
+
+	jump_usermode();
+
 	/*
+	u32 esp;
+	__asm__ __volatile__ ("mov %%esp, %0" : "=r"(esp));
+	tss_set_stack(0x10, esp);
+
+	process_init();
+
+	u8 code[] = {
+		0xB8, 0x2A, 0x00, 0x00, 0x00,
+		0xEB, 0xF9
+	};
+	proc_run_code(code, 7);
+
 	u32 ret_fd, sz, have_read, have_written;
 	i8 *buff;
 
@@ -313,29 +347,8 @@ void _start() {
 
 	DEBUG("%s", "Try to delete /soil\r\n");
 	ret_unlink = unlink("/soil");
-	DEBUG("ret_unlink - %d\r\n", ret_unlink);
+	DEBUG("ret_unlink - %d\r\n", ret_unlink);	
 
-
-	*/
-	vfs_node_t *vfs_node = vfs_get_node("/bin/init");
-	u32 *data = malloc(vfs_node->length);
-	memset((i8 *)data, 0, vfs_node->length);
-	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
-	//u32 init_fd = open("/bin/init", O_RDONLY, 0);
-	//read(init_fd, (i8 *)data, vfs_node->length);
-	elf_header_t *elf = elf_load(data);
-
-	if (elf) {
-		DEBUG("Loaded elf entry at 0x%p\r\n", elf->entry);
-		typedef int callable(void);
-		callable *c = (callable *)(elf->entry);
-		i32 res = c();
-		DEBUG("Return code - %d\r\n", res);
-		elf_unload(elf);
-		free(elf);
-	}
-
-	/*
 	u8 *p = (u8 *)malloc(5);
 	DEBUG("Allocated 5 bytes at %p\r\n", p);
 	for (u8 i = 1; i < 6; ++i) {

@@ -35,6 +35,9 @@ C_SRC := $(C_SRC:src/ds/%.c=%.c)
 C_SRC += $(wildcard src/mmu/*.c)
 C_SRC := $(C_SRC:src/mmu/%.c=%.c)
 
+C_SRC += $(wildcard src/proc/*.c)
+C_SRC := $(C_SRC:src/proc/%.c=%.c)
+
 KERNEL_OBJECTS = $(C_SRC:%.c=build/%.o)
 KERNEL_OBJECTS := $(filter-out build/kernel.o, $(KERNEL_OBJECTS))
 BIN_SRC = $(ASM_SRC:src/boot/%.asm=build/%.bin)
@@ -76,8 +79,11 @@ build/%.bin: src/boot/%.asm
 build/kernel.bin: build/kernel.elf
 	$(OBJCOPY) -O binary $^ $@		
 
-build/kernel.elf: build/kernel_entry.o build/kernel.o build/interrupt.o $(KERNEL_OBJECTS) $(LIBK)
+build/kernel.elf: build/kernel_entry.o build/kernel.o build/interrupt.o $(KERNEL_OBJECTS) build/gdt_helper.o build/tss_helper.o build/jump_usermode.o $(LIBK)
 	$(LD) -Tkernel_linker.ld $^ -o $@
+
+build/jump_usermode.o: src/core/jump_usermode.asm
+	$(AS) -f elf32 $< -o $@
 
 build/kernel_entry.o: src/boot/kernel_entry.asm
 	$(AS) -f elf32 $< -o $@
@@ -88,7 +94,13 @@ build/kernel.o: src/kernel.c
 build/interrupt.o: src/boot/interrupt.asm
 	$(AS) -f elf32 $< -o $@
 
-dirs-y = src/core src/fs src/ds src/dev src/mmu
+build/gdt_helper.o: src/core/gdt_helper.asm
+	$(AS) -f elf32 $< -o $@
+
+build/tss_helper.o: src/core/tss_helper.asm
+	$(AS) -f elf32 $< -o $@
+
+dirs-y = src/core src/fs src/ds src/dev src/mmu src/proc
 
 $(KERNEL_OBJECTS): $(dirs-y)
 

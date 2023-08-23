@@ -36,7 +36,7 @@ mov edx, (boot_page_table - KERNEL_VIRTUAL_BASE)		; Pointer to page table entry
 	je page_table_end			; If so, go to the end
 	mov eax, ecx				; Otherwise copy entry number to EAX
 	shl eax, 12					; Set frame address
-	or eax, 0x3					; Set presence bit
+	or eax, 0x7					; Set presence bit
 	mov [edx], eax				; Place created entry to the page table
 	inc ecx						; Get next page table entry number
 	add edx, 4					; Move to the next page table entry
@@ -53,14 +53,14 @@ page_table_end:
 	mov edx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
 
 	mov eax, [edx]
-	or eax, 0x3							; Set present bit and R/W
+	or eax, 0x7							; Set present bit and R/W
 	sub eax, KERNEL_VIRTUAL_BASE
 	mov [edx], eax
 
 	add edx, 4 * KERNEL_PAGE_NUMBER		; Move to the kernel page entry number
 
 	mov eax, [edx]
-	or eax, 0x3							; Set present bit and R/W
+	or eax, 0x7							; Set present bit and R/W
 	sub eax, KERNEL_VIRTUAL_BASE
 	mov [edx], eax
 

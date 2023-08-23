@@ -2,10 +2,14 @@
 #include <isr.h>
 #include <timer.h>
 #include <debug.h>
+#include <process.h>
 
 static u32 ticks = 0;
 
-static void timer_handler() {
+u32 task = 0;
+
+static void timer_handler(registers_state regs) {
+	//(void)regs;
 	++ticks;	
 }
 

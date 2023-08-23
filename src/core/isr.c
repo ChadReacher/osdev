@@ -53,7 +53,7 @@ void breakpoint_handler(registers_state regs) {
 		  "   Code Segment        = 0x%x\n"
 		  "   CPU Flags           = 0x%x\n"
 		  "   Stack Pointer       = 0x%x\n"
-		  "   Stack Segment       = 0x%x\n", 
+		  "   Stack Segment       = 0x%x\n",
 		  regs.eip,
 		  regs.cs,
 		  regs.eflags,
