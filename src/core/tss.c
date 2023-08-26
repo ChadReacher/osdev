@@ -19,7 +19,6 @@ void tss_init(u32 idx, u32 kss, u32 kesp) {
 	tss_flush();
 }
 
-void tss_set_stack(u32 kss, u32 kesp) {
-	kernel_tss.ss0 = kss;
+void tss_set_stack(u32 kesp) {
 	kernel_tss.esp0 = kesp;
 }

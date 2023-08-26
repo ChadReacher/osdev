@@ -23,7 +23,6 @@ void gdt_init() {
 	// User data descriptor
 	gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
 
-	DEBUG("GDTR at address - %p\r\n", &gdtr);
 	gdt_flush((u32)(&gdtr));
 }
 

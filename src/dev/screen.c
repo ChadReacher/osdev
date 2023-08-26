@@ -1,4 +1,5 @@
 #include <screen.h>
+#include <paging.h>
 #include <string.h>
 
 static const u32 background_color = 0x00263238; // Grey color
@@ -13,6 +14,7 @@ void screen_clear() {
 	}
 	cursor_x = 0;
 	cursor_y = 0;
+	map_page(0xA000, 0xFE000000);
 	move_cursor();
 }
 

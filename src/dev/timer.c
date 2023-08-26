@@ -1,15 +1,12 @@
-#include <port.h>
-#include <isr.h>
 #include <timer.h>
+#include <isr.h>
+#include <port.h>
 #include <debug.h>
-#include <process.h>
 
 static u32 ticks = 0;
 
-u32 task = 0;
-
 static void timer_handler(registers_state regs) {
-	//(void)regs;
+	(void)regs;
 	++ticks;	
 }
 

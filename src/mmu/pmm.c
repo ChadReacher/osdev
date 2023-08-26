@@ -84,7 +84,7 @@ void pmm_init() {
 	// Initialize physical memory manager at 0x30000 
 	// to all available memory. 
 	// By default all memory is used/reserved.
-	_pmm_init(0x30000, total_memory_bytes); 
+	_pmm_init(0xC0030000, total_memory_bytes); 
 
 	// Get back to start of the list to available memory as free to use
 	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
@@ -95,24 +95,24 @@ void pmm_init() {
 		++mmap_entry;
 	}
 
-	//mark_memory_as_used(0x7F93, 0x2000);	// Mark gdt, idt as used memory
 	mark_memory_as_used(0xA000, 0x800);		// Mark font as used memory
 	
 	// mark kernel and "OS" memory regions as used
-	mark_memory_as_used(0x10000, 0x13000);
+	mark_memory_as_used(0x10000, 0x16000);
 	
 	// Mark physical memory map itself as used
 	mark_memory_as_used(0x30000, total_blocks / BLOCK_SIZE);
-
-	// Deinitialize framebuffer
-	//u32 fb_size_in_bytes = SCREEN_SIZE * 4;
-	//mark_memory_as_used(0xFD000000, fb_size_in_bytes);
+	
+	mark_memory_as_used(0x26000, 1);
 
 	DEBUG("%s", "Physical memory manager has been initialized\r\n");
 	DEBUG("Number of used or reserved 4K blocks: %x\r\n", used_blocks);
 	DEBUG("Number of free 4K blocks: %x\r\n", (total_blocks - used_blocks));
 	DEBUG("Total amount of 4K blocks: %x\r\n", total_blocks);
 	print_physical_memory_info();
+	DEBUG("total_blocks - 0x%p\r\n", &total_blocks);
+	DEBUG("used_blocks - 0x%p\r\n", &used_blocks);
+	DEBUG("memory_map - 0x%p\r\n", &memory_map);
 }
 
 void _pmm_init(u32 start_address, u32 size) {

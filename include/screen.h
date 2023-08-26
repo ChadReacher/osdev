@@ -12,7 +12,8 @@
 #define MAX_CHARS_IN_COL (SCREEN_HEIGHT / PIXEL_HEIGHT)
 
 #define FRAMEBUFFER_ADDRESS 0xFD000000
-#define FONT_ADDRESS 0xA000
+#define FONT_ADDRESS 0xFE000000
+//#define FONT_ADDRESS 0xA000
 
 void screen_clear();
 void screen_print_char(i8 ch);

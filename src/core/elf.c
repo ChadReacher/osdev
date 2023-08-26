@@ -76,6 +76,8 @@ void elf_unload(elf_header_t *elf) {
 	for (u32 i = 0; i < elf->ph_num; ++i) {
 		if (program_header[i].type == PT_LOAD) {
 			u32 vaddr = program_header[i].vaddr; // Offset in memory
+			void *paddr = virtual_to_physical(vaddr);
+			free_blocks(paddr, 1);
 			unmap_page((void *)vaddr);
 		}
 	}

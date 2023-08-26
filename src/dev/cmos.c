@@ -102,7 +102,7 @@ void cmos_rtc_handler(registers_state regs) {
 	date_and_time = cmos_read_rtc();	
 	(void)date_and_time;
 
-	// Read Status Register C so taht future IRQ8s can occur
+	// Read Status Register C so that future IRQ8s can occur
 	cmos_read_register(CMOS_REG_STATUS_C);
 }
 

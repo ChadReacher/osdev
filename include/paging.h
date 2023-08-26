@@ -16,6 +16,9 @@
 
 #define PAGING_FLAG_PRESENT 0x01
 #define PAGING_FLAG_WRITEABLE 0x02
+#define PAGING_FLAG_USER 0x04
+#define PAGING_FLAG_ACCESSED 0x20
+#define PAGING_FLAG_DIRTY 0x40
 
 typedef u32 virtual_address;
 typedef u32 physical_address;

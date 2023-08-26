@@ -7,170 +7,112 @@
 #include <paging.h>
 #include <stdio.h>
 #include <timer.h>
+#include <debug.h>
+#include <panic.h>
 
 extern page_directory_t *cur_page_dir;
 
-extern u32 task;
-
 process_t *current_process;
 
-u32 pid_c = 0;
-
-void kidle() {
-	while (1);
-}
-
-void task1() {
-	while (1) kprintf("1");
-}
-
-void task2() {
-	while (1) kprintf("2");
-}
-
-process_t *create_process(u32 addr) {
-	process_t *p = malloc(sizeof(process_t));
-	memset(p, 0, sizeof(process_t));
-	p->pid = pid_c++;
-	p->eip = addr;
-	p->esp = (u32)malloc(4096);
-	u32 *stack = p->esp + 4096;
-	*--stack = 0x00000202;
-	*--stack = 0x8;
-	*--stack = addr;
-	*--stack = 0;
-	*--stack = 0;
-	*--stack = 0;
-	*--stack = 0;
-	*--stack = 0;
-	*--stack = 0;
-	*--stack = p->esp + 4096;
-	*--stack = 0x10;
-	*--stack = 0x10;
-	*--stack = 0x10;
-	*--stack = 0x10;
-	p->esp = (u32)stack;
-	return p;
-}
-
-void add_process(process_t *p) {
-	//__asm __volatile__ ("cli");
-	task = 0;
-	p->next = current_process->next;
-	p->next->prev = p;
-	p->prev = current_process;
-	current_process->next = p;
-	task = 1;
-	//__asm __volatile__ ("sti");
-}
-
-void schedule() {
-	__asm__ __volatile__ ("push %eax");
-	__asm__ __volatile__ ("push %ebx");
-	__asm__ __volatile__ ("push %ecx");
-	__asm__ __volatile__ ("push %edx");
-	__asm__ __volatile__ ("push %esi");
-	__asm__ __volatile__ ("push %edi");
-	__asm__ __volatile__ ("push %ebp");
-	__asm__ __volatile__ ("push %ds");
-	__asm__ __volatile__ ("push %es");
-	__asm__ __volatile__ ("push %fs");
-	__asm__ __volatile__ ("push %gs");
-	__asm__ __volatile__ ("mov %%esp, %%eax" : "=a"(current_process->esp));
-	current_process = current_process->next;
-	__asm__ __volatile__ ("mov %%eax, %%esp" : : "a"(current_process->esp));
-	__asm__ __volatile__ ("pop %gs");
-	__asm__ __volatile__ ("pop %fs");
-	__asm__ __volatile__ ("pop %es");
-	__asm__ __volatile__ ("pop %ds");
-	__asm__ __volatile__ ("pop %ebp");
-	__asm__ __volatile__ ("pop %edi");
-	__asm__ __volatile__ ("pop %esi");
-	__asm__ __volatile__ ("pop %edx");
-	__asm__ __volatile__ ("pop %ecx");
-	__asm__ __volatile__ ("pop %ebx");
-	__asm__ __volatile__ ("pop %eax");
-	__asm__ __volatile__ ("iret");
-}
-
-
 void process_init() {
-	current_process = create_process(kidle);
-	current_process->next = current_process;
-	current_process->prev = current_process;
-	add_process(create_process((u32)task1));
-	add_process(create_process((u32)task2));
-	kprintf("Tasking online!\n");
-	//process_t *kernel_proc = malloc(sizeof(process_t));
-
-	//kernel_proc->next = kernel_proc;
-	//kernel_proc->pid = 0;
-
-	//current_process = NULL;
-
-	//register_interrupt_handler(IRQ0, process_handler);
+	switch_process(NULL);
 }
 
-void process_handler(registers_state regs) {
-	if (!current_process || current_process->next == current_process) {
-		return;
-	}
-
-	current_process->regs = regs;
-
-	if (current_process->next) {
-		switch_process(current_process->next);
-	}
-}
-
-void proc_run_code(u8 *code, i32 len) {
+void process_create(u8 *code, i32 len) {
 	process_t *process = malloc(sizeof(process_t));
-	void *page_directory_phys = allocate_blocks(1);
-	void *code_phys = allocate_blocks(2);
-	void *stack_phys = allocate_blocks(2);
+	memset(process, 0, sizeof(process_t));
 
-	// Create a new address space for a process
-	// 1. Copy current page directory
-	map_page(page_directory_phys, 0xB0000000);
-	u32 *arr = (u32 *)0xB0000000;
-	u32 *arr2 = (u32 *)0xFFFFF000;
-	for (u32 i = 0; i < 1024; ++i) {
-		arr[i] = arr2[i];
+	void *code_phys_frame = allocate_blocks(1);
+	void *stack_phys_frame = allocate_blocks(1);
+
+	// 1. Create a new address space for a process
+	// (Duplicate the current page directory)
+	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
+	map_page(new_page_dir_phys, 0xE0000000); // Temporary mapping
+
+	memset(0xE0000000, 0, 4096);
+	page_directory_t *pd = (page_directory_t *)0xE0000000;
+	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
+	for (u32 i = 768; i < 1024; ++i) {
+		pd->entries[i] = cur_pd->entries[i];
 	}
-	//memcpy((void *)0xB0000000, (void *)0xFFFFF000, 4096);
-	page_directory_entry *pd = (page_directory_entry *)0xB0000000;
-	pd[0] = (u32)code_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE; 
-	pd[767] = (u32)stack_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE; 
-	unmap_page(0xB0000000);
+	pd->entries[1023] = (u32)new_page_dir_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE;
+	for (u32 i = 0; i < (0xC0000000 >> 22); ++i) {
+		pd->entries[i] = 0;
+	}
 
+	unmap_page(0xE0000000);
 
-	map_page(code_phys, 0xB0000000);
-	memcpy((void *)0xB0000000, code_phys, len);
-	unmap_page(0xB0000000);
+	void *previous_page_dir = virtual_to_physical(0xFFFFF000);
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(new_page_dir_phys));
 
-	process->pid = 33;
-	process->directory = page_directory_phys;
+	// Create mapping for user code
+	map_page(code_phys_frame, (void *)0x0);
+	memcpy((void *)0x0, code, len);
+	
+
+	page_directory_entry *code_pd_entry = &cur_pd->entries[0];
+	*code_pd_entry |= PAGING_FLAG_USER;
+
+	page_table_t *code_page_table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)0x0) << 12));
+
+	page_table_entry page_for_code = 0;
+	page_for_code |= PAGING_FLAG_PRESENT;
+	page_for_code |= PAGING_FLAG_WRITEABLE;
+	page_for_code |= PAGING_FLAG_USER;
+	page_for_code = ((page_for_code & ~0xFFFFF000) | (physical_address)code_phys_frame);
+	code_page_table->entries[0] = page_for_code;
+
+	// Create mapping for user stack
+	map_page(stack_phys_frame, (void *)0xBFFFFFFB);
+
+	page_directory_entry *stack_pd_entry = &cur_pd->entries[767];
+	*stack_pd_entry |= PAGING_FLAG_USER;
+
+	page_table_t *stack_page_table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)0xBFFFFFFB) << 12));
+
+	page_table_entry page_for_stack = 0;
+	page_for_stack |= PAGING_FLAG_PRESENT;
+	page_for_stack |= PAGING_FLAG_WRITEABLE;
+	page_for_stack |= PAGING_FLAG_USER;
+	page_for_stack = ((page_for_stack & ~0xFFFFF000) | (physical_address)stack_phys_frame);
+	stack_page_table->entries[PAGE_TABLE_INDEX(0xBFFFFFFB)] = page_for_stack;
+	
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(previous_page_dir));
+
+	process->next = process;
+	process->directory = new_page_dir_phys;
+	process->regs.eip = 0;
+	process->regs.cs = 0x1B;
+	process->regs.ds = 0x23;
+	process->regs.useresp = 0xBFFFFFFB;
 
 	if (current_process && current_process->next) {
-		process_t *current_last = current_process->next;
-
-		while (current_last->next != current_process) {
-			current_last = current_last->next;
-		}
-		current_last->next = process;
-		process->next = current_process;
+		process_t *p = current_process->next;
+		current_process->next = process;
+		process->next = p;
+	} else if (!current_process) {
+		current_process = process;
+		current_process->next = current_process;
 	}
-
-	switch_process(process);
 }
 
-void switch_process(process_t *process) {
-	u32 esp0 = 0;
-	__asm__ __volatile__ ("mov %%esp, %0" : "=r"(esp0));
-	tss_set_stack(0x10, esp0);
+void switch_process(registers_state *regs) {
+	if (regs) {
+		current_process->regs = *regs;
+	}
 
-	cur_page_dir = (page_directory_t *)(process->directory);
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(cur_page_dir));
+	current_process = current_process->next;
+	if (!current_process) {
+		PANIC("ERROR");
+	}
+
+	u32 esp0;
+	__asm__ __volatile__ ("mov %%esp, %0\n" : "=r"(esp0));
+	tss_set_stack(esp0);
+
+	cur_page_dir = (page_directory_t *)(current_process->directory);
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
 
 	__asm__ __volatile__ (
 			"push $0x23\n"
@@ -181,5 +123,4 @@ void switch_process(process_t *process) {
 			"iret\n"
 	);
 }
-
 

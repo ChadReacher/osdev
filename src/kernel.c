@@ -12,7 +12,7 @@
 #include <paging.h>
 #include <screen.h>
 #include <heap.h>
-//#include <process.h>
+#include <process.h>
 #include <pci.h>
 #include <vfs.h>
 #include <ata.h>
@@ -20,8 +20,6 @@
 #include <elf.h>
 #include <kshell.h>
 #include <string.h>
-
-extern void jump_usermode();
 
 void _start() {
 	serial_init();
@@ -65,21 +63,15 @@ void _start() {
 		free(elf);
 	}
 
-	jump_usermode();
-
-	/*
-	u32 esp;
-	__asm__ __volatile__ ("mov %%esp, %0" : "=r"(esp));
-	tss_set_stack(0x10, esp);
+	u8 code[] = {
+		0xB8, 0x2A, 0x00, 0x00, 0x00,	// mov $0, $eax
+		0xEB, 0xF9						// jmp 0x0
+	};
+	process_create(code, sizeof(code));
 
 	process_init();
 
-	u8 code[] = {
-		0xB8, 0x2A, 0x00, 0x00, 0x00,
-		0xEB, 0xF9
-	};
-	proc_run_code(code, 7);
-
+	/*
 	u32 ret_fd, sz, have_read, have_written;
 	i8 *buff;
 

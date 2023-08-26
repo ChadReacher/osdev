@@ -3,8 +3,8 @@
 
 #include "types.h"
 
-#define BIOS_NUM_ENTRIES 0x8500
-#define BIOS_MEMORY_MAP 0x8504
+#define BIOS_NUM_ENTRIES 0xC0008500
+#define BIOS_MEMORY_MAP 0xC0008504
 
 typedef struct {
 	u64 base_address;

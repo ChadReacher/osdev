@@ -43,6 +43,7 @@ void heap_init() {
 		heap_virt_addr += PAGE_SIZE;
 		heap_phys_addr += BLOCK_SIZE;
 	}
+	DEBUG("heap virt addr - 0x%x\r\n", heap_virt_addr - PAGE_SIZE);
 	DEBUG("%s", "Finished heap\r\n");
 }
 
@@ -130,7 +131,7 @@ void *malloc(u32 size) {
 	}
 
 	if (block) {
-		// block + 1 = (u8*)block + 1 * sizeof(heap_block)
+		// block + 1 is the same as (u8*)block + 1 * sizeof(heap_block)
 		return block + 1; 
 	}
 	return NULL;

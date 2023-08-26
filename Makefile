@@ -42,6 +42,9 @@ KERNEL_OBJECTS = $(C_SRC:%.c=build/%.o)
 KERNEL_OBJECTS := $(filter-out build/kernel.o, $(KERNEL_OBJECTS))
 BIN_SRC = $(ASM_SRC:src/boot/%.asm=build/%.bin)
 
+dirs = src/core src/dev src/ds src/fs src/mmu src/proc
+mkfiles = $(patsubst %, %/Makefile, $(dirs))
+
 
 all: prepare OS
 
@@ -100,12 +103,12 @@ build/gdt_helper.o: src/core/gdt_helper.asm
 build/tss_helper.o: src/core/tss_helper.asm
 	$(AS) -f elf32 $< -o $@
 
-dirs-y = src/core src/fs src/ds src/dev src/mmu src/proc
 
-$(KERNEL_OBJECTS): $(dirs-y)
+$(KERNEL_OBJECTS): $(dirs)
 
-$(dirs-y): $(patsubst %, %/Makefile, $(dirs-y))
-	@$(MAKE) -C $@
+#$(dirs-y): src/core/Makefile src/fs/Makefile src/ds/Makefile src/mmu/Makefile src/proc/Makefile
+$(dirs): $(mkfiles)
+	$(MAKE) -C $@
 
 $(LIBK): $(LIBK_OBJ)
 	$(AR) -rcs $@ $^
@@ -123,7 +126,7 @@ build/libc/%.o: libc/sys/%.c
 	$(CC) -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector -I ./include/ -c $< -o $@
 
 run:
-	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
+	qemu-system-i386 -m 2G -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
 	    -drive file=disk.img,if=ide,format=raw,media=disk,index=1\
 		-rtc base=localtime,clock=host,driftfix=slew
 

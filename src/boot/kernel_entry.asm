@@ -1,6 +1,8 @@
 bits 32
 extern _start
 
+STACK_SIZE				equ 0x4000
+
 KERNEL_VIRTUAL_ADDR		equ 0xC0010000
 
 KERNEL_VIRTUAL_BASE		equ 0xC0000000
@@ -36,7 +38,7 @@ mov edx, (boot_page_table - KERNEL_VIRTUAL_BASE)		; Pointer to page table entry
 	je page_table_end			; If so, go to the end
 	mov eax, ecx				; Otherwise copy entry number to EAX
 	shl eax, 12					; Set frame address
-	or eax, 0x7					; Set presence bit
+	or eax, 0x3					; Set presence bit
 	mov [edx], eax				; Place created entry to the page table
 	inc ecx						; Get next page table entry number
 	add edx, 4					; Move to the next page table entry
@@ -53,14 +55,14 @@ page_table_end:
 	mov edx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
 
 	mov eax, [edx]
-	or eax, 0x7							; Set present bit and R/W
+	or eax, 0x3							; Set present bit and R/W (U/S - ?)
 	sub eax, KERNEL_VIRTUAL_BASE
 	mov [edx], eax
 
 	add edx, 4 * KERNEL_PAGE_NUMBER		; Move to the kernel page entry number
 
 	mov eax, [edx]
-	or eax, 0x7							; Set present bit and R/W
+	or eax, 0x3							; Set present bit and R/W (U/S - ?)
 	sub eax, KERNEL_VIRTUAL_BASE
 	mov [edx], eax
 
@@ -78,7 +80,15 @@ lea ecx, [start_in_higher_half]
 jmp ecx
 
 start_in_higher_half:
+	mov dword [boot_page_directory], 0
+	invlpg [0]
+	mov eax, cr3
+	mov cr3, eax
+
+	mov esp, stack + STACK_SIZE
+
 	call _start
+	hlt
 	jmp $
 
 align 0x1000
@@ -91,3 +101,8 @@ boot_page_directory:
 	times (KERNEL_PAGE_NUMBER - 1) dd 0
 	dd boot_page_table
 	times (1024 - KERNEL_PAGE_NUMBER - 1) dd 0
+
+section .bss
+align 32
+stack:
+	resb STACK_SIZE
