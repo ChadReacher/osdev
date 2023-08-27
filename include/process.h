@@ -9,6 +9,7 @@ typedef struct _process {
 	struct _process *next;
 	page_directory_t *directory;
 	registers_state regs;
+	void *kernel_stack;
 } process_t;
 
 void process_init();

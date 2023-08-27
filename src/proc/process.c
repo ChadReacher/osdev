@@ -82,6 +82,8 @@ void process_create(u8 *code, i32 len) {
 
 	process->next = process;
 	process->directory = new_page_dir_phys;
+	void *kernel_stack = malloc(4096);
+	process->kernel_stack = (u8 *)kernel_stack + 4096 - 1;
 	process->regs.eip = 0;
 	process->regs.cs = 0x1B;
 	process->regs.ds = 0x23;
@@ -107,20 +109,25 @@ void switch_process(registers_state *regs) {
 		PANIC("ERROR");
 	}
 
-	u32 esp0;
-	__asm__ __volatile__ ("mov %%esp, %0\n" : "=r"(esp0));
-	tss_set_stack(esp0);
+	tss_set_stack(current_process->kernel_stack);
 
 	cur_page_dir = (page_directory_t *)(current_process->directory);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
 
+	u32 proc_esp = current_process->regs.useresp;
+	u32 proc_eip = current_process->regs.eip;
+
 	__asm__ __volatile__ (
-			"push $0x23\n"
-			"push $0xBFFFFFFB\n"
-			"push $512\n"
-			"push $0x1B\n"
-			"push $0x00000000\n"
+			"push $0x23\n"			// User DS
+			"mov %0, %%eax\n"
+			"push %%eax\n"			// User stack
+			"push $512\n"			// EFLAGS
+			"push $0x1B\n"			// User CS
+			"mov %1, %%eax\n"
+			"push %%eax\n"			// User EIP
 			"iret\n"
-	);
+			:
+			: "r"(proc_esp), "r"(proc_eip)
+			: "eax");
 }
 

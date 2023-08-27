@@ -116,7 +116,7 @@ void isr_init() {
 	idt_set(46, (u32)irq14, 0x8E);
 	idt_set(47, (u32)irq15, 0x8E);
 
-	idt_set(SYSCALL, (u32)isr0x80, 0x8E);
+	idt_set(SYSCALL, (u32)isr0x80, 0xEE);
 
 	register_interrupt_handler(3, breakpoint_handler);
 

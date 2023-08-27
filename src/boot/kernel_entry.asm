@@ -102,7 +102,8 @@ boot_page_directory:
 	dd boot_page_table
 	times (1024 - KERNEL_PAGE_NUMBER - 1) dd 0
 
-section .bss
-align 32
+;section .bss
+;align 32
 stack:
 	resb STACK_SIZE
+stack_top:
