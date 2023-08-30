@@ -13,6 +13,7 @@ typedef struct _process {
 } process_t;
 
 void process_init();
+void create_init_task(i8 *file);
 void process_create(u8 *code, i32 len);
 void switch_process(registers_state *regs);
 

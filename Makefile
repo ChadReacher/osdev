@@ -71,6 +71,9 @@ userland: $(LIBC)
 	$(MAKE) -C userland/init/ clean
 	$(MAKE) -C userland/init/
 	cp userland/init/init userland/bin
+	$(MAKE) -C userland/test/ clean
+	$(MAKE) -C userland/test/
+	cp userland/test/test userland/bin
 	cp -r userland/bin userland/hdd/
 
 build/bootloader.bin: $(BIN_SRC)

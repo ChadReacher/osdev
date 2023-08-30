@@ -66,8 +66,10 @@ void map_page(void *phys_addr, void *virt_addr) {
 	page_table_t *table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
 	//page_table_t *table = (page_table_t *)(GET_FRAME(*entry));
 	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
-	*page |= PAGING_FLAG_PRESENT;	
-	*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
+	if (*page == 0) {
+		*page |= PAGING_FLAG_PRESENT;	
+		*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
+	}
 }
 
 void unmap_page(void *virt_addr) {
@@ -177,6 +179,9 @@ void *virtual_to_physical(void *virt_addr) {
 	// Get page table in page directory
 	page_directory_t *x = (page_directory_t *)0xFFFFF000;
 	page_directory_entry *entry = &x->entries[PAGE_DIR_INDEX((u32)virt_addr)];
+	if (!*entry) {
+		return NULL;
+	}
 
 	//page_directory_entry *page_dir_entry = &page_dir->entries[PAGE_DIR_INDEX((u32)virt_addr)];
 	page_table_t *table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
@@ -187,6 +192,9 @@ void *virtual_to_physical(void *virt_addr) {
 	
 	// Get page in table
 	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
+	if (!*page) {
+		return NULL;
+	}
 	u32 page_frame = (u32)GET_FRAME(*page);
 	u32 page_frame_offset = PAGE_FRAME_INDEX((u32)virt_addr);
 	u32 phys_addr = page_frame + page_frame_offset;

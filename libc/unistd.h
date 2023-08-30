@@ -13,5 +13,6 @@ u32 write(i32, const void *, u32);
 i32 close(i32);
 i32 lseek(i32, i32, i32);
 i32 unlink(const i8*);
+i32 exec(const i8 *);
 
 #endif

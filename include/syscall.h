@@ -5,7 +5,7 @@
 #include "isr.h"
 
 #define INT_SYSCALL "int $0x80"
-#define NB_SYSCALLS  8
+#define NB_SYSCALLS  9
 #define SYSCALL_TEST	0
 #define SYSCALL_READ	1
 #define SYSCALL_WRITE	2
@@ -14,6 +14,7 @@
 #define SYSCALL_LSEEK	5
 #define SYSCALL_UNLINK	6
 #define SYSCALL_YIELD	7
+#define SYSCALL_EXEC	8
 
 typedef void (*syscall_handler_t)(registers_state *regs_state);
 
@@ -28,5 +29,6 @@ void syscall_write(registers_state *regs);
 void syscall_lseek(registers_state *regs);
 void syscall_unlink(registers_state *regs);
 void syscall_yield(registers_state *regs);
+void syscall_exec(registers_state *regs);
 
 #endif

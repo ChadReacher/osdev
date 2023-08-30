@@ -9,8 +9,11 @@
 #include <keyboard.h>
 #include <screen.h>
 #include <process.h>
+#include <elf.h>
+#include <paging.h>
 
 extern file fds[NB_DESCRIPTORS];
+extern process_t *current_process;
 
 syscall_handler_t syscall_handlers[NB_SYSCALLS];
 
@@ -23,6 +26,7 @@ void syscall_init() {
 	syscall_register_handler(SYSCALL_LSEEK, syscall_lseek);
 	syscall_register_handler(SYSCALL_UNLINK, syscall_unlink);
 	syscall_register_handler(SYSCALL_YIELD, syscall_yield);
+	syscall_register_handler(SYSCALL_EXEC, syscall_exec);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
@@ -215,3 +219,83 @@ void syscall_unlink(registers_state *regs) {
 void syscall_yield(registers_state *regs) {
 	switch_process(regs);
 }
+
+void syscall_exec(registers_state *regs) {
+	i8 *pathname = (i8 *)regs->ebx;
+
+	vfs_node_t *vfs_node = vfs_get_node(pathname);
+	if (!vfs_node) {
+		regs->eax = -1;
+		return;
+	}
+	u32 *data = malloc(vfs_node->length);
+	memset((i8 *)data, 0, vfs_node->length);
+	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
+
+	elf_header_t *elf = (elf_header_t *)data;
+
+	if (is_elf(elf) != ET_EXEC) {
+		regs->eax = -1;
+		return;
+	}
+
+	elf_program_header_t* program_header = (elf_program_header_t*)((u32)data + elf->phoff);
+
+	for (u32 i = 0; i < elf->ph_num; ++i) {
+		if (program_header[i].type == PT_LOAD) {
+			u32 filesz = program_header->filesz; // Size in file
+			u32 vaddr = program_header->vaddr;
+			u32 offset = program_header->offset; // Offset in file
+
+			if (filesz == 0) {
+				regs->eax = -1;
+				return;
+			}
+
+			u32 len_in_blocks = filesz / 4096;
+			if (len_in_blocks % 4096 != 0 || len_in_blocks == 0) {
+				++len_in_blocks;
+			}
+
+			void *code = (void *)((u32)data + offset);
+			for (u32 i = 0, addr = 0x0; i < len_in_blocks; ++i, addr += 0x1000) {
+				if (!virtual_to_physical(addr)) {
+					// If the page is not mapped
+					void *new_code_page = allocate_blocks(1);
+					map_page((void *)new_code_page, (void *)addr);
+					memcpy((void *)addr, code + addr, 0x1000);
+				} else {
+					memcpy((void *)addr, code + addr, 0x1000);
+				}
+			}
+		}
+	}
+
+	void *kernel_stack = malloc(4096);
+	memset(kernel_stack, 0, 4096);
+	current_process->kernel_stack = (u8 *)kernel_stack + 4096 - 1;
+	current_process->regs.eip = 0;
+	current_process->regs.cs = 0x1B;
+	current_process->regs.ds = 0x23;
+	current_process->regs.useresp = 0xBFFFFFFB;
+	current_process->regs.ebp = 0xBFFFFFFB;
+
+	memset(0xBFFFF000, 0, 4092);
+
+	tss_set_stack(current_process->kernel_stack);
+
+	__asm__ __volatile__ (
+			"push $0x23\n"			// User DS
+			"mov %0, %%eax\n"
+			"push %%eax\n"			// User stack
+			"push $512\n"			// EFLAGS
+			"push $0x1B\n"			// User CS
+			"mov %1, %%eax\n"
+			"push %%eax\n"			// User EIP
+			"iret\n"
+			:
+			: "r"(current_process->regs.useresp), "r"(current_process->regs.eip)
+			: "eax");
+
+}
+

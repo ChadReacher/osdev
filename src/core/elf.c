@@ -63,12 +63,15 @@ void load_segment(u32 *data, elf_program_header_t *program_header) {
 		return;
 	}
 
-	void *paddr = allocate_blocks(1);
-	map_page(paddr, (void *)vaddr);	
-	DEBUG("Mapped vaddr %p to paddr %p\r\n", (void*)vaddr, paddr);
+	void *code = (void *)((u32)data + offset);
+	process_create((u8 *)code, filesz);
 
-	memcpy((void *)vaddr, (void *)((u32)data + offset), filesz);
-	memset((void *)(vaddr + filesz), 0, memsz - filesz);
+	//void *paddr = allocate_blocks(1);
+	//map_page(paddr, (void *)vaddr);	
+	//DEBUG("Mapped vaddr %p to paddr %p\r\n", (void*)vaddr, paddr);
+
+	//memcpy((void *)vaddr, (void *)((u32)data + offset), filesz);
+	//memset((void *)(vaddr + filesz), 0, memsz - filesz);
 }
 
 void elf_unload(elf_header_t *elf) {

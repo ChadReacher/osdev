@@ -6,13 +6,13 @@ LIBC = $(ROOT_DIR)/build/libc.a
 
 CFLAGS = -g -c -Wall -m32 -std=c11 -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -I $(ROOT_DIR)/libc/
 
-default: init
+default: test
 
-init: init.o
+test: test.o
 	$(LD) -emain -Ttext 0x0 -o $@ $^ $(LIBC)
 
-init.o: init.c
+test.o: test.c
 	$(CC) -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -rf init init.o
+	rm -rf test test.o

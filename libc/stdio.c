@@ -6,7 +6,7 @@
 void printf(const i8 *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	i8 internal_buf[2048];
+	i8 internal_buf[1024];
 	memset(internal_buf, 0, sizeof internal_buf);
 	vsprintf(internal_buf, fmt, args);	
 	write(STDOUT_FILENO, internal_buf, strlen(internal_buf));
@@ -14,7 +14,7 @@ void printf(const i8 *fmt, ...) {
 }
 
 void vsprintf(i8 *buf, const i8 *fmt, va_list args) {
-	i8 internal_buf[2048];
+	i8 internal_buf[1024];
 	u32 sz;
 	i8 *p;
 	i8 *temp_s;

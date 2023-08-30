@@ -49,3 +49,13 @@ i32 unlink(const i8 *pathname) {
 
 	return ret;
 }
+
+i32 exec(const i8 *pathname) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(8), "b"(pathname));
+
+	return ret;
+}

@@ -53,35 +53,41 @@ void _start() {
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
 	elf_header_t *elf = elf_load(data);
 
-	if (elf) {
-		DEBUG("Loaded elf entry at 0x%p\r\n", elf->entry);
-		typedef int callable(void);
-		callable *c = (callable *)(elf->entry);
-		i32 res = c();
-		DEBUG("Return code - %d\r\n", res);
-		elf_unload(elf);
-		free(elf);
-	}
+	//vfs_node = vfs_get_node("/bin/test");
+	//data = malloc(vfs_node->length);
+	//memset((i8 *)data, 0, vfs_node->length);
+	//vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
+	//elf = elf_load(data);
 
-	u8 code[] = {
-		0xB9, 0x23, 0x01, 0x00, 0x00,	// mov $0x123, %ecx
-		0x51,							// push %ecx
-		0xB8, 0x07, 0x00, 0x00, 0x00,	// mov $7, %eax
-		0xCD, 0x80,						// int $0x80
-		0x59,							// pop %ecx
-		0xEB, 0xF0						// jmp 0x0
-	};
-	process_create(code, sizeof(code));
+	//if (elf) {
+	//	DEBUG("Loaded elf entry at 0x%p\r\n", elf->entry);
+	//	typedef int callable(void);
+	//	callable *c = (callable *)(elf->entry);
+	//	i32 res = c();
+	//	DEBUG("Return code - %d\r\n", res);
+	//	elf_unload(elf);
+	//	free(elf);
+	//}
 
-	u8 code2[] = {
-		0xBB, 0xbc, 0x0a, 0x00, 0x00,	// mov $0xABC, %ebx
-		0x53,							// push %ebx
-		0xB8, 0x07, 0x00, 0x00, 0x00,	// mov $7, %eax
-		0xCD, 0x80,						// int $0x80
-		0x5B,							// pop %ebx
-		0xEB, 0xF0						// jmp 0x0
-	};
-	process_create(code2, sizeof(code2));
+	//u8 code[] = {
+	//	0xB9, 0x23, 0x01, 0x00, 0x00,	// mov $0x123, %ecx
+	//	0x51,							// push %ecx
+	//	0xB8, 0x07, 0x00, 0x00, 0x00,	// mov $7, %eax
+	//	0xCD, 0x80,						// int $0x80
+	//	0x59,							// pop %ecx
+	//	0xEB, 0xF7						// jmp 0x0
+	//};
+	//process_create(code, sizeof(code));
+
+	//u8 code2[] = {
+	//	0xBB, 0xbc, 0x0a, 0x00, 0x00,	// mov $0xABC, %ebx
+	//	0x53,							// push %ebx
+	//	0xB8, 0x07, 0x00, 0x00, 0x00,	// mov $7, %eax
+	//	0xCD, 0x80,						// int $0x80
+	//	0x5B,							// pop %ebx
+	//	0xEB, 0xF7						// jmp 0x0
+	//};
+	//process_create(code2, sizeof(code2));
 
 	process_init();
 
@@ -494,7 +500,7 @@ void _start() {
 	complicated_path = "/..";
 	DEBUG("Canonilize path - %s\r\n", complicated_path);
 	DEBUG("Result - %s\r\n", canonilize_path(complicated_path));
-	*/
 
 	kshell();	
+	*/
 }
