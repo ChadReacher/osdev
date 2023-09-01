@@ -12,7 +12,7 @@
 
 extern page_directory_t *cur_page_dir;
 
-u32 pid_gen = 1;
+u32 next_pid = 1;
 
 process_t *current_process;
 
@@ -29,7 +29,7 @@ void process_create(u8 *code, i32 len) {
 		++len_in_blocks;
 	}
 	void *code_phys_frame = allocate_blocks(len_in_blocks);
-	void *stack_phys_frame = allocate_blocks(2);
+	void *stack_phys_frame = allocate_blocks(1);
 
 	// 1. Create a new address space for a process
 	// (Duplicate the current page directory)
@@ -97,7 +97,7 @@ void process_create(u8 *code, i32 len) {
 	process->regs.ds = 0x23;
 	process->regs.useresp = 0xBFFFFFFB;
 	process->regs.ebp = 0xBFFFFFFB;
-	process->pid = pid_gen++;
+	process->pid = next_pid++;
 
 	if (current_process && current_process->next) {
 		process_t *p = current_process->next;
@@ -124,24 +124,18 @@ void switch_process(registers_state *regs) {
 	cur_page_dir = (page_directory_t *)(current_process->directory);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
 
-	u32 proc_ebp = current_process->regs.ebp;
-	u32 proc_esp = current_process->regs.useresp;
-	u32 proc_eip = current_process->regs.eip;
 	u32 proc_eax = current_process->regs.eax;
+	u32 proc_ecx = current_process->regs.ecx;
+	u32 proc_edx = current_process->regs.edx;
+	u32 proc_ebx = current_process->regs.ebx;
+	u32 proc_esp = current_process->regs.useresp;
+	u32 proc_ebp = current_process->regs.ebp;
+	u32 proc_esi = current_process->regs.esi;
+	u32 proc_edi = current_process->regs.edi;
+	u32 proc_eip = current_process->regs.eip;
 
-	__asm__ __volatile__ (
-			"mov %0, %%ebp\n"
-			"push $0x23\n"			// User DS
-			"mov %1, %%eax\n"
-			"push %%eax\n"			// User stack
-			"push $512\n"			// EFLAGS
-			"push $0x1B\n"			// User CS
-			"mov %2, %%eax\n"
-			"push %%eax\n"			// User EIP
-			"mov %3, %%eax\n"
-			"iret\n"
-			:
-			: "r"(proc_ebp), "r"(proc_esp), "r"(proc_eip), "r"(proc_eax)
-			: "eax");
+	extern context_switch(u32 eax, u32 ecx, u32 edx, u32 ebx, u32 useresp, u32 ebp, u32 esi, u32 edi, u32 eip);
+
+	context_switch(proc_eax, proc_ecx, proc_edx, proc_ebx, proc_esp, proc_ebp, proc_esi, proc_edi, proc_eip);
 }
 

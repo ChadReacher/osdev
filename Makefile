@@ -85,11 +85,8 @@ build/%.bin: src/boot/%.asm
 build/kernel.bin: build/kernel.elf
 	$(OBJCOPY) -O binary $^ $@		
 
-build/kernel.elf: build/kernel_entry.o build/kernel.o build/interrupt.o $(KERNEL_OBJECTS) build/gdt_helper.o build/tss_helper.o build/jump_usermode.o $(LIBK)
+build/kernel.elf: build/kernel_entry.o build/kernel.o build/interrupt.o $(KERNEL_OBJECTS) build/gdt_helper.o build/tss_helper.o build/context_switch.o $(LIBK)
 	$(LD) -Tkernel_linker.ld $^ -o $@
-
-build/jump_usermode.o: src/core/jump_usermode.asm
-	$(AS) -f elf32 $< -o $@
 
 build/kernel_entry.o: src/boot/kernel_entry.asm
 	$(AS) -f elf32 $< -o $@
@@ -104,6 +101,9 @@ build/gdt_helper.o: src/core/gdt_helper.asm
 	$(AS) -f elf32 $< -o $@
 
 build/tss_helper.o: src/core/tss_helper.asm
+	$(AS) -f elf32 $< -o $@
+	
+build/context_switch.o: src/boot/context_switch.asm
 	$(AS) -f elf32 $< -o $@
 
 

@@ -14,7 +14,7 @@
 
 extern file fds[NB_DESCRIPTORS];
 extern process_t *current_process;
-extern u32 pid_gen;
+extern u32 next_pid;
 
 syscall_handler_t syscall_handlers[NB_SYSCALLS];
 
@@ -393,13 +393,8 @@ void syscall_fork(registers_state *regs) {
 	process->directory = new_page_dir_phys;
 	void *kernel_stack = malloc(4096);
 	process->kernel_stack = (u8 *)kernel_stack + 4096 - 1;
-	//memcpy(&process->regs, &current_process->regs, sizeof(registers_state));
-	process->regs.eip = regs->eip;
-	process->regs.cs = 0x1B;
-	process->regs.ds = 0x23;
-	process->regs.useresp = regs->useresp;
-	process->regs.ebp = regs->ebp;
-	process->pid = pid_gen++;
+	memcpy(&process->regs, regs, sizeof(registers_state));
+	process->pid = next_pid++;
 
 	process->regs.eax = 0; 
 	current_process->regs.eax = process->pid; 
