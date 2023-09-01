@@ -14,6 +14,7 @@
 
 extern file fds[NB_DESCRIPTORS];
 extern process_t *current_process;
+extern u32 pid_gen;
 
 syscall_handler_t syscall_handlers[NB_SYSCALLS];
 
@@ -27,6 +28,7 @@ void syscall_init() {
 	syscall_register_handler(SYSCALL_UNLINK, syscall_unlink);
 	syscall_register_handler(SYSCALL_YIELD, syscall_yield);
 	syscall_register_handler(SYSCALL_EXEC, syscall_exec);
+	syscall_register_handler(SYSCALL_FORK, syscall_fork);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
@@ -299,3 +301,117 @@ void syscall_exec(registers_state *regs) {
 
 }
 
+void syscall_fork(registers_state *regs) {
+	process_t *process = malloc(sizeof(process_t));
+	memset(process, 0, sizeof(process_t));
+
+	// Deep copy of current process' directory
+	void *new_page_dir_phys = allocate_blocks(1);
+	map_page(new_page_dir_phys, 0xE0000000); // Temporary mapping
+	memset(0xE0000000, 0, 4096);
+	page_directory_t *pd = (page_directory_t *)0xE0000000;
+	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
+
+	// Link kernel pages 
+	for (u32 i = 768; i < 1024; ++i) {
+		pd->entries[i] = cur_pd->entries[i];
+	}
+	// Setup recursive paging
+	pd->entries[1023] = (u32)new_page_dir_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE;
+
+	// Deep copy user pages
+	for (u32 i = 0; i < 768; ++i) {
+		if (!cur_pd->entries[i]) {
+			continue;
+		}
+		page_table_t *cur_table = (page_table_t *)(0xFFC00000 + (i << 12));
+		page_table_t *new_table_phys = allocate_blocks(1);
+		page_table_t *new_table = (page_table_t *)0xEA000000;
+		map_page(new_table_phys, 0xEA000000); // Temporary mapping
+		memset(0xEA000000, 0, 4096);
+		for (u32 j = 0; j < 1024; ++j) {
+			if (!cur_table->entries[j]) {
+				continue;
+			}
+			// Copy the page frame's contents 
+			page_table_entry cur_pte = cur_table->entries[j];
+			u32 cur_page_frame = (u32)GET_FRAME(cur_pte);
+			void *new_page_frame = allocate_blocks(1);
+			map_page(cur_page_frame, 0xEB000000);
+			map_page(new_page_frame, 0xEC000000);
+			memcpy(0xEC000000, 0xEB000000, 4096);
+			unmap_page(0xEC000000);
+			unmap_page(0xEB000000);
+
+			// Insert the corresponding page table entry
+			page_table_entry new_pte = 0;
+			if ((cur_pte & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT) {
+				new_pte |= PAGING_FLAG_PRESENT;
+			}
+			if ((cur_pte & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE) {
+				new_pte |= PAGING_FLAG_WRITEABLE;
+			}
+			if ((cur_pte & PAGING_FLAG_ACCESSED) == PAGING_FLAG_ACCESSED) {
+				new_pte |= PAGING_FLAG_ACCESSED;
+			}
+			if ((cur_pte & PAGING_FLAG_DIRTY) == PAGING_FLAG_DIRTY) {
+				new_pte |= PAGING_FLAG_DIRTY;
+			}
+			if ((cur_pte & PAGING_FLAG_USER) == PAGING_FLAG_USER) {
+				new_pte |= PAGING_FLAG_USER;
+			}
+			new_pte = ((new_pte & ~0xFFFFF000) | (physical_address)new_page_frame);
+			new_table->entries[j] = new_pte;
+		}
+		unmap_page(0xEA000000);
+
+		// Insert the corresponding page directory entry
+		page_directory_entry cur_pde = cur_pd->entries[i];
+		page_directory_entry new_pde = 0;
+		if ((cur_pde & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT) {
+			new_pde |= PAGING_FLAG_PRESENT;
+		}
+		if ((cur_pde & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE) {
+			new_pde |= PAGING_FLAG_WRITEABLE;
+		}
+		if ((cur_pde & PAGING_FLAG_ACCESSED) == PAGING_FLAG_ACCESSED) {
+			new_pde |= PAGING_FLAG_ACCESSED;
+		}
+		if ((cur_pde & PAGING_FLAG_DIRTY) == PAGING_FLAG_DIRTY) {
+			new_pde |= PAGING_FLAG_DIRTY;
+		}
+		if ((cur_pde & PAGING_FLAG_USER) == PAGING_FLAG_USER) {
+			new_pde |= PAGING_FLAG_USER;
+		}
+		new_pde = ((new_pde & ~0xFFFFF000) | (physical_address)new_table_phys);
+		pd->entries[i] = new_pde;
+	}
+
+	unmap_page(0xE0000000);
+
+	process->next = process;
+	process->directory = new_page_dir_phys;
+	void *kernel_stack = malloc(4096);
+	process->kernel_stack = (u8 *)kernel_stack + 4096 - 1;
+	//memcpy(&process->regs, &current_process->regs, sizeof(registers_state));
+	process->regs.eip = regs->eip;
+	process->regs.cs = 0x1B;
+	process->regs.ds = 0x23;
+	process->regs.useresp = regs->useresp;
+	process->regs.ebp = regs->ebp;
+	process->pid = pid_gen++;
+
+	process->regs.eax = 0; 
+	current_process->regs.eax = process->pid; 
+
+	if (current_process && current_process->next) {
+		process_t *p = current_process->next;
+		current_process->next = process;
+		process->next = p;
+	} else if (!current_process) {
+		current_process = process;
+		current_process->next = current_process;
+	}
+
+	regs->eax = process->pid;
+}

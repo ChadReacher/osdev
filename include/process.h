@@ -6,6 +6,7 @@
 #include <isr.h>
 
 typedef struct _process {
+	u32 pid;
 	struct _process *next;
 	page_directory_t *directory;
 	registers_state regs;

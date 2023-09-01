@@ -5,7 +5,7 @@
 
 static u32 ticks = 0;
 
-static void timer_handler(registers_state regs) {
+static void timer_handler(registers_state *regs) {
 	(void)regs;
 	++ticks;	
 }

@@ -109,7 +109,6 @@ build/tss_helper.o: src/core/tss_helper.asm
 
 $(KERNEL_OBJECTS): $(dirs)
 
-#$(dirs-y): src/core/Makefile src/fs/Makefile src/ds/Makefile src/mmu/Makefile src/proc/Makefile
 $(dirs): $(mkfiles)
 	$(MAKE) -C $@
 

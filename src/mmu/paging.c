@@ -6,12 +6,12 @@
 
 page_directory_t *cur_page_dir = (page_directory_t *)0x12000;
 
-void pagefault_handler(registers_state regs) {
+void pagefault_handler(registers_state *regs) {
 	u32 bad_address;
 
 	__asm__ __volatile__ ("movl %%cr2, %0" : "=r"(bad_address));
 
-	kprintf("Page Fault Exception. Error code - %x\n", regs.err_code);
+	kprintf("Page Fault Exception. Error code - %x\n", regs->err_code);
 	kprintf("Bad Address: %x\n", bad_address);
 
 	while (1) {
@@ -66,10 +66,8 @@ void map_page(void *phys_addr, void *virt_addr) {
 	page_table_t *table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
 	//page_table_t *table = (page_table_t *)(GET_FRAME(*entry));
 	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
-	if (*page == 0) {
-		*page |= PAGING_FLAG_PRESENT;	
-		*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
-	}
+	*page |= PAGING_FLAG_PRESENT;	
+	*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
 }
 
 void unmap_page(void *virt_addr) {

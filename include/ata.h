@@ -63,7 +63,7 @@ typedef struct ata_device {
 #define SECTOR_SIZE 512
 
 void ata_init();
-void ata_handler(registers_state regs);
+void ata_handler(registers_state *regs);
 void ata_software_reset(ata_device_t *dev);
 void ata_io_wait(ata_device_t *dev);
 void ata_device_detect(ata_device_t *dev, u32 primary);

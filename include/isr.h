@@ -86,10 +86,11 @@ typedef struct {
 
 void isr_init();
 void irq_init();
-void isr_handler(registers_state r);
+void isr_handler(registers_state *regs);
+void irq_handler(registers_state *regs);
 
 // Enables registration of callbacks for interrupts or IRQs
-typedef void (*isr_t)(registers_state);
+typedef void (*isr_t)(registers_state*);
 void register_interrupt_handler(u8 n, isr_t handler);
 
 #endif

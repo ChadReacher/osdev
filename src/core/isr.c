@@ -47,18 +47,18 @@ i8 *exception_messages[] = {
 	"Reserved",
 };
 
-void breakpoint_handler(registers_state regs) {
+void breakpoint_handler(registers_state *regs) {
 	kprintf("Exception: BREAKPOINT\n"
 		  "   Instruction Pointer = 0x%x\n"
 		  "   Code Segment        = 0x%x\n"
 		  "   CPU Flags           = 0x%x\n"
 		  "   Stack Pointer       = 0x%x\n"
 		  "   Stack Segment       = 0x%x\n",
-		  regs.eip,
-		  regs.cs,
-		  regs.eflags,
-		  regs.useresp,
-		  regs.ss
+		  regs->eip,
+		  regs->cs,
+		  regs->eflags,
+		  regs->useresp,
+		  regs->ss
 	);
 }
 
@@ -134,41 +134,42 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 	interrupt_handlers[n] = handler;
 }
 
-void isr_handler(registers_state regs) {
-	if (regs.int_number == SYSCALL) {
-		syscall_handler(&regs);
+void isr_handler(registers_state *regs) {
+	if (regs->int_number == SYSCALL) {
+		syscall_handler(regs);
 		return;
 	}
 
-	if (interrupt_handlers[regs.int_number] != 0) {
-		isr_t handler = interrupt_handlers[regs.int_number];
+	if (interrupt_handlers[regs->int_number] != 0) {
+		isr_t handler = interrupt_handlers[regs->int_number];
 		handler(regs);
 		return;
 	}
+
 	PANIC("Received interrupt: %s(%d) with error code: %x\n\n"
 		  "   Instruction Pointer = 0x%x\n"
 		  "   Code Segment		  = 0x%x\n"
 		  "   CPU Flags			  = 0x%x\n"
 		  "   Stack Pointer       = 0x%x\n"
 		  "   Stack Segment       = 0x%x\n", 
-		  exception_messages[regs.int_number], regs.int_number, regs.err_code,
-		  regs.eip,
-		  regs.cs,
-		  regs.eflags,
-		  regs.esp,
-		  regs.ss
+		  exception_messages[regs->int_number], regs->int_number, regs->err_code,
+		  regs->eip,
+		  regs->cs,
+		  regs->eflags,
+		  regs->esp,
+		  regs->ss
 	);
 }
 
-void irq_handler(registers_state r) {
+void irq_handler(registers_state *regs) {
 	// Sending EOI command code
-	if (r.int_number >= 40) {
+	if (regs->int_number >= 40) {
 		port_outb(0xA0, 0x20); // slave
 	}
 	port_outb(0x20, 0x20); // master
 
-	if (interrupt_handlers[r.int_number] != 0) {
-		isr_t handler = interrupt_handlers[r.int_number];
-		handler(r);
+	if (interrupt_handlers[regs->int_number] != 0) {
+		isr_t handler = interrupt_handlers[regs->int_number];
+		handler(regs);
 	}
 }

@@ -12,6 +12,8 @@
 
 extern page_directory_t *cur_page_dir;
 
+u32 pid_gen = 1;
+
 process_t *current_process;
 
 void process_init() {
@@ -95,6 +97,7 @@ void process_create(u8 *code, i32 len) {
 	process->regs.ds = 0x23;
 	process->regs.useresp = 0xBFFFFFFB;
 	process->regs.ebp = 0xBFFFFFFB;
+	process->pid = pid_gen++;
 
 	if (current_process && current_process->next) {
 		process_t *p = current_process->next;
@@ -121,20 +124,24 @@ void switch_process(registers_state *regs) {
 	cur_page_dir = (page_directory_t *)(current_process->directory);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
 
+	u32 proc_ebp = current_process->regs.ebp;
 	u32 proc_esp = current_process->regs.useresp;
 	u32 proc_eip = current_process->regs.eip;
+	u32 proc_eax = current_process->regs.eax;
 
 	__asm__ __volatile__ (
+			"mov %0, %%ebp\n"
 			"push $0x23\n"			// User DS
-			"mov %0, %%eax\n"
+			"mov %1, %%eax\n"
 			"push %%eax\n"			// User stack
 			"push $512\n"			// EFLAGS
 			"push $0x1B\n"			// User CS
-			"mov %1, %%eax\n"
+			"mov %2, %%eax\n"
 			"push %%eax\n"			// User EIP
+			"mov %3, %%eax\n"
 			"iret\n"
 			:
-			: "r"(proc_esp), "r"(proc_eip)
+			: "r"(proc_ebp), "r"(proc_esp), "r"(proc_eip), "r"(proc_eax)
 			: "eax");
 }
 

@@ -50,12 +50,26 @@ i32 unlink(const i8 *pathname) {
 	return ret;
 }
 
+void yield() {
+	__asm__ __volatile__ ("int $0x80" : : "a"(7));
+}
+
 i32 exec(const i8 *pathname) {
 	i32 ret;
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
 			: "a"(8), "b"(pathname));
+
+	return ret;
+}
+
+i32 fork() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(9));
 
 	return ret;
 }

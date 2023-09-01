@@ -31,18 +31,23 @@ extern irq_handler
 isr_common_stub:
 	; 1. Save CPU state
 	pushad				; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
+	xor eax, eax
 	mov ax, ds			; Lower 16 bits of eax = ds
 	push eax			; Save the data segment register
+
 	mov ax, 0x10		; Kernel data segment register
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
 
+	push dword esp			; for "registers_state *regs"
+
 	; 2. Call C handler
 	call isr_handler
 
 	; 3. Restore state
+	pop eax
 	pop eax
 	mov ds, ax
 	mov es, ax
@@ -64,10 +69,13 @@ irq_common_stub:
 	mov fs, ax
 	mov gs, ax
 
+	push dword esp ; for "registers_state *regs"
+
 	; 2. Call C handler
 	call irq_handler
 
 	; 3. Restore state
+	pop ebx
 	pop ebx
 	mov ds, bx
 	mov es, bx

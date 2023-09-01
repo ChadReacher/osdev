@@ -2,12 +2,16 @@
 #include <unistd.h>
 
 int main() {
-	printf("Hello, world from userland!\n");
-	for (u32 i = 0; i < 5; ++i) {
-		printf("Hello - %d\r\n", i);
+	i32 x = fork();
+	printf("Return - %d\n", x);
+	if (x == 0) {
+		printf("We are child\r\n");
+		exec("/bin/test");
+		printf("after exec\n");
+	} else {
+		printf("We are parent\r\n");
+		yield();
 	}
-	exec("/bin/test");
-	printf("after exec\n");
 	for (;;);
 	return 0;
 }

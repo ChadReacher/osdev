@@ -14,5 +14,7 @@ i32 close(i32);
 i32 lseek(i32, i32, i32);
 i32 unlink(const i8*);
 i32 exec(const i8 *);
+void yield();
+i32 fork();
 
 #endif

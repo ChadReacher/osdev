@@ -295,7 +295,7 @@ u32 ata_close(vfs_node_t *node) {
 	return 0;
 }
 
-void ata_handler(registers_state regs) {
+void ata_handler(registers_state *regs) {
 	(void)regs;
 
 	port_inb(primary_master.status_reg);
