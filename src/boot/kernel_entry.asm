@@ -55,14 +55,24 @@ page_table_end:
 	mov edx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
 
 	mov eax, [edx]
-	or eax, 0x3							; Set present bit and R/W (U/S - ?)
+	or eax, 0x3							; Set present bit and R/W
 	sub eax, KERNEL_VIRTUAL_BASE
 	mov [edx], eax
 
 	add edx, 4 * KERNEL_PAGE_NUMBER		; Move to the kernel page entry number
 
 	mov eax, [edx]
-	or eax, 0x3							; Set present bit and R/W (U/S - ?)
+	or eax, 0x3							; Set present bit and R/W
+	sub eax, KERNEL_VIRTUAL_BASE
+	mov [edx], eax
+
+
+	; Set up recursive paging
+	mov edx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
+	add edx, 4 * 1023
+	xor eax, eax
+	mov eax, boot_page_directory
+	or eax, 0x3
 	sub eax, KERNEL_VIRTUAL_BASE
 	mov [edx], eax
 
@@ -80,8 +90,11 @@ lea ecx, [start_in_higher_half]
 jmp ecx
 
 start_in_higher_half:
+	; Remove first 4MB identity mapping
 	mov dword [boot_page_directory], 0
 	invlpg [0]
+
+	; Flush TLB
 	mov eax, cr3
 	mov cr3, eax
 

@@ -13,6 +13,7 @@
 #include <paging.h>
 
 extern file fds[NB_DESCRIPTORS];
+extern process_t *proc_list;
 extern process_t *current_process;
 extern u32 next_pid;
 
@@ -399,13 +400,16 @@ void syscall_fork(registers_state *regs) {
 	process->regs.eax = 0; 
 	current_process->regs.eax = process->pid; 
 
-	if (current_process && current_process->next) {
-		process_t *p = current_process->next;
-		current_process->next = process;
-		process->next = p;
-	} else if (!current_process) {
+	if (!proc_list) {
+		proc_list = process;
 		current_process = process;
-		current_process->next = current_process;
+	} else if (!current_process) {
+		proc_list = process;
+		current_process = process;
+	} else {
+		process_t *head = proc_list;
+		process->next = head;
+		proc_list = process;
 	}
 
 	regs->eax = process->pid;

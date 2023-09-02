@@ -61,6 +61,7 @@ isr_common_stub:
 irq_common_stub:
 	; 1. Save CPU state
 	pushad
+	xor eax, eax
 	mov ax, ds
 	push eax
 	mov ax, 0x10

@@ -10,11 +10,10 @@
 #include <debug.h>
 #include <panic.h>
 
-extern page_directory_t *cur_page_dir;
-
 u32 next_pid = 1;
 
-process_t *current_process;
+process_t *proc_list = NULL;
+process_t *current_process = NULL;
 
 void process_init() {
 	switch_process(NULL);
@@ -88,7 +87,7 @@ void process_create(u8 *code, i32 len) {
 	
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(previous_page_dir));
 
-	process->next = process;
+	//process->next = process;
 	process->directory = new_page_dir_phys;
 	void *kernel_stack = malloc(4096);
 	process->kernel_stack = (u8 *)kernel_stack + 4096 - 1;
@@ -99,29 +98,38 @@ void process_create(u8 *code, i32 len) {
 	process->regs.ebp = 0xBFFFFFFB;
 	process->pid = next_pid++;
 
-	if (current_process && current_process->next) {
-		process_t *p = current_process->next;
-		current_process->next = process;
-		process->next = p;
-	} else if (!current_process) {
+	// Add the process to the proc_list 
+	if (!proc_list) {
+		proc_list = process;
 		current_process = process;
-		current_process->next = current_process;
+	} else if (!current_process) {
+		proc_list = process;
+		current_process = process;
+	} else {
+		process_t *head = proc_list;
+		process->next = head;
+		proc_list = process;
 	}
 }
 
+// 1. Save current registers state to the current process
+// 2. Get next process and mark it as current
+// 3. Change virtual address space
+// 4. Restore current process' registers
+// 5. Start the process
 void switch_process(registers_state *regs) {
 	if (regs) {
 		current_process->regs = *regs;
 	}
 
-	current_process = current_process->next;
-	if (!current_process) {
-		PANIC("ERROR");
+	if (current_process->next == NULL) {
+		current_process = proc_list;
+	} else {
+		current_process = current_process->next;
 	}
 
 	tss_set_stack(current_process->kernel_stack);
 
-	cur_page_dir = (page_directory_t *)(current_process->directory);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
 
 	u32 proc_eax = current_process->regs.eax;
@@ -134,8 +142,7 @@ void switch_process(registers_state *regs) {
 	u32 proc_edi = current_process->regs.edi;
 	u32 proc_eip = current_process->regs.eip;
 
-	extern context_switch(u32 eax, u32 ecx, u32 edx, u32 ebx, u32 useresp, u32 ebp, u32 esi, u32 edi, u32 eip);
+	extern void context_switch(u32 eax, u32 ecx, u32 edx, u32 ebx, u32 useresp, u32 ebp, u32 esi, u32 edi, u32 eip);
 
 	context_switch(proc_eax, proc_ecx, proc_edx, proc_ebx, proc_esp, proc_ebp, proc_esi, proc_edi, proc_eip);
 }
-

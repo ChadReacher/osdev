@@ -145,7 +145,7 @@ debug:
 	       	-drive file=disk.img,if=ide,format=raw,media=disk,index=1 \
 	       	-boot a -s -S \
 		& gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf"\
-	       	-ex "br _start" -ex "layout src" -ex "continue" -ex "next"\
+	       	-ex "br _start" -ex "layout src" -ex "continue" -ex "next"
 
 .PHONY: clean
 clean:
