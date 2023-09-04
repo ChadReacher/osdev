@@ -5,14 +5,14 @@ int main() {
 	i32 x = fork();
 	printf("%d\n", x);
 	if (x == 0) {
-		for (u32 i = 0; i < 100; ++i) {
-			if (i == 50) {
-				exit();
-			}
+		for (u32 i = 0; i < 300; ++i) {
+			//if (i == 50) {
+			//	exit();
+			//}
 			printf("%d - pull ups\n", i);
 		}
 	} else {
-		for (u32 i = 0; i < 100; ++i) {
+		for (u32 i = 0; i < 300; ++i) {
 			printf("%d - push ups\n", i);
 		}
 	}

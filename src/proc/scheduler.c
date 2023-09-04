@@ -7,7 +7,7 @@
 extern void context_switch(u32 eax, u32 ecx, u32 edx, u32 ebx, u32 useresp, u32 ebp, u32 esi, u32 edi, u32 eip);
 
 process_t *proc_list = NULL;
-static process_t *current_process = NULL;
+process_t *current_process = NULL;
 
 void run_init_process(i8 *file) {
 	__asm__ __volatile__ ("cli");
@@ -104,12 +104,12 @@ void remove_process_from_list(process_t *proc) {
 // 4. Restore current process' registers
 // 5. Start the process
 void schedule(registers_state *regs) {
-	__asm__ __volatile__ ("cli");
 	// There are no processes at all
 	if (proc_list == NULL) {
 		return;
 	}
 
+	__asm__ __volatile__ ("cli");
 	if (regs) {
 		current_process->regs = *regs;
 	}

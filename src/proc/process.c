@@ -1,5 +1,4 @@
 #include <process.h>
-#include <list.h>
 #include <heap.h>
 #include <isr.h>
 #include <pmm.h>
@@ -93,6 +92,8 @@ void process_create(u8 *code, i32 len) {
 	process->regs.ebp = 0xBFFFFFFB;
 	process->pid = next_pid++;
 	process->state = RUNNABLE;
+	process->fds = malloc(32 * sizeof(file));
+	process->cwd = strdup("/");
 
 	add_process_to_list(process);
 }
@@ -125,5 +126,24 @@ void process_free(process_t *proc) {
 	unmap_page(0xE0000000);
 
 	free_blocks(page_dir_phys, 1);
+	
+	for (u32 i = 0; i < 32; ++i) {
+		file *f = &proc->fds[i];
+		if (f->vfs_node && f->vfs_node != (void *) -1) {
+			vfs_close(f->vfs_node);
+			memset(f, 0, sizeof(file));
+		}
+	}
+	free(proc->fds);
+	free(proc->cwd);
 	free(proc);
+}
+
+i32 proc_fd_get(process_t *proc) {
+	for (u32 i = 3; i < 32; ++i) {
+		if (!proc->fds[i].used) {
+			proc->fds[i].used = true;
+			return i;
+		}
+	}
 }

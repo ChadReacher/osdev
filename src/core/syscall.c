@@ -13,8 +13,8 @@
 #include <paging.h>
 #include <scheduler.h>
 
-extern file fds[NB_DESCRIPTORS];
 extern u32 next_pid;
+extern process_t *current_process;
 
 syscall_handler_t syscall_handlers[NB_SYSCALLS];
 
@@ -73,11 +73,11 @@ void syscall_open(registers_state *regs) {
 		vfs_trunc(vfs_node);
 	}
 
-	i32 fd = fd_get();
+	i32 fd = proc_fd_get(current_process);
 	if (fd == -1) {
 		PANIC("%s", "We have run out of file descriptors\r\n");
 	}
-	fds[fd] = (file) {
+	current_process->fds[fd] = (file) {
 		.vfs_node = vfs_node,
 		.offset = 0,
 		.flags = oflags,
@@ -94,14 +94,14 @@ void syscall_close(registers_state *regs) {
 		regs->eax = 1;
 		return;
 	}
-	file *f = &fds[fd];
+	file *f = &current_process->fds[fd];
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
 		regs->eax = 1;
 		return;
 	}
 	vfs_close(f->vfs_node);
-	memset(&fds[fd], 0, sizeof(file));
+	memset(&current_process->fds[fd], 0, sizeof(file));
 	regs->eax = 0;
 }
 
@@ -125,7 +125,7 @@ void syscall_read(registers_state *regs) {
 		return;
 	}
 
-	file *f = &fds[fd];
+	file *f = &current_process->fds[fd];
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
 		regs->eax = 0;
@@ -160,7 +160,7 @@ void syscall_write(registers_state *regs) {
 		return;
 	}
 
-	file *f = &fds[fd];
+	file *f = &current_process->fds[fd];
 
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
@@ -191,7 +191,7 @@ void syscall_lseek(registers_state *regs) {
 		return;
 	}
 
-	file *f = &fds[fd];
+	file *f = &current_process->fds[fd];
 
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
@@ -274,7 +274,6 @@ void syscall_exec(registers_state *regs) {
 		}
 	}
 
-	process_t *current_process = get_current_process();
 	void *kernel_stack = malloc(4096);
 	memset(kernel_stack, 0, 4096);
 	current_process->kernel_stack_bottom = kernel_stack;
@@ -306,8 +305,6 @@ void syscall_exec(registers_state *regs) {
 }
 
 void syscall_fork(registers_state *regs) {
-	process_t *current_process = get_current_process();
-
 	process_t *process = malloc(sizeof(process_t));
 	memset(process, 0, sizeof(process_t));
 
@@ -412,5 +409,5 @@ void syscall_fork(registers_state *regs) {
 }
 
 void syscall_exit(registers_state *regs) {
-	process_kill(get_current_process());
+	process_kill(current_process);
 }

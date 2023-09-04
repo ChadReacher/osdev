@@ -4,6 +4,7 @@
 #include <types.h>
 #include <paging.h>
 #include <isr.h>
+#include <vfs.h>
 
 typedef enum {
 	RUNNABLE,
@@ -19,6 +20,8 @@ typedef struct _process {
 	registers_state regs;
 	void *kernel_stack_bottom;
 	void *kernel_stack_top;
+	file *fds;
+	i8 *cwd;
 } process_t;
 
 void process_create(u8 *code, i32 len);
