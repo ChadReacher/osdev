@@ -16,5 +16,6 @@ i32 unlink(const i8*);
 i32 exec(const i8 *);
 void yield();
 i32 fork();
+void exit();
 
 #endif

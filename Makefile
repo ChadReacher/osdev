@@ -8,6 +8,7 @@ AR = ar
 C_FLAGS = -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector\
 		  -I ./include/ -I ./libc
 
+
 LIBC = build/libc.a
 LIBK = build/libk.a
 
@@ -45,11 +46,27 @@ BIN_SRC = $(ASM_SRC:src/boot/%.asm=build/%.bin)
 dirs = src/core src/dev src/ds src/fs src/mmu src/proc
 mkfiles = $(patsubst %, %/Makefile, $(dirs))
 
+# IT WORKS
+#C_SOURCES = $(shell find src/ -type f -name '*.c' ! -path "src/.*/*")
+#OBJECTS = ${C_SOURCES:src/%c=build/%o}
+#
+#all: prepare #OS
+#
+#build/%.o: src/%.c
+#	@echo "input - " $< " output - " $@
+#	@#$(CC) -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector -I ./include/ -c $< -o build\$@
+#
+#.PHONY: prepare
+#prepare: $(OBJECTS)
+#	@echo $(C_SOURCES)
+#	@echo $(OBJECTS)
+#	mkdir -p build/libc
+#	mkdir -p build/libk
 
 all: prepare OS
 
 .PHONY: prepare
-prepare:
+prepare: 
 	mkdir -p build/libc
 	mkdir -p build/libk
 

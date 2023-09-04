@@ -5,17 +5,22 @@
 #include <paging.h>
 #include <isr.h>
 
+typedef enum {
+	RUNNABLE,
+	RUNNING,
+	DEAD
+} state_t;
+
 typedef struct _process {
 	u32 pid;
+	state_t state;
 	struct _process *next;
 	page_directory_t *directory;
 	registers_state regs;
-	void *kernel_stack;
+	void *kernel_stack_bottom;
+	void *kernel_stack_top;
 } process_t;
 
-void process_init();
-void create_init_task(i8 *file);
 void process_create(u8 *code, i32 len);
-void switch_process(registers_state *regs);
 
 #endif

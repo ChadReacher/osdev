@@ -9,15 +9,10 @@
 #include <timer.h>
 #include <debug.h>
 #include <panic.h>
+#include <scheduler.h>
+#include <paging.h>
 
 u32 next_pid = 1;
-
-process_t *proc_list = NULL;
-process_t *current_process = NULL;
-
-void process_init() {
-	switch_process(NULL);
-}
 
 void process_create(u8 *code, i32 len) {
 	process_t *process = malloc(sizeof(process_t));
@@ -32,9 +27,10 @@ void process_create(u8 *code, i32 len) {
 
 	// 1. Create a new address space for a process
 	// (Duplicate the current page directory)
-	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
-	map_page(new_page_dir_phys, 0xE0000000); // Temporary mapping
 
+	// Link kernel pages and set up recursive paging
+	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
+	map_page(new_page_dir_phys, 0xE0000000);
 	memset(0xE0000000, 0, 4096);
 	page_directory_t *pd = (page_directory_t *)0xE0000000;
 	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
@@ -45,7 +41,6 @@ void process_create(u8 *code, i32 len) {
 	for (u32 i = 0; i < (0xC0000000 >> 22); ++i) {
 		pd->entries[i] = 0;
 	}
-
 	unmap_page(0xE0000000);
 
 	void *previous_page_dir = virtual_to_physical(0xFFFFF000);
@@ -87,62 +82,48 @@ void process_create(u8 *code, i32 len) {
 	
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(previous_page_dir));
 
-	//process->next = process;
 	process->directory = new_page_dir_phys;
 	void *kernel_stack = malloc(4096);
-	process->kernel_stack = (u8 *)kernel_stack + 4096 - 1;
+	process->kernel_stack_bottom = kernel_stack;
+	process->kernel_stack_top = (u8 *)kernel_stack + 4096 - 1;
 	process->regs.eip = 0;
 	process->regs.cs = 0x1B;
 	process->regs.ds = 0x23;
 	process->regs.useresp = 0xBFFFFFFB;
 	process->regs.ebp = 0xBFFFFFFB;
 	process->pid = next_pid++;
+	process->state = RUNNABLE;
 
-	// Add the process to the proc_list 
-	if (!proc_list) {
-		proc_list = process;
-		current_process = process;
-	} else if (!current_process) {
-		proc_list = process;
-		current_process = process;
-	} else {
-		process_t *head = proc_list;
-		process->next = head;
-		proc_list = process;
-	}
+	add_process_to_list(process);
 }
 
-// 1. Save current registers state to the current process
-// 2. Get next process and mark it as current
-// 3. Change virtual address space
-// 4. Restore current process' registers
-// 5. Start the process
-void switch_process(registers_state *regs) {
-	if (regs) {
-		current_process->regs = *regs;
+void process_free(process_t *proc) {
+	free(proc->kernel_stack_bottom);
+
+	void *page_dir_phys = (void *)proc->directory;
+	map_page(page_dir_phys, 0xE0000000);
+	page_directory_t *page_dir = (page_directory_t *)0xE0000000;
+	for (u32 i = 0; i < 768; ++i) {
+		if (!page_dir->entries[i]) {
+			continue;
+		}
+		page_directory_entry pde = page_dir->entries[i];
+		void *table_phys = (void *)GET_FRAME(pde);
+		map_page(table_phys, 0xEA000000); // Temporary mapping
+		page_table_t *table = (page_table_t *)0xEA000000;
+		for (u32 j = 0; j < 1024; ++j) {
+			if (!table->entries[j]) {
+				continue;
+			}
+			page_table_entry pte = table->entries[j];
+			void *page_frame = (void *)GET_FRAME(pte);
+			free_blocks(page_frame, 1);
+		}
+		unmap_page(0xEA000000);
+		free_blocks(table_phys, 1);
 	}
+	unmap_page(0xE0000000);
 
-	if (current_process->next == NULL) {
-		current_process = proc_list;
-	} else {
-		current_process = current_process->next;
-	}
-
-	tss_set_stack(current_process->kernel_stack);
-
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
-
-	u32 proc_eax = current_process->regs.eax;
-	u32 proc_ecx = current_process->regs.ecx;
-	u32 proc_edx = current_process->regs.edx;
-	u32 proc_ebx = current_process->regs.ebx;
-	u32 proc_esp = current_process->regs.useresp;
-	u32 proc_ebp = current_process->regs.ebp;
-	u32 proc_esi = current_process->regs.esi;
-	u32 proc_edi = current_process->regs.edi;
-	u32 proc_eip = current_process->regs.eip;
-
-	extern void context_switch(u32 eax, u32 ecx, u32 edx, u32 ebx, u32 useresp, u32 ebp, u32 esi, u32 edi, u32 eip);
-
-	context_switch(proc_eax, proc_ecx, proc_edx, proc_ebx, proc_esp, proc_ebp, proc_esi, proc_edi, proc_eip);
+	free_blocks(page_dir_phys, 1);
+	free(proc);
 }

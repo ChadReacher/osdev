@@ -35,9 +35,9 @@ list_node_t *list_insert_front(list_t *list, void *val) {
 	return node;
 }
 
-void list_insert_back(list_t *list, void *val) {
+list_node_t *list_insert_back(list_t *list, void *val) {
 	if (!list) {
-		return;
+		return NULL;
 	}
 
 	list_node_t *node = malloc(sizeof(list_node_t));
@@ -48,7 +48,7 @@ void list_insert_back(list_t *list, void *val) {
 		list->tail = node;
 		list->head = node;
 		++list->sz;
-		return;
+		return node;
 	}
 
 	list->tail->next = node;
@@ -58,7 +58,7 @@ void list_insert_back(list_t *list, void *val) {
 
 	list->tail = node;
 	++list->sz;
-	return;
+	return node;
 }
 
 // Caller should free the memory

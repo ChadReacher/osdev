@@ -1,5 +1,5 @@
 
-files = process.o
+files = process.o scheduler.o
 
 .PHONY: proc
 proc: $(files)

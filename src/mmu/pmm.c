@@ -98,7 +98,7 @@ void pmm_init() {
 	mark_memory_as_used(0xA000, 0x800);		// Mark font as used memory
 	
 	// mark kernel and "OS" memory regions as used
-	mark_memory_as_used(0x10000, 0x16000);
+	mark_memory_as_used(0x10000, 0x20000);
 	
 	// Mark physical memory map itself as used
 	mark_memory_as_used(0x30000, total_blocks / BLOCK_SIZE);

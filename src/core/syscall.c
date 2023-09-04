@@ -11,10 +11,9 @@
 #include <process.h>
 #include <elf.h>
 #include <paging.h>
+#include <scheduler.h>
 
 extern file fds[NB_DESCRIPTORS];
-extern process_t *proc_list;
-extern process_t *current_process;
 extern u32 next_pid;
 
 syscall_handler_t syscall_handlers[NB_SYSCALLS];
@@ -30,6 +29,7 @@ void syscall_init() {
 	syscall_register_handler(SYSCALL_YIELD, syscall_yield);
 	syscall_register_handler(SYSCALL_EXEC, syscall_exec);
 	syscall_register_handler(SYSCALL_FORK, syscall_fork);
+	syscall_register_handler(SYSCALL_EXIT, syscall_exit);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
@@ -220,7 +220,7 @@ void syscall_unlink(registers_state *regs) {
 }
 
 void syscall_yield(registers_state *regs) {
-	switch_process(regs);
+	schedule(regs);
 }
 
 void syscall_exec(registers_state *regs) {
@@ -274,9 +274,11 @@ void syscall_exec(registers_state *regs) {
 		}
 	}
 
+	process_t *current_process = get_current_process();
 	void *kernel_stack = malloc(4096);
 	memset(kernel_stack, 0, 4096);
-	current_process->kernel_stack = (u8 *)kernel_stack + 4096 - 1;
+	current_process->kernel_stack_bottom = kernel_stack;
+	current_process->kernel_stack_top = (u8 *)kernel_stack + 4096 - 1;
 	current_process->regs.eip = 0;
 	current_process->regs.cs = 0x1B;
 	current_process->regs.ds = 0x23;
@@ -285,24 +287,27 @@ void syscall_exec(registers_state *regs) {
 
 	memset(0xBFFFF000, 0, 4092);
 
-	tss_set_stack(current_process->kernel_stack);
+	tss_set_stack(current_process->kernel_stack_bottom);
 
-	__asm__ __volatile__ (
-			"push $0x23\n"			// User DS
-			"mov %0, %%eax\n"
-			"push %%eax\n"			// User stack
-			"push $512\n"			// EFLAGS
-			"push $0x1B\n"			// User CS
-			"mov %1, %%eax\n"
-			"push %%eax\n"			// User EIP
-			"iret\n"
-			:
-			: "r"(current_process->regs.useresp), "r"(current_process->regs.eip)
-			: "eax");
+	u32 proc_eax = current_process->regs.eax;
+	u32 proc_ecx = current_process->regs.ecx;
+	u32 proc_edx = current_process->regs.edx;
+	u32 proc_ebx = current_process->regs.ebx;
+	u32 proc_esp = current_process->regs.useresp;
+	u32 proc_ebp = current_process->regs.ebp;
+	u32 proc_esi = current_process->regs.esi;
+	u32 proc_edi = current_process->regs.edi;
+	u32 proc_eip = current_process->regs.eip;
+
+	extern void context_switch(u32 eax, u32 ecx, u32 edx, u32 ebx, u32 useresp, u32 ebp, u32 esi, u32 edi, u32 eip);
+
+	context_switch(proc_eax, proc_ecx, proc_edx, proc_ebx, proc_esp, proc_ebp, proc_esi, proc_edi, proc_eip);
 
 }
 
 void syscall_fork(registers_state *regs) {
+	process_t *current_process = get_current_process();
+
 	process_t *process = malloc(sizeof(process_t));
 	memset(process, 0, sizeof(process_t));
 
@@ -390,27 +395,22 @@ void syscall_fork(registers_state *regs) {
 
 	unmap_page(0xE0000000);
 
-	process->next = process;
 	process->directory = new_page_dir_phys;
 	void *kernel_stack = malloc(4096);
-	process->kernel_stack = (u8 *)kernel_stack + 4096 - 1;
+	process->kernel_stack_bottom = kernel_stack;
+	process->kernel_stack_top = (u8 *)kernel_stack + 4096 - 1;
 	memcpy(&process->regs, regs, sizeof(registers_state));
 	process->pid = next_pid++;
+	process->state = RUNNABLE;
 
 	process->regs.eax = 0; 
 	current_process->regs.eax = process->pid; 
 
-	if (!proc_list) {
-		proc_list = process;
-		current_process = process;
-	} else if (!current_process) {
-		proc_list = process;
-		current_process = process;
-	} else {
-		process_t *head = proc_list;
-		process->next = head;
-		proc_list = process;
-	}
+	add_process_to_list(process);	
 
 	regs->eax = process->pid;
+}
+
+void syscall_exit(registers_state *regs) {
+	process_kill(get_current_process());
 }

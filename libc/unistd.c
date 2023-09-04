@@ -73,3 +73,7 @@ i32 fork() {
 
 	return ret;
 }
+
+void exit() {
+	__asm__ __volatile__ ("int $0x80" : : "a"(10));
+}
