@@ -14,8 +14,6 @@ void timer_init(u32 freq) {
 	u8 command_word, low_byte, high_byte; 
 	u16 divisor;
 
-	register_interrupt_handler(IRQ0, timer_handler);
-
 	divisor = INPUT_FREQUENCY_IN_HZ / freq;
 	low_byte = (u8)(divisor & 0xFF);
 	high_byte = (u8)((divisor >> 8) & 0xFF);
@@ -28,5 +26,6 @@ void timer_init(u32 freq) {
 	port_outb(COUNTER_0_REGISTER, low_byte);
 	port_outb(COUNTER_0_REGISTER, high_byte);
 
+	register_interrupt_handler(IRQ0, timer_handler);
 	DEBUG("%s", "Timer has been initialized\r\n");
 }

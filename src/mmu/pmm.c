@@ -19,6 +19,7 @@ void clear_block(u32 bit) {
 	
 	idx = INDEX_FROM_BIT(bit);
 	offset = OFFSET_FROM_BIT(bit);
+	//DEBUG("0x%x\r\n", memory_map + idx);
 	memory_map[idx] &= ~(1 << offset);
 }
 
@@ -98,10 +99,11 @@ void pmm_init() {
 	mark_memory_as_used(0xA000, 0x800);		// Mark font as used memory
 	
 	// mark kernel and "OS" memory regions as used
-	mark_memory_as_used(0x10000, 0x20000);
+	mark_memory_as_used(0x10000, 0x25000);
 	
 	// Mark physical memory map itself as used
-	mark_memory_as_used(0x30000, total_blocks / BLOCK_SIZE);
+	mark_memory_as_used(30000, total_blocks / BLOCKS_PER_BYTE);
+	//mark_memory_as_used(30000, total_blocks / BLOCK_SIZE);
 	
 	mark_memory_as_used(0x26000, 1);
 

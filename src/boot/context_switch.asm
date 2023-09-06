@@ -1,3 +1,17 @@
+global enter_usermode
+enter_usermode:
+	mov eax, 0x23
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	push eax			; user SS
+	push 0xBFFFFFFB		; user stack
+	push 0x200			; EFLAGS
+	push 0x1B			; user CS
+	push 0x0			; EIP
+	iret
+
 global context_switch
 context_switch:
 	; Restore general-purpose registers
@@ -32,3 +46,23 @@ context_switch:
 	mov ebp, [ebp + 20]
 
 	iret
+
+global switch_to
+switch_to:
+	mov eax, [esp + 4]
+	mov edx, [esp + 8]
+
+	push ebp
+	push ebx
+	push esi
+	push edi
+
+	mov [eax], esp
+	mov esp, edx
+
+	pop edi
+	pop esi
+	pop ebx
+	pop ebp
+
+	ret

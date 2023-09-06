@@ -78,7 +78,7 @@ extern void irq14();
 extern void irq15();
 
 typedef struct {
-	u32 ds;
+	u32 gs, fs, es, ds;
 	u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
 	u32 int_number, err_code;
 	u32 eip, cs, eflags, useresp, ss;

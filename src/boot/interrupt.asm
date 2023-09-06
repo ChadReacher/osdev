@@ -27,64 +27,62 @@ extern irq_handler
 		jmp irq_common_stub
 %endmacro
 
+%define KERNEL_DS 0x10
 
 isr_common_stub:
 	; 1. Save CPU state
 	pushad				; Pushes edi, esi, ebp, esp, ebx, edx, ecx, eax
-	xor eax, eax
-	mov ax, ds			; Lower 16 bits of eax = ds
-	push eax			; Save the data segment register
-
-	mov ax, 0x10		; Kernel data segment register
+	push ds
+	push es
+	push fs
+	push gs
+	mov ax, KERNEL_DS
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-
-	push dword esp			; for "registers_state *regs"
+	push dword esp		; for "registers_state *regs"
 
 	; 2. Call C handler
 	call isr_handler
+	add esp, 4			; skip "registers_state *regs"
 
 	; 3. Restore state
-	pop eax
-	pop eax
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
+	pop gs
+	pop fs
+	pop es
+	pop ds
 	popad
-	add esp, 8			; Restore stack as we pushed two dwords
-	sti
-	iret				; Pops 5 things at once: cs, eip, eflags, ss, esp
+	add esp, 8			; Restore stack as we pushed int_num and err_code
+	iret				; Pops 5 things at once: CS, EIP, EFLAGS, (SS, ESP if the changing ring level occurs)
 
 irq_common_stub:
 	; 1. Save CPU state
 	pushad
-	xor eax, eax
-	mov ax, ds
-	push eax
+	push ds
+	push es
+	push fs
+	push gs
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-
 	push dword esp ; for "registers_state *regs"
 
 	; 2. Call C handler
 	call irq_handler
+	add esp, 4
 
+global irq_ret
+irq_ret:
 	; 3. Restore state
-	pop ebx
-	pop ebx
-	mov ds, bx
-	mov es, bx
-	mov fs, bx
-	mov gs, bx
+	pop gs
+	pop fs
+	pop es
+	pop ds
 	popad
 	add esp, 8
-	sti
 	iret
 
 def_isr_handler 0					; Divide Error

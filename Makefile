@@ -145,7 +145,7 @@ build/libc/%.o: libc/sys/%.c
 	$(CC) -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector -I ./include/ -c $< -o $@
 
 run:
-	qemu-system-i386 -m 2G -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
+	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
 	    -drive file=disk.img,if=ide,format=raw,media=disk,index=1\
 		-rtc base=localtime,clock=host,driftfix=slew
 

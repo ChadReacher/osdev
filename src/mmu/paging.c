@@ -112,3 +112,95 @@ void *virtual_to_physical(void *virt_addr) {
 
 	return (void *)phys_addr;
 }
+
+page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
+	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
+	map_page(new_page_dir_phys, 0xE0000000);
+	memset(0xE0000000, 0, 4096);
+
+	page_directory_t *new_pd = (page_directory_t *)0xE0000000;
+	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
+	for (u32 i = 768; i < 1024; ++i) {
+		new_pd->entries[i] = cur_pd->entries[i];
+	}
+	new_pd->entries[1023] = (u32)new_page_dir_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE;
+
+	if (!is_deep_copy) {
+		//for (u32 i = 0; i < (0xC0000000 >> 22); ++i) {
+		//	new_pd->entries[i] = 0;
+		//}
+		unmap_page(0xE0000000);
+		return new_page_dir_phys;
+	}
+
+	// Deep copy user pages
+	for (u32 i = 0; i < 768; ++i) {
+		if (!cur_pd->entries[i]) {
+			continue;
+		}
+		page_table_t *cur_table = (page_table_t *)(0xFFC00000 + (i << 12));
+		page_table_t *new_table_phys = allocate_blocks(1);
+		page_table_t *new_table = (page_table_t *)0xEA000000;
+		map_page(new_table_phys, 0xEA000000); // Temporary mapping
+		memset(0xEA000000, 0, 4096);
+		for (u32 j = 0; j < 1024; ++j) {
+			if (!cur_table->entries[j]) {
+				continue;
+			}
+			// Copy the page frame's contents 
+			page_table_entry cur_pte = cur_table->entries[j];
+			u32 cur_page_frame = (u32)GET_FRAME(cur_pte);
+			void *new_page_frame = allocate_blocks(1);
+			map_page(cur_page_frame, 0xEB000000);
+			map_page(new_page_frame, 0xEC000000);
+			memcpy(0xEC000000, 0xEB000000, 4096);
+			unmap_page(0xEC000000);
+			unmap_page(0xEB000000);
+
+			// Insert the corresponding page table entry
+			page_table_entry new_pte = 0;
+			if ((cur_pte & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT) {
+				new_pte |= PAGING_FLAG_PRESENT;
+			}
+			if ((cur_pte & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE) {
+				new_pte |= PAGING_FLAG_WRITEABLE;
+			}
+			if ((cur_pte & PAGING_FLAG_ACCESSED) == PAGING_FLAG_ACCESSED) {
+				new_pte |= PAGING_FLAG_ACCESSED;
+			}
+			if ((cur_pte & PAGING_FLAG_DIRTY) == PAGING_FLAG_DIRTY) {
+				new_pte |= PAGING_FLAG_DIRTY;
+			}
+			if ((cur_pte & PAGING_FLAG_USER) == PAGING_FLAG_USER) {
+				new_pte |= PAGING_FLAG_USER;
+			}
+			new_pte = ((new_pte & ~0xFFFFF000) | (physical_address)new_page_frame);
+			new_table->entries[j] = new_pte;
+		}
+		unmap_page(0xEA000000);
+
+		// Insert the corresponding page directory entry
+		page_directory_entry cur_pde = cur_pd->entries[i];
+		page_directory_entry new_pde = 0;
+		if ((cur_pde & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT) {
+			new_pde |= PAGING_FLAG_PRESENT;
+		}
+		if ((cur_pde & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE) {
+			new_pde |= PAGING_FLAG_WRITEABLE;
+		}
+		if ((cur_pde & PAGING_FLAG_ACCESSED) == PAGING_FLAG_ACCESSED) {
+			new_pde |= PAGING_FLAG_ACCESSED;
+		}
+		if ((cur_pde & PAGING_FLAG_DIRTY) == PAGING_FLAG_DIRTY) {
+			new_pde |= PAGING_FLAG_DIRTY;
+		}
+		if ((cur_pde & PAGING_FLAG_USER) == PAGING_FLAG_USER) {
+			new_pde |= PAGING_FLAG_USER;
+		}
+		new_pde = ((new_pde & ~0xFFFFF000) | (physical_address)new_table_phys);
+		new_pd->entries[i] = new_pde;
+	}
+	unmap_page(0xE0000000);
+
+	return new_page_dir_phys;
+}

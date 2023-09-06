@@ -48,8 +48,8 @@ void _start() {
 
 	vfs_print();
 
+	userinit();
 	scheduler_init();
-	run_init_process("/bin/init");
 
 	//if (elf) {
 	//	DEBUG("Loaded elf entry at 0x%p\r\n", elf->entry);

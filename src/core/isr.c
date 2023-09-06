@@ -6,6 +6,9 @@
 #include <debug.h>
 #include <panic.h>
 #include <syscall.h>
+#include <process.h>
+
+extern process_t *current_process;
 
 isr_t interrupt_handlers[256];
 
@@ -136,7 +139,9 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 
 void isr_handler(registers_state *regs) {
 	if (regs->int_number == SYSCALL) {
+		*current_process->regs = *regs;
 		syscall_handler(regs);
+		memcpy(regs, current_process->regs, sizeof(registers_state));
 		return;
 	}
 

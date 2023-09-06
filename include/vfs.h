@@ -52,6 +52,8 @@ typedef struct vfs_node {
 	void *device;				// Possible char or block device
 } vfs_node_t;
 
+#define FDS_NUM 32
+
 typedef struct {
 	vfs_node_t *vfs_node;
 	u32 offset;
