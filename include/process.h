@@ -26,6 +26,7 @@ typedef struct _process {
 	u32 pid;
 	state_t state;
 	struct _process *next;
+	struct _process *parent;
 	page_directory_t *directory;
 	registers_state *regs;
 	context_t *context;

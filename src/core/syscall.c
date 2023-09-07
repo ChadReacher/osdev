@@ -13,8 +13,8 @@
 #include <paging.h>
 #include <scheduler.h>
 
-extern u32 next_pid;
 extern process_t *current_process;
+extern void irq_ret();
 
 syscall_handler_t syscall_handlers[NB_SYSCALLS];
 
@@ -224,7 +224,6 @@ void syscall_yield(registers_state *regs) {
 }
 
 void syscall_exec(registers_state *regs) {
-	/*
 	i8 *pathname = (i8 *)regs->ebx;
 
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
@@ -274,43 +273,58 @@ void syscall_exec(registers_state *regs) {
 			}
 		}
 	}
+	free(data);
 
 	void *kernel_stack = malloc(4096);
 	memset(kernel_stack, 0, 4096);
 	current_process->kernel_stack_bottom = kernel_stack;
 	current_process->kernel_stack_top = (u8 *)kernel_stack + 4096 - 1;
-	current_process->regs.eip = 0;
-	current_process->regs.cs = 0x1B;
-	current_process->regs.ds = 0x23;
-	current_process->regs.useresp = 0xBFFFFFFB;
-	current_process->regs.ebp = 0xBFFFFFFB;
 
 	memset(0xBFFFF000, 0, 4092);
 
-	tss_set_stack(current_process->kernel_stack_bottom);
+	u32 *sp = (u32 *)ALIGN_DOWN((u32)current_process->kernel_stack_bottom + 4096 - 1, 4);
+	// Setup kernel stack as we have returned from interrupt routine
+	*sp-- = 0x23;			// user DS
+	*sp-- = 0xBFFFFFFB;		// user stack
+	*sp-- = 0x200;			// EFLAGS
+	*sp-- = 0x1B;			// user CS
+	*sp-- = 0x0;			// user eip
+	*sp-- = 0x0;			// err code
+	*sp-- = 0x0;			// int num
+	*sp-- = 0x0;			// eax
+	*sp-- = 0x0; 			// ecx
+	*sp-- = 0x0; 			// edx
+	*sp-- = 0x0; 			// ebx
+	*sp-- = 0x0; 			// esp
+	*sp-- = 0x0;			// ebp
+	*sp-- = 0x0; 			// esi
+	*sp-- = 0x0; 			// edi
+	*sp-- = 0x23;			// ds
+	*sp-- = 0x23; 			// es
+	*sp-- = 0x23; 			// fs
+	*sp-- = 0x23; 			// gs
+	current_process->regs = (registers_state *)(sp + 1);
+	*sp-- = (u32)irq_ret;	// irq_ret eip (to return back to the end of the interrupt routine)
+	*sp-- = 0x0;			// ebp
+	*sp-- = 0x0; 			// ebx
+	*sp-- = 0x0; 			// esi
+	*sp-- = 0x0; 			// edi
+	++sp;
 
-	u32 proc_eax = current_process->regs.eax;
-	u32 proc_ecx = current_process->regs.ecx;
-	u32 proc_edx = current_process->regs.edx;
-	u32 proc_ebx = current_process->regs.ebx;
-	u32 proc_esp = current_process->regs.useresp;
-	u32 proc_ebp = current_process->regs.ebp;
-	u32 proc_esi = current_process->regs.esi;
-	u32 proc_edi = current_process->regs.edi;
-	u32 proc_eip = current_process->regs.eip;
-
-	extern void context_switch(u32 eax, u32 ecx, u32 edx, u32 ebx, u32 useresp, u32 ebp, u32 esi, u32 edi, u32 eip);
-
-	context_switch(proc_eax, proc_ecx, proc_edx, proc_ebx, proc_esp, proc_ebp, proc_esi, proc_edi, proc_eip);
-*/
+	current_process->kernel_stack_top = (void *)sp;
+	current_process->context = (context_t *)sp;
+	free(current_process->cwd);
+	current_process->cwd = strdup("/");
 }
 
 void syscall_fork(registers_state *regs) {
 	process_t *process = proc_alloc();
 
 	process->directory = paging_copy_page_dir(true);
-	// TODO: clone file descriptors
-	process->cwd = strdup("/");
+	process->cwd = strdup(current_process->cwd);
+	process->parent = current_process;
+	process->fds = malloc(FDS_NUM * sizeof(file));
+	memcpy(process->fds, current_process->fds, FDS_NUM * sizeof(file));
 
 	*process->regs = *current_process->regs;
 

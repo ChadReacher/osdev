@@ -25,8 +25,10 @@ void userinit() {
 	memset((i8 *)data, 0, vfs_node->length);
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
 	elf_load(data);
+	free(data);
 
 	current_process = proc_list;
+	current_process->parent = current_process;
 }
 
 process_t *proc_alloc() {
