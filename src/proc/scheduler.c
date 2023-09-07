@@ -67,6 +67,8 @@ void remove_process_from_list(process_t *proc) {
 }
 
 void schedule(registers_state *regs) {
+	(void)regs;
+
 	if (current_process == proc_list && proc_list->next == NULL) {
 		return;
 	}

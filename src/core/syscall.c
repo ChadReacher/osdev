@@ -333,5 +333,47 @@ void syscall_fork(registers_state *regs) {
 }
 
 void syscall_exit(registers_state *regs) {
-	//process_kill(current_process);
+	if (current_process->pid == 1) {
+		PANIC("Can't exit the INIT process\r\n");
+	}
+	remove_process_from_list(current_process);
+	// Free the kernel stack
+	free(current_process->kernel_stack_bottom);
+
+	// Free the user code pages in the page directory
+	void *page_dir_phys = (void *)current_process->directory;
+	map_page(page_dir_phys, 0xE0000000);
+	page_directory_t *page_dir = (page_directory_t *)0xE0000000;
+	for (u32 i = 0; i < 768; ++i) {
+		if (!page_dir->entries[i]) {
+			continue;
+		}
+		page_directory_entry pde = page_dir->entries[i];
+		void *table_phys = (void *)GET_FRAME(pde);
+		map_page(table_phys, 0xEA000000);
+		page_table_t *table = (page_table_t *)0xEA000000;
+		for (u32 j = 0; j < 1024; ++j) {
+			if (!table->entries[j]) {
+				continue;
+			}
+			page_table_entry pte = table->entries[j];
+			void *page_frame = (void *)GET_FRAME(pte);
+			free_blocks(page_frame, 1);
+		}
+		unmap_page(0xEA000000);
+		free_blocks(table_phys, 1);
+	}
+	unmap_page(0xE0000000);
+	free_blocks(page_dir_phys, 1);
+
+	for (u32 i = 3; i < FDS_NUM; ++i) {
+		file *f = &current_process->fds[i];
+		if (f && f->vfs_node && f->vfs_node != (void *)-1) {
+			vfs_close(f->vfs_node);
+			memset(f, 0, sizeof(file));
+		}
+	}
+	free(current_process->cwd);
+	free(current_process->fds);
+	schedule(NULL);
 }
