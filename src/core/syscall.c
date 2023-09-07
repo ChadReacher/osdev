@@ -315,6 +315,8 @@ void syscall_exec(registers_state *regs) {
 	current_process->context = (context_t *)sp;
 	free(current_process->cwd);
 	current_process->cwd = strdup("/");
+	current_process->timeslice = 20;
+	current_process->priority = 20;
 }
 
 void syscall_fork(registers_state *regs) {
@@ -325,6 +327,8 @@ void syscall_fork(registers_state *regs) {
 	process->parent = current_process;
 	process->fds = malloc(FDS_NUM * sizeof(file));
 	memcpy(process->fds, current_process->fds, FDS_NUM * sizeof(file));
+	process->timeslice = 20;
+	process->priority = 20;
 
 	*process->regs = *current_process->regs;
 
@@ -336,7 +340,6 @@ void syscall_exit(registers_state *regs) {
 	if (current_process->pid == 1) {
 		PANIC("Can't exit the INIT process\r\n");
 	}
-	remove_process_from_list(current_process);
 	// Free the kernel stack
 	free(current_process->kernel_stack_bottom);
 
@@ -375,5 +378,8 @@ void syscall_exit(registers_state *regs) {
 	}
 	free(current_process->cwd);
 	free(current_process->fds);
+
+	remove_process_from_list(current_process);
+	current_process->state = DEAD;
 	schedule(NULL);
 }

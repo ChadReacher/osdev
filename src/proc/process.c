@@ -29,6 +29,8 @@ void userinit() {
 
 	current_process = proc_list;
 	current_process->parent = current_process;
+	current_process->timeslice = 20;
+	current_process->priority = 20;
 }
 
 process_t *proc_alloc() {

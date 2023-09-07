@@ -24,6 +24,8 @@ typedef struct {
 
 typedef struct _process {
 	u32 pid;
+	i32 timeslice;
+	i32 priority;
 	state_t state;
 	struct _process *next;
 	struct _process *parent;
