@@ -9,9 +9,9 @@
 #define ALIGN_DOWN(val, a) ((val) & ~((a) - 1))
 
 typedef enum {
-	RUNNABLE,
 	RUNNING,
-	DEAD
+	SLEEPING,
+	ZOMBIE
 } state_t;
 
 typedef struct {
@@ -27,6 +27,8 @@ typedef struct _process {
 	i32 timeslice;
 	i32 priority;
 	state_t state;
+	void *wait_chan;
+	i32 exit_code;
 	struct _process *next;
 	struct _process *parent;
 	page_directory_t *directory;

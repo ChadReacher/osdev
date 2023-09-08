@@ -10,6 +10,7 @@ extern void enter_usermode();
 
 process_t *proc_list = NULL;
 process_t *current_process = NULL;
+process_t *init_process = NULL;
 
 void scheduler_init() {
 	register_interrupt_handler(IRQ0, schedule);
@@ -17,17 +18,6 @@ void scheduler_init() {
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
 
 	enter_usermode();
-}
-
-process_t *get_next_process() {
-	if (!current_process) {
-		return NULL;
-	}
-	process_t *next = current_process->next;
-	if (!next) {
-		next = proc_list;
-	}
-	return next;
 }
 
 void add_process_to_list(process_t *new_proc) {
@@ -70,14 +60,14 @@ void schedule(registers_state *regs) {
 	(void)regs;
 	process_t *next_proc;
 
-	if (current_process->state == RUNNABLE && --current_process->timeslice > 0) {
+	if (current_process->state == RUNNING && --current_process->timeslice > 0) {
 		return;
 	}
 
 	for (;;) {
 		i32 count = -1;
 		for (process_t *p = proc_list; p != NULL; p = p->next) {
-			if (p->timeslice > count) {
+			if (p->state == RUNNING && p->timeslice > count) {
 				count = p->timeslice;
 				next_proc = p;
 			}
@@ -86,7 +76,9 @@ void schedule(registers_state *regs) {
 			break;
 		}
 		for (process_t *p = proc_list; p != NULL; p = p->next) {
-			p->timeslice = p->priority;
+			if (p->state == RUNNING) {
+				p->timeslice = p->priority;
+			}
 		}
 	}
 
@@ -94,6 +86,7 @@ void schedule(registers_state *regs) {
 		return;
 	}
 
+	DEBUG("%s", "sched\r\n");
 	task_switch(next_proc);
 }
 

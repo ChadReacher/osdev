@@ -28,8 +28,8 @@ void _start() {
 	gdt_init();
 	isr_init();
 	tss_init(5, 0x10, 0);
-	syscall_init();
 	irq_init();
+	syscall_init();
 	timer_init(50);
 	keyboard_init();
 	cmos_rtc_init();

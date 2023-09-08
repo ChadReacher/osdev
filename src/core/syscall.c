@@ -13,6 +13,8 @@
 #include <paging.h>
 #include <scheduler.h>
 
+extern process_t *init_process;
+extern process_t *proc_list;
 extern process_t *current_process;
 extern void irq_ret();
 
@@ -30,6 +32,7 @@ void syscall_init() {
 	syscall_register_handler(SYSCALL_EXEC, syscall_exec);
 	syscall_register_handler(SYSCALL_FORK, syscall_fork);
 	syscall_register_handler(SYSCALL_EXIT, syscall_exit);
+	syscall_register_handler(SYSCALL_WAITPID, syscall_waitpid);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
@@ -224,6 +227,7 @@ void syscall_yield(registers_state *regs) {
 }
 
 void syscall_exec(registers_state *regs) {
+	DEBUG("%s", "exec\r\n");
 	i8 *pathname = (i8 *)regs->ebx;
 
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
@@ -268,17 +272,23 @@ void syscall_exec(registers_state *regs) {
 					map_page((void *)new_code_page, (void *)addr);
 					memcpy((void *)addr, code + addr, 0x1000);
 				} else {
+					memset((void *)addr, 0, 0x1000);
 					memcpy((void *)addr, code + addr, 0x1000);
 				}
 			}
 		}
 	}
 	free(data);
+	// Flush TLB
+	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
 
+
+	void *old_kernel_stack = current_process->kernel_stack_bottom;
 	void *kernel_stack = malloc(4096);
 	memset(kernel_stack, 0, 4096);
 	current_process->kernel_stack_bottom = kernel_stack;
-	current_process->kernel_stack_top = (u8 *)kernel_stack + 4096 - 1;
+	free(old_kernel_stack);
 
 	memset(0xBFFFF000, 0, 4092);
 
@@ -317,9 +327,13 @@ void syscall_exec(registers_state *regs) {
 	current_process->cwd = strdup("/");
 	current_process->timeslice = 20;
 	current_process->priority = 20;
+	DEBUG("%s", "End of exec\r\n");
+	// It fixes problem, but it's strange
+	*regs = *current_process->regs;
 }
 
 void syscall_fork(registers_state *regs) {
+	DEBUG("%s", "forked()\r\n");
 	process_t *process = proc_alloc();
 
 	process->directory = paging_copy_page_dir(true);
@@ -337,11 +351,12 @@ void syscall_fork(registers_state *regs) {
 }
 
 void syscall_exit(registers_state *regs) {
+	i32 exit_code = (i32)regs->ebx;
+
 	if (current_process->pid == 1) {
 		PANIC("Can't exit the INIT process\r\n");
 	}
-	// Free the kernel stack
-	free(current_process->kernel_stack_bottom);
+	DEBUG("exit code - %d\r\n", exit_code);
 
 	// Free the user code pages in the page directory
 	void *page_dir_phys = (void *)current_process->directory;
@@ -368,7 +383,22 @@ void syscall_exit(registers_state *regs) {
 	}
 	unmap_page(0xE0000000);
 	free_blocks(page_dir_phys, 1);
+	
+	// Flush TLB
+	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
 
+	// Pass current_process's children to INIT process
+	for (process_t *p = proc_list; p != NULL; p = p->next) {
+		if (p->state == RUNNING && p->parent == current_process) {
+			p->parent = init_process;
+			if (p->state == ZOMBIE) {
+				wakeup(init_process);
+			}
+		}
+	}
+
+	// Close open files
 	for (u32 i = 3; i < FDS_NUM; ++i) {
 		file *f = &current_process->fds[i];
 		if (f && f->vfs_node && f->vfs_node != (void *)-1) {
@@ -376,10 +406,62 @@ void syscall_exit(registers_state *regs) {
 			memset(f, 0, sizeof(file));
 		}
 	}
-	free(current_process->cwd);
 	free(current_process->fds);
+	free(current_process->cwd);
 
-	remove_process_from_list(current_process);
-	current_process->state = DEAD;
+	current_process->exit_code = exit_code;
+
+	wakeup(current_process->parent);
+	
+	// TODO: Should we maintain another list for zombie processes or
+	// just keep the running list and list of ALL processes?
+	// remove_process_from_list(current_process)
+
+	current_process->state = ZOMBIE;
 	schedule(NULL);
+
+	PANIC("Zombie returned from scheduler\r\n");
+}
+
+void syscall_waitpid(registers_state *regs) {
+	i32 pid = (i32)regs->ebx;
+	i32 *wstatus = (i32 *)regs->ecx;
+	i32 options = (i32)regs->edx;
+
+	if (pid < -1) {
+		// Wait for any child process whose process group ID
+		// is equalt to the absolute value of 'pid'
+	} else if (pid == -1) {
+		// Wait for any child process
+		for (;;) {
+			bool havekids = false;
+			for (process_t *p = proc_list; p != NULL; p = p->next) {
+				if (p->parent != current_process) {
+					continue;
+				}
+				havekids = true;
+				if (p->state ==	ZOMBIE) {
+					if (wstatus) {
+						*wstatus = (p->exit_code << 8) & 0x7F;
+					}
+					u32 ret_pid = p->pid;
+					free(p->kernel_stack_bottom);
+					remove_process_from_list(p);
+					current_process->regs->eax = ret_pid;
+					return;
+				}
+			}
+			if (!havekids) {
+				return -1;
+			}
+
+			sleep(current_process);
+		}
+	} else if (pid == 0) {
+		// Wait for any child process whose process group ID
+		// is equal to that of the calling process at the time
+		// of the call to 'waitpid()'
+	} else if (pid > 0) {
+		// Wait for the child whose process ID is equal to the value of 'pid'
+	}
 }

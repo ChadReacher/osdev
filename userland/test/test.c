@@ -2,14 +2,13 @@
 #include <unistd.h>
 
 int main() {
-	//for (u32 i = 0; i < 100000; ++i) {
-	//	printf("Parent\n");
-	//}
 	printf("TEST message with infinite loop\n");
-	for (u32 i = 0; i < 5; ++i) {
+	for (u32 i = 0; i < 100; ++i) {
+		if (i == 75) {
+			exit(123);
+		}
 		printf("friends\n");
 	}
-	exit();
 	for (;;);
 	return 0;
 }

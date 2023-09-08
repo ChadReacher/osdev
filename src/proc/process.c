@@ -13,6 +13,7 @@
 extern void irq_ret();
 extern process_t *proc_list;
 extern process_t *current_process;
+extern process_t *init_process;
 
 u32 next_pid = 1;
 
@@ -27,10 +28,26 @@ void userinit() {
 	elf_load(data);
 	free(data);
 
-	current_process = proc_list;
-	current_process->parent = current_process;
-	current_process->timeslice = 20;
-	current_process->priority = 20;
+	init_process = current_process = proc_list;
+	current_process->parent = NULL; // or current_process ?
+	current_process->priority = current_process->timeslice = 20;
+	current_process->state = RUNNING;
+}
+
+void sleep(void *chan) {
+	current_process->wait_chan = chan;
+	current_process->state = SLEEPING;
+	schedule(NULL);
+}
+
+void wakeup(void *chan) {
+	for (process_t *p = proc_list; p != NULL; p = p->next) {
+		if (p->state == SLEEPING && p->wait_chan == chan) {
+			p->wait_chan = NULL;
+			p->state = RUNNING;
+			p->timeslice = p->priority;
+		}
+	}
 }
 
 process_t *proc_alloc() {
@@ -38,7 +55,7 @@ process_t *proc_alloc() {
 	memset(process, 0, sizeof(process_t));
 
 	process->pid = next_pid++;
-	process->state = RUNNABLE;
+	process->state = RUNNING;
 	process->next = NULL;
 	process->fds = malloc(FDS_NUM * sizeof(file));
 	memset(process->fds, 0, FDS_NUM * sizeof(file));

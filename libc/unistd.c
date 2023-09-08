@@ -74,6 +74,17 @@ i32 fork() {
 	return ret;
 }
 
-void exit() {
-	__asm__ __volatile__ ("int $0x80" : : "a"(10));
+void exit(i32 exit_code) {
+	__asm__ __volatile__ ("int $0x80" : : "a"(10), "b"(exit_code));
+}
+
+
+i32 waitpid(i32 pid, i32 *wstatus, i32 options) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(11), "b"(pid), "c"(wstatus), "d"(options));
+
+	return ret;
 }
