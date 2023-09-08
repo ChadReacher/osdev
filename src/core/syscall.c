@@ -33,6 +33,8 @@ void syscall_init() {
 	syscall_register_handler(SYSCALL_FORK, syscall_fork);
 	syscall_register_handler(SYSCALL_EXIT, syscall_exit);
 	syscall_register_handler(SYSCALL_WAITPID, syscall_waitpid);
+	syscall_register_handler(SYSCALL_GETPID, syscall_getpid);
+	syscall_register_handler(SYSCALL_DUP, syscall_dup);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
@@ -464,4 +466,25 @@ void syscall_waitpid(registers_state *regs) {
 	} else if (pid > 0) {
 		// Wait for the child whose process ID is equal to the value of 'pid'
 	}
+}
+
+void syscall_getpid(registers_state *regs) {
+	regs->eax = current_process->pid;
+}
+
+void syscall_dup(registers_state *regs) {
+	i32 oldfd = (i32)regs->ebx;
+
+	if (oldfd > FDS_NUM || current_process->fds[oldfd].used || current_process->fds[oldfd].vfs_node == (void *) -1) {
+		regs->eax = -1;
+		return;
+	}
+
+	i32 newfd = proc_get_fd(current_process);
+	if (newfd < 0) {
+		regs->eax = -1;
+		return;
+	}
+	current_process->fds[newfd] = current_process->fds[oldfd];
+	regs->eax = newfd;
 }

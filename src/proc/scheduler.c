@@ -86,7 +86,6 @@ void schedule(registers_state *regs) {
 		return;
 	}
 
-	DEBUG("%s", "sched\r\n");
 	task_switch(next_proc);
 }
 

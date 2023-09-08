@@ -18,5 +18,8 @@ void yield();
 i32 fork();
 void exit(i32);
 i32 waitpid(i32, i32 *, i32);
+i32 wait(i32 *);
+i32 getpid();
+i32 dup(i32 oldfd);
 
 #endif

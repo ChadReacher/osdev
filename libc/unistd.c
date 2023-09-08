@@ -88,3 +88,27 @@ i32 waitpid(i32 pid, i32 *wstatus, i32 options) {
 
 	return ret;
 }
+
+i32 wait(i32 *wstatus) {
+	return waitpid(-1, wstatus, 0);
+}
+
+i32 getpid() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(12));
+
+	return ret;
+}
+
+i32 dup(i32 oldfd) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(13), "b"(oldfd));
+
+	return ret;
+}

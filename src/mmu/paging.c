@@ -126,9 +126,6 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 	new_pd->entries[1023] = (u32)new_page_dir_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE;
 
 	if (!is_deep_copy) {
-		//for (u32 i = 0; i < (0xC0000000 >> 22); ++i) {
-		//	new_pd->entries[i] = 0;
-		//}
 		unmap_page(0xE0000000);
 		return new_page_dir_phys;
 	}
