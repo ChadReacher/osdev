@@ -22,25 +22,25 @@
 #define SYSCALL_DUP		13
 #define SYSCALL_SBRK	14
 
-typedef void (*syscall_handler_t)(registers_state *regs_state);
+typedef i32 (*syscall_handler_t)(registers_state *regs_state);
 
 void syscall_init();
-void syscall_handler(registers_state *regs);
+i32 syscall_handler(registers_state *regs);
 void syscall_register_handler(u8 id, syscall_handler_t handler);
-void syscall_test(registers_state *regs);
-void syscall_open(registers_state *regs);
-void syscall_close(registers_state *regs);
-void syscall_read(registers_state *regs);
-void syscall_write(registers_state *regs);
-void syscall_lseek(registers_state *regs);
-void syscall_unlink(registers_state *regs);
-void syscall_yield(registers_state *regs);
-void syscall_exec(registers_state *regs);
-void syscall_fork(registers_state *regs);
-void syscall_exit(registers_state *regs);
-void syscall_waitpid(registers_state *regs);
-void syscall_getpid(registers_state *regs);
-void syscall_dup(registers_state *regs);
-void syscall_sbrk(registers_state *regs);
+i32 syscall_test(registers_state *regs);
+i32 syscall_open(registers_state *regs);
+i32 syscall_close(registers_state *regs);
+i32 syscall_read(registers_state *regs);
+i32 syscall_write(registers_state *regs);
+i32 syscall_lseek(registers_state *regs);
+i32 syscall_unlink(registers_state *regs);
+i32 syscall_yield(registers_state *regs);
+i32 syscall_exec(registers_state *regs);
+i32 syscall_fork(registers_state *regs);
+i32 syscall_exit(registers_state *regs);
+i32 syscall_waitpid(registers_state *regs);
+i32 syscall_getpid(registers_state *regs);
+i32 syscall_dup(registers_state *regs);
+i32 syscall_sbrk(registers_state *regs);
 
 #endif

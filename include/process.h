@@ -44,5 +44,6 @@ typedef struct _process {
 
 void userinit();
 process_t *proc_alloc();
+i32 proc_get_fd(process_t *proc);
 
 #endif

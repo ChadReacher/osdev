@@ -1,4 +1,5 @@
 #include <types.h>
+#include <stdio.h>
 #include <serial.h>
 #include <debug.h>
 #include <gdt.h>

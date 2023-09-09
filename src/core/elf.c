@@ -38,7 +38,7 @@ elf_header_t *elf_load(u32 *data) {
 	new_proc->cwd = strdup("/");
 	new_proc->directory = paging_copy_page_dir(false);
 
-	void *kernel_page_dir = virtual_to_physical(0xFFFFF000);
+	void *kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(new_proc->directory));
 
 	for (u32 i = 0; i < elf->ph_num; ++i) {
@@ -123,7 +123,7 @@ void load_segment(u32 *data, elf_program_header_t *program_header) {
 	}
 
 	// Copy all segment data
-	memcpy(vaddr, code, filesz);
+	memcpy((void *)vaddr, code, filesz);
 	memset((void *)(vaddr + filesz), 0, memsz - filesz);
 
 	page_directory_entry *code_pd_entry = &cur_pd->entries[0];

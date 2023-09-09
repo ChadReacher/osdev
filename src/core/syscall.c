@@ -13,53 +13,56 @@
 #include <paging.h>
 #include <scheduler.h>
 #include <pmm.h>
+#include <idt.h>
 
 extern process_t *init_process;
 extern process_t *proc_list;
 extern process_t *current_process;
 extern void irq_ret();
 
-syscall_handler_t syscall_handlers[NB_SYSCALLS];
+syscall_handler_t syscall_handlers[NB_SYSCALLS] = {
+	syscall_test,
+	syscall_read,
+	syscall_write,
+	syscall_open,
+	syscall_close,
+	syscall_lseek,
+	syscall_unlink,
+	syscall_yield,
+	syscall_exec,
+	syscall_fork,
+	syscall_exit,
+	syscall_waitpid,
+	syscall_getpid,
+	syscall_dup,
+	syscall_sbrk
+};
 
 void syscall_init() {
-	syscall_register_handler(SYSCALL_TEST, syscall_test);
-	syscall_register_handler(SYSCALL_OPEN, syscall_open);
-	syscall_register_handler(SYSCALL_CLOSE, syscall_close);
-	syscall_register_handler(SYSCALL_READ, syscall_read);
-	syscall_register_handler(SYSCALL_WRITE, syscall_write);
-	syscall_register_handler(SYSCALL_LSEEK, syscall_lseek);
-	syscall_register_handler(SYSCALL_UNLINK, syscall_unlink);
-	syscall_register_handler(SYSCALL_YIELD, syscall_yield);
-	syscall_register_handler(SYSCALL_EXEC, syscall_exec);
-	syscall_register_handler(SYSCALL_FORK, syscall_fork);
-	syscall_register_handler(SYSCALL_EXIT, syscall_exit);
-	syscall_register_handler(SYSCALL_WAITPID, syscall_waitpid);
-	syscall_register_handler(SYSCALL_GETPID, syscall_getpid);
-	syscall_register_handler(SYSCALL_DUP, syscall_dup);
-	syscall_register_handler(SYSCALL_SBRK, syscall_sbrk);
+	idt_set(SYSCALL, (u32)isr0x80, 0xEE);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
 	syscall_handlers[id] = handler;
 }
 
-void syscall_handler(registers_state *regs) {
+i32 syscall_handler(registers_state *regs) {
 	syscall_handler_t handler = syscall_handlers[regs->eax];
 
 	if (handler != 0) {
-		handler(regs);
-		return;
+		return handler(regs);
 	}
 
 	PANIC("Received unimplemented syscall: %d\n", regs->eax);
 }
 
 
-void syscall_test(registers_state *regs) {
+i32 syscall_test(registers_state *regs) {
 	kprintf("Hello from syscall_test(), %s\n", regs->ebx);
+	return 0;
 }
 
-void syscall_open(registers_state *regs) {
+i32 syscall_open(registers_state *regs) {
 	i8 *filename = (i8* )regs->ebx;
 	u32 oflags = regs->ecx;
 	u32 mode = regs->edx;
@@ -74,8 +77,7 @@ void syscall_open(registers_state *regs) {
 		}
 	} else if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
 		DEBUG("Cannot open a directory - %s\r\n", filename);
-		regs->eax = -1;
-		return;
+		return -1;
 	} else if((vfs_node->flags & O_TRUNC) == O_TRUNC) {
 		vfs_trunc(vfs_node);
 	}
@@ -91,28 +93,26 @@ void syscall_open(registers_state *regs) {
 		.used = true,
 	};
 	vfs_open(vfs_node, oflags);
-	regs->eax = fd;
+	return fd;
 }
 
-void syscall_close(registers_state *regs) {
+i32 syscall_close(registers_state *regs) {
 	u32 fd = regs->ebx;
 	if (fd < 3 || fd >= NB_DESCRIPTORS) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
-		regs->eax = 1;
-		return;
+		return -1;
 	}
 	file *f = &current_process->fds[fd];
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
-		regs->eax = 1;
-		return;
+		return -1;
 	}
 	vfs_close(f->vfs_node);
 	memset(&current_process->fds[fd], 0, sizeof(file));
-	regs->eax = 0;
+	return 0;
 }
 
-void syscall_read(registers_state *regs) {
+i32 syscall_read(registers_state *regs) {
 	i32 fd = regs->ebx;
 	i8 *buf = (i8 *)regs->ecx;
 	u32 count = regs->edx;
@@ -122,88 +122,80 @@ void syscall_read(registers_state *regs) {
 		if (scancode) {
 			buf[0] = scancode;
 		}
-		regs->eax = 1;
-		return;
+		return -1;
 	}
 
 	if (fd < 3 || fd >= NB_DESCRIPTORS) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
-		regs->eax = 0;
-		return;
+		return 0;
 	}
 
 	file *f = &current_process->fds[fd];
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
-		regs->eax = 0;
-		return;
+		return 0;
 	}
 	if (f->flags & O_WRONLY) {
 		DEBUG("%s", "Cannot read file with O_WRONLY flag\r\n");
-		regs->eax = 0;
-		return;
+		return 0;
 	}
 	u32 have_read = vfs_read(f->vfs_node, f->offset, count, buf);
 	f->offset += have_read;
 
-	regs->eax = have_read;
+	return have_read;
 }
 
-void syscall_write(registers_state *regs) {
+i32 syscall_write(registers_state *regs) {
 	i32 fd = regs->ebx;
 	i8 *buf = (i8 *)regs->ecx;
 	u32 count = regs->edx;
 
 	if (fd == FD_STDOUT || fd == FD_STDERR) {
-		for (u32 i = 0; i < count; ++i) {
+		u32 i;
+		for (i = 0; i < count; ++i) {
 			screen_print_char(buf[i]);
 		}
-		return;
+		return i;
 	}
 
 	if (fd < 3 || fd >= NB_DESCRIPTORS) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
-		regs->eax = 0;
-		return;
+		return 0;
 	}
 
 	file *f = &current_process->fds[fd];
 
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
-		regs->eax = 0;
-		return;
+		return 0;
 	}
 	if (!(f->flags & (O_WRONLY | O_RDWR))) {
 		DEBUG("%s", "File is not opened for writing.\r\n");
-		regs->eax = 0;
-		return;
+		return 0;
 	}
 	if ((f->flags & O_APPEND) == O_APPEND) {
 		f->offset = f->vfs_node->length;
 	}
 	u32 have_written = vfs_write(f->vfs_node, f->offset, count, buf);
 	f->offset += have_written;
-	regs->eax = have_written;
+	return have_written;
 }
 
-void syscall_lseek(registers_state *regs) {
+i32 syscall_lseek(registers_state *regs) {
 	i32 fd = regs->ebx;
 	i32 offset = regs->ecx;
 	i32 whence = regs->edx;
 
 	if (fd < 3 || fd >= NB_DESCRIPTORS) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
-		regs->eax = 0;
-		return;
+		return 0;
 	}
 
 	file *f = &current_process->fds[fd];
 
 	if (!f->used || !f->vfs_node) {
 		DEBUG("Bad descriptor - %d\r\n", fd);
-		regs->eax = 0;
-		return;
+		return 0;
 	}
 	if (whence == SEEK_SET) {
 		f->offset = offset;
@@ -213,30 +205,29 @@ void syscall_lseek(registers_state *regs) {
 		f->offset = f->vfs_node->length + offset;
 	} else {
 		DEBUG("Invalid whence argument - %d\r\n", whence);
-		regs->eax = -1;
-		return;
+		return -1;
 	}
 
-	regs->eax = f->offset;
+	return f->offset;
 }
 
-void syscall_unlink(registers_state *regs) {
+i32 syscall_unlink(registers_state *regs) {
 	i8 *filename = (i8 *)regs->ebx;
 	i32 ret = vfs_unlink(filename);
-	regs->eax = ret;
+	return ret;
 }
 
-void syscall_yield(registers_state *regs) {
+i32 syscall_yield(registers_state *regs) {
 	schedule(regs);
+	return 0;
 }
 
-void syscall_exec(registers_state *regs) {
+i32 syscall_exec(registers_state *regs) {
 	i8 *pathname = (i8 *)regs->ebx;
 
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
 	if (!vfs_node) {
-		regs->eax = -1;
-		return;
+		return -1;
 	}
 	u32 *data = malloc(vfs_node->length);
 	memset((i8 *)data, 0, vfs_node->length);
@@ -270,7 +261,7 @@ void syscall_exec(registers_state *regs) {
 			}
 
 			if (memsz == 0) {
-				return;
+				continue;
 			}
 
 			u32 len_in_blocks = memsz / 4096;
@@ -404,9 +395,10 @@ void syscall_exec(registers_state *regs) {
 	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
 	// End of free user code
+	return 0;
 }
 
-void syscall_fork(registers_state *regs) {
+i32 syscall_fork(registers_state *regs) {
 	process_t *process = proc_alloc();
 
 	process->directory = paging_copy_page_dir(true);
@@ -421,10 +413,10 @@ void syscall_fork(registers_state *regs) {
 	*process->regs = *current_process->regs;
 
 	process->regs->eax = 0; 
-	current_process->regs->eax = process->pid; 
+	return process->pid;
 }
 
-void syscall_exit(registers_state *regs) {
+i32 syscall_exit(registers_state *regs) {
 	i32 exit_code = (i32)regs->ebx;
 
 	if (current_process->pid == 1) {
@@ -496,9 +488,10 @@ void syscall_exit(registers_state *regs) {
 	schedule(NULL);
 
 	PANIC("Zombie returned from scheduler\r\n");
+	return 0;
 }
 
-void syscall_waitpid(registers_state *regs) {
+i32 syscall_waitpid(registers_state *regs) {
 	i32 pid = (i32)regs->ebx;
 	i32 *wstatus = (i32 *)regs->ecx;
 	i32 options = (i32)regs->edx;
@@ -506,6 +499,7 @@ void syscall_waitpid(registers_state *regs) {
 	if (pid < -1) {
 		// Wait for any child process whose process group ID
 		// is equalt to the absolute value of 'pid'
+		return 0;
 	} else if (pid == -1) {
 		// Wait for any child process
 		for (;;) {
@@ -522,8 +516,7 @@ void syscall_waitpid(registers_state *regs) {
 					u32 ret_pid = p->pid;
 					free(p->kernel_stack_bottom);
 					remove_process_from_list(p);
-					current_process->regs->eax = ret_pid;
-					return;
+					return ret_pid;
 				}
 			}
 			if (!havekids) {
@@ -536,41 +529,40 @@ void syscall_waitpid(registers_state *regs) {
 		// Wait for any child process whose process group ID
 		// is equal to that of the calling process at the time
 		// of the call to 'waitpid()'
+		return 0;
 	} else if (pid > 0) {
 		// Wait for the child whose process ID is equal to the value of 'pid'
+		return 0;
 	}
 }
 
-void syscall_getpid(registers_state *regs) {
-	regs->eax = current_process->pid;
+i32 syscall_getpid(registers_state *regs) {
+	return current_process->pid;
 }
 
-void syscall_dup(registers_state *regs) {
+i32 syscall_dup(registers_state *regs) {
 	i32 oldfd = (i32)regs->ebx;
 
 	if (oldfd > FDS_NUM || current_process->fds[oldfd].used || current_process->fds[oldfd].vfs_node == (void *) -1) {
-		regs->eax = -1;
-		return;
+		return -1;
 	}
 
 	i32 newfd = proc_get_fd(current_process);
 	if (newfd < 0) {
-		regs->eax = -1;
-		return;
+		return -1;
 	}
 	current_process->fds[newfd] = current_process->fds[oldfd];
 	regs->eax = newfd;
 }
 
-void syscall_sbrk(registers_state *regs) {
+i32 syscall_sbrk(registers_state *regs) {
 	u32 incr = (u32)regs->ebx; 
 	u32 old_brk = current_process->brk;
 
 	if (!incr) {
-		regs->eax = old_brk;
-		return;
+		return old_brk;
 	}
 
 	current_process->brk += incr;
-	regs->eax = old_brk;
+	return old_brk;
 }
