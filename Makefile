@@ -67,6 +67,8 @@ all: prepare OS
 
 .PHONY: prepare
 prepare: 
+	@echo $(KERNEL_OBJECTS)
+	@echo $(dirs)
 	mkdir -p build/libc
 	mkdir -p build/libk
 
@@ -122,7 +124,6 @@ build/tss_helper.o: src/core/tss_helper.asm
 	
 build/context_switch.o: src/boot/context_switch.asm
 	$(AS) -f elf32 $< -o $@
-
 
 $(KERNEL_OBJECTS): $(dirs)
 

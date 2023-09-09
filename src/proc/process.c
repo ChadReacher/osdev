@@ -25,13 +25,24 @@ void userinit() {
 	u32 *data = malloc(vfs_node->length);
 	memset((i8 *)data, 0, vfs_node->length);
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
-	elf_load(data);
-	free(data);
 
+	process_t *new_proc = proc_alloc();
+	new_proc->cwd = strdup("/");
+	new_proc->directory = paging_copy_page_dir(false);
 	init_process = current_process = proc_list;
 	current_process->parent = NULL; // or current_process ?
 	current_process->priority = current_process->timeslice = 20;
 	current_process->state = RUNNING;
+
+
+	void *kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(current_process->directory));
+	elf_load(data);
+	free(data);
+	// Get back to the kernel page directory
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
+
+
 }
 
 void sleep(void *chan) {

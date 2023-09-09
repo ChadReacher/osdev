@@ -4,6 +4,8 @@
 #include <paging.h>
 #include <process.h>
 
+extern process_t *current_process;
+
 i32 is_elf(elf_header_t *elf) {
 	i32 ret = -1;
 	if (elf->magic_number == ELF_MAGIC_NUMBER && strncmp((i8 *)elf->elf_ascii, "ELF", 3) == 0) {
@@ -34,12 +36,6 @@ elf_header_t *elf_load(u32 *data) {
 
 	elf_program_header_t* program_header = (elf_program_header_t*)((u32)data + elf->phoff);
 
-	process_t *new_proc = proc_alloc();
-	new_proc->cwd = strdup("/");
-	new_proc->directory = paging_copy_page_dir(false);
-
-	void *kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(new_proc->directory));
 
 	for (u32 i = 0; i < elf->ph_num; ++i) {
 		DEBUG("Program header: type - %d, vaddr = %p\r\n",
@@ -54,7 +50,6 @@ elf_header_t *elf_load(u32 *data) {
 
 	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
 	void *stack_phys_frame = allocate_blocks(1);
-	DEBUG("Allocated stack_phys_frame at %p\r\n", stack_phys_frame);
 
 	// Create mapping for user stack
 	map_page(stack_phys_frame, (void *)0xBFFFF000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
@@ -80,11 +75,9 @@ elf_header_t *elf_load(u32 *data) {
 		}
 	}
 	program_brk = ALIGN_UP(program_brk, 4096);
-	new_proc->brk = program_brk;
-	map_page(brk_phys_frame, (void *)new_proc->brk, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+	current_process->brk = program_brk;
+	map_page(brk_phys_frame, (void *)current_process->brk, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
 	
-	// Get back to the kernel page directory
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
 
 	return elf;
 }
