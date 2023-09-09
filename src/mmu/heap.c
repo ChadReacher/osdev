@@ -39,7 +39,7 @@ void heap_init() {
 	DEBUG("heap_phys_addr = %x\r\n", heap_phys_addr);
 
 	for (u32 i = 0; i < heap_blocks; ++i) {
-		map_page((void *)heap_phys_addr, (void *)heap_virt_addr);
+		map_page((void *)heap_phys_addr, (void *)heap_virt_addr, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 		heap_virt_addr += PAGE_SIZE;
 		heap_phys_addr += BLOCK_SIZE;
 	}
@@ -184,20 +184,22 @@ void *realloc(void *ptr, u32 size) {
 		return NULL;
 	}
 
+	heap_block *old_block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
+	u32 old_size = old_block->size;
 	real_size = sizeof(heap_block) + size;
 	
 	heap_block *block = best_fit(size);
 	if (block) {
 		block->free = false;
 		split_block(block, size);
-		memcpy((void *)(block + 1), ptr, size);
+		memcpy((void *)(block + 1), ptr, old_size);
 	} else {
 		heap_block *new_block = (heap_block*)sbrk(real_size);
 		new_block->size = size;
 		new_block->next = NULL;
 		new_block->free = false;
 		
-		memcpy((void *)(new_block + 1), ptr, size);
+		memcpy((void *)(new_block + 1), ptr, old_size);
 
 		heap_block *last = block_list;
 		while (last->next) {

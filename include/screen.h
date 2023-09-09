@@ -15,6 +15,8 @@
 #define FONT_ADDRESS 0xFE000000
 //#define FONT_ADDRESS 0xA000
 
+void screen_init();
+
 void screen_clear();
 void screen_print_char(i8 ch);
 void screen_print_string(i8 *string);

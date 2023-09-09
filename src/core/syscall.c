@@ -12,6 +12,7 @@
 #include <elf.h>
 #include <paging.h>
 #include <scheduler.h>
+#include <pmm.h>
 
 extern process_t *init_process;
 extern process_t *proc_list;
@@ -35,6 +36,7 @@ void syscall_init() {
 	syscall_register_handler(SYSCALL_WAITPID, syscall_waitpid);
 	syscall_register_handler(SYSCALL_GETPID, syscall_getpid);
 	syscall_register_handler(SYSCALL_DUP, syscall_dup);
+	syscall_register_handler(SYSCALL_SBRK, syscall_sbrk);
 }
 
 void syscall_register_handler(u8 id, syscall_handler_t handler) {
@@ -229,7 +231,6 @@ void syscall_yield(registers_state *regs) {
 }
 
 void syscall_exec(registers_state *regs) {
-	DEBUG("%s", "exec\r\n");
 	i8 *pathname = (i8 *)regs->ebx;
 
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
@@ -247,45 +248,84 @@ void syscall_exec(registers_state *regs) {
 		regs->eax = -1;
 		return;
 	}
+	void *prev_page_dir = current_process->directory;
+	void *new_page_dir_phys = paging_copy_page_dir(false);
+	current_process->directory = new_page_dir_phys;
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)new_page_dir_phys));
 
+	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
+	
 	elf_program_header_t* program_header = (elf_program_header_t*)((u32)data + elf->phoff);
 
 	for (u32 i = 0; i < elf->ph_num; ++i) {
 		if (program_header[i].type == PT_LOAD) {
-			u32 filesz = program_header->filesz; // Size in file
-			u32 vaddr = program_header->vaddr;
-			u32 offset = program_header->offset; // Offset in file
+			u32 memsz = program_header[i].memsz; // Size in memory
+			u32 filesz = program_header[i].filesz; // Size in file
+			u32 vaddr = program_header[i].vaddr; // Offset in memory
+			u32 offset = program_header[i].offset; // Offset in file
 
-			if (filesz == 0) {
-				regs->eax = -1;
+			u32 flags = PAGING_FLAG_PRESENT | PAGING_FLAG_USER;
+			if (program_header[i].flags & PF_W) {
+				flags |= PAGING_FLAG_WRITEABLE;
+			}
+
+			if (memsz == 0) {
 				return;
 			}
 
-			u32 len_in_blocks = filesz / 4096;
+			u32 len_in_blocks = memsz / 4096;
 			if (len_in_blocks % 4096 != 0 || len_in_blocks == 0) {
 				++len_in_blocks;
 			}
 
 			void *code = (void *)((u32)data + offset);
-			for (u32 i = 0, addr = 0x0; i < len_in_blocks; ++i, addr += 0x1000) {
-				if (!virtual_to_physical(addr)) {
-					// If the page is not mapped
-					void *new_code_page = allocate_blocks(1);
-					map_page((void *)new_code_page, (void *)addr);
-					memcpy((void *)addr, code + addr, 0x1000);
-				} else {
-					memset((void *)addr, 0, 0x1000);
-					memcpy((void *)addr, code + addr, 0x1000);
-				}
+			void *code_phys_frame = allocate_blocks(len_in_blocks);
+
+			// Map necessary pages for code
+			for (u32 i = 0, addr = vaddr; i < len_in_blocks; ++i, addr += 0x1000) {
+				u32 phys_code_page = (u32)code_phys_frame + i * 0x1000;
+				map_page((void *)phys_code_page, (void *)addr, flags);
 			}
+
+			// Copy all segment data
+			memcpy(vaddr, code, filesz);
+			memset((void *)(vaddr + filesz), 0, memsz - filesz);
+
+			page_directory_entry *code_pd_entry = &cur_pd->entries[0];
+			*code_pd_entry |= PAGING_FLAG_USER;
+			*code_pd_entry |= PAGING_FLAG_WRITEABLE;
 		}
 	}
+	void *stack_phys_frame = allocate_blocks(1);
+
+	// Create mapping for user stack
+	map_page(stack_phys_frame, (void *)0xBFFFF000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+
+	page_directory_entry *stack_pd_entry = &cur_pd->entries[767];
+	*stack_pd_entry |= PAGING_FLAG_PRESENT;
+	*stack_pd_entry |= PAGING_FLAG_WRITEABLE;
+	*stack_pd_entry |= PAGING_FLAG_USER;
+	page_table_t *stack_page_table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)0xBFFFF000) << 12));
+	page_table_entry page_for_stack = 0;
+	page_for_stack |= PAGING_FLAG_PRESENT;
+	page_for_stack |= PAGING_FLAG_WRITEABLE;
+	page_for_stack |= PAGING_FLAG_USER;
+	page_for_stack = ((page_for_stack & ~0xFFFFF000) | (physical_address)stack_phys_frame);
+	stack_page_table->entries[PAGE_TABLE_INDEX(0xBFFFF000)] = page_for_stack;
+
+	// Setup program brk
+	void *brk_phys_frame = allocate_blocks(1);
+	u32 program_brk = program_header[0].vaddr + program_header[0].memsz;
+	for (u32 i = 1; i < elf->ph_num; ++i) {
+		if (program_header[i].vaddr + program_header[i].memsz > program_brk) {
+			program_brk = program_header[i].vaddr + program_header[i].memsz;
+		}
+	}
+	program_brk = ALIGN_UP(program_brk, 4096);
+	current_process->brk = program_brk;
+	map_page(brk_phys_frame, (void *)current_process->brk, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+	
 	free(data);
-	// Flush TLB
-	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
-
-
 	void *old_kernel_stack = current_process->kernel_stack_bottom;
 	void *kernel_stack = malloc(4096);
 	memset(kernel_stack, 0, 4096);
@@ -329,13 +369,44 @@ void syscall_exec(registers_state *regs) {
 	current_process->cwd = strdup("/");
 	current_process->timeslice = 20;
 	current_process->priority = 20;
-	DEBUG("%s", "End of exec\r\n");
 	// It fixes problem, but it's strange
 	*regs = *current_process->regs;
+
+	// Free the user code pages in the page directory
+	void *page_dir_phys = (void *)prev_page_dir;
+	map_page(page_dir_phys, 0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+	page_directory_t *page_dir = (page_directory_t *)0xE0000000;
+	for (u32 i = 0; i < 768; ++i) {
+		if (!page_dir->entries[i]) {
+			continue;
+		}
+		page_directory_entry pde = page_dir->entries[i];
+		void *table_phys = (void *)GET_FRAME(pde);
+		map_page(table_phys, 0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+		page_table_t *table = (page_table_t *)0xEA000000;
+		for (u32 j = 0; j < 1024; ++j) {
+			if (!table->entries[j]) {
+				continue;
+			}
+			page_table_entry pte = table->entries[j];
+			void *page_frame = (void *)GET_FRAME(pte);
+			free_blocks(page_frame, 1);
+		}
+		memset(table, 0, 4096);
+		unmap_page(0xEA000000);
+		free_blocks(table_phys, 1);
+	}
+	memset(page_dir, 0, 4096);
+	unmap_page(0xE0000000);
+	free_blocks(page_dir_phys, 1);
+	
+	// Flush TLB
+	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
+	// End of free user code
 }
 
 void syscall_fork(registers_state *regs) {
-	DEBUG("%s", "forked()\r\n");
 	process_t *process = proc_alloc();
 
 	process->directory = paging_copy_page_dir(true);
@@ -345,6 +416,7 @@ void syscall_fork(registers_state *regs) {
 	memcpy(process->fds, current_process->fds, FDS_NUM * sizeof(file));
 	process->timeslice = 20;
 	process->priority = 20;
+	process->brk = current_process->brk;
 
 	*process->regs = *current_process->regs;
 
@@ -358,11 +430,10 @@ void syscall_exit(registers_state *regs) {
 	if (current_process->pid == 1) {
 		PANIC("Can't exit the INIT process\r\n");
 	}
-	DEBUG("exit code - %d\r\n", exit_code);
 
 	// Free the user code pages in the page directory
 	void *page_dir_phys = (void *)current_process->directory;
-	map_page(page_dir_phys, 0xE0000000);
+	map_page(page_dir_phys, 0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 	page_directory_t *page_dir = (page_directory_t *)0xE0000000;
 	for (u32 i = 0; i < 768; ++i) {
 		if (!page_dir->entries[i]) {
@@ -370,7 +441,7 @@ void syscall_exit(registers_state *regs) {
 		}
 		page_directory_entry pde = page_dir->entries[i];
 		void *table_phys = (void *)GET_FRAME(pde);
-		map_page(table_phys, 0xEA000000);
+		map_page(table_phys, 0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 		page_table_t *table = (page_table_t *)0xEA000000;
 		for (u32 j = 0; j < 1024; ++j) {
 			if (!table->entries[j]) {
@@ -380,9 +451,11 @@ void syscall_exit(registers_state *regs) {
 			void *page_frame = (void *)GET_FRAME(pte);
 			free_blocks(page_frame, 1);
 		}
+		memset(table, 0, 4096);
 		unmap_page(0xEA000000);
 		free_blocks(table_phys, 1);
 	}
+	memset(page_dir, 0, 768 * 4);
 	unmap_page(0xE0000000);
 	free_blocks(page_dir_phys, 1);
 	
@@ -487,4 +560,17 @@ void syscall_dup(registers_state *regs) {
 	}
 	current_process->fds[newfd] = current_process->fds[oldfd];
 	regs->eax = newfd;
+}
+
+void syscall_sbrk(registers_state *regs) {
+	u32 incr = (u32)regs->ebx; 
+	u32 old_brk = current_process->brk;
+
+	if (!incr) {
+		regs->eax = old_brk;
+		return;
+	}
+
+	current_process->brk += incr;
+	regs->eax = old_brk;
 }

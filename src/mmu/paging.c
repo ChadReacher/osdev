@@ -1,21 +1,32 @@
 #include <paging.h>
 #include <string.h>
-#include <stdio.h>
-#include <screen.h>
 #include <debug.h>
+#include <pmm.h>
 
 page_directory_t *cur_page_dir = (page_directory_t *)0xFFFFF000;
 
 void pagefault_handler(registers_state *regs) {
-	u32 bad_address;
+	u32 bad_address, err_code;
 
 	__asm__ __volatile__ ("movl %%cr2, %0" : "=r"(bad_address));
+	err_code = regs->err_code;
 
-	kprintf("Page Fault Exception. Error code - %x\n", regs->err_code);
-	kprintf("Bad Address: %x\n", bad_address);
+	DEBUG("Page Fault Exception. Bad Address: 0x%x. Error code: %d\r\n", bad_address, err_code);
 
-	while (1) {
-		__asm__ __volatile__ ("hlt");
+	bool not_present = err_code & 0x1;
+	bool rw = err_code & 0x2;
+	bool us = err_code & 0x4;
+	
+	if (!not_present && rw && us) {
+		DEBUG("%s", "User heap\r\n");
+		// Fault due to user heap expansion
+		void *new_heap_page = allocate_blocks(1);
+		map_page(new_heap_page, bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+	} else {
+		DEBUG("%s", "Not user heap\r\n");
+		while (1) {
+			__asm__ __volatile__ ("hlt");
+		}
 	}
 }
 
@@ -33,7 +44,7 @@ page_table_entry *get_page(virtual_address virt_addr) {
 	return page;
 }
 
-void map_page(void *phys_addr, void *virt_addr) {
+void map_page(void *phys_addr, void *virt_addr, u32 flags) {
 	page_directory_entry *entry = &cur_page_dir->entries[PAGE_DIR_INDEX((u32)virt_addr)];
 
 
@@ -51,7 +62,7 @@ void map_page(void *phys_addr, void *virt_addr) {
 		memset(new_page_table, 0, sizeof(page_table_t));
 
 		page_table_entry *page = &new_page_table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
-		*page |= PAGING_FLAG_PRESENT;
+		*page |= flags;
 		*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
 		return;
 	}
@@ -60,7 +71,7 @@ void map_page(void *phys_addr, void *virt_addr) {
 	page_table_t *table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
 
 	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
-	*page |= PAGING_FLAG_PRESENT;	
+	*page |= flags;	
 	*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
 }
 
@@ -77,14 +88,6 @@ void unmap_page(void *virt_addr) {
 
 void paging_init() {
 	register_interrupt_handler(14, pagefault_handler);
-
-	// Identity map framebuffer
-	u32 fb_size_in_bytes = SCREEN_SIZE * 4;
-	u32 fb_size_in_pages = fb_size_in_bytes / PAGE_SIZE;
-	if (fb_size_in_pages % PAGE_SIZE > 0) ++fb_size_in_pages;
-	for (u32 i = 0, fb_start = 0xFD000000; i < fb_size_in_pages; ++i, fb_start += PAGE_SIZE) {
-		map_page((void *)fb_start, (void *)fb_start);
-	}
 
 	DEBUG("%s", "Paging has been initialized\r\n");
 }
@@ -115,7 +118,7 @@ void *virtual_to_physical(void *virt_addr) {
 
 page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
-	map_page(new_page_dir_phys, 0xE0000000);
+	map_page(new_page_dir_phys, 0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 	memset(0xE0000000, 0, 4096);
 
 	page_directory_t *new_pd = (page_directory_t *)0xE0000000;
@@ -138,7 +141,7 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 		page_table_t *cur_table = (page_table_t *)(0xFFC00000 + (i << 12));
 		page_table_t *new_table_phys = allocate_blocks(1);
 		page_table_t *new_table = (page_table_t *)0xEA000000;
-		map_page(new_table_phys, 0xEA000000); // Temporary mapping
+		map_page(new_table_phys, 0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE); // Temporary mapping
 		memset(0xEA000000, 0, 4096);
 		for (u32 j = 0; j < 1024; ++j) {
 			if (!cur_table->entries[j]) {
@@ -148,8 +151,8 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 			page_table_entry cur_pte = cur_table->entries[j];
 			u32 cur_page_frame = (u32)GET_FRAME(cur_pte);
 			void *new_page_frame = allocate_blocks(1);
-			map_page(cur_page_frame, 0xEB000000);
-			map_page(new_page_frame, 0xEC000000);
+			map_page(cur_page_frame, 0xEB000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+			map_page(new_page_frame, 0xEC000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 			memcpy(0xEC000000, 0xEB000000, 4096);
 			unmap_page(0xEC000000);
 			unmap_page(0xEB000000);

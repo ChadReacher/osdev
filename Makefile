@@ -6,7 +6,7 @@ OBJCOPY = $(TOOLCHAIN_SRC)/i386-elf-objcopy
 AS = nasm
 AR = ar
 C_FLAGS = -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector\
-		  -I ./include/ -I ./libc
+		  -I ./include/ -I ./libk
 
 
 LIBC = build/libc.a

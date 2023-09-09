@@ -20,6 +20,7 @@ void exit(i32);
 i32 waitpid(i32, i32 *, i32);
 i32 wait(i32 *);
 i32 getpid();
-i32 dup(i32 oldfd);
+i32 dup(i32);
+void *sbrk(u32);
 
 #endif

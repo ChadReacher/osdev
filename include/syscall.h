@@ -5,7 +5,7 @@
 #include "isr.h"
 
 #define INT_SYSCALL "int $0x80"
-#define NB_SYSCALLS  14
+#define NB_SYSCALLS  15
 #define SYSCALL_TEST	0
 #define SYSCALL_READ	1
 #define SYSCALL_WRITE	2
@@ -20,6 +20,7 @@
 #define SYSCALL_WAITPID	11
 #define SYSCALL_GETPID	12
 #define SYSCALL_DUP		13
+#define SYSCALL_SBRK	14
 
 typedef void (*syscall_handler_t)(registers_state *regs_state);
 
@@ -40,5 +41,6 @@ void syscall_exit(registers_state *regs);
 void syscall_waitpid(registers_state *regs);
 void syscall_getpid(registers_state *regs);
 void syscall_dup(registers_state *regs);
+void syscall_sbrk(registers_state *regs);
 
 #endif

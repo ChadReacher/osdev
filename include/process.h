@@ -6,6 +6,7 @@
 #include <isr.h>
 #include <vfs.h>
 
+#define ALIGN_UP(val, a) (((val) + ((a) - 1)) & ~((a) - 1))
 #define ALIGN_DOWN(val, a) ((val) & ~((a) - 1))
 
 typedef enum {
@@ -38,6 +39,7 @@ typedef struct _process {
 	void *kernel_stack_top;
 	file *fds;
 	i8 *cwd;
+	u32 brk;
 } process_t;
 
 void userinit();

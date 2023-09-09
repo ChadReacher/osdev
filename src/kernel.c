@@ -35,6 +35,7 @@ void _start() {
 	cmos_rtc_init();
 	pmm_init();
 	paging_init();
+	screen_init();
 	screen_clear();
 	heap_init();
 	pci_init();

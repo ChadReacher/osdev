@@ -7,14 +7,25 @@ static const u32 foreground_color = 0x00FFFFFF; // White color
 
 static u16 cursor_x = 0, cursor_y = 0;
 
+void screen_init() {
+	cursor_x = 0;
+	cursor_y = 0;
+	map_page(0xA000, 0xFE000000, PAGING_FLAG_PRESENT);
+	// Identity map framebuffer
+	u32 fb_size_in_bytes = SCREEN_SIZE * 4;
+	u32 fb_size_in_pages = fb_size_in_bytes / PAGE_SIZE;
+	if (fb_size_in_pages % PAGE_SIZE > 0) ++fb_size_in_pages;
+	for (u32 i = 0, fb_start = 0xFD000000; i < fb_size_in_pages; ++i, fb_start += PAGE_SIZE) {
+		map_page((void *)fb_start, (void *)fb_start, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+	}
+	screen_clear();
+}
+
 void screen_clear() {
 	u32 *framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	for (u32 i = 0; i < SCREEN_SIZE; ++i) {
 		framebuffer[i] = background_color;
 	}
-	cursor_x = 0;
-	cursor_y = 0;
-	map_page(0xA000, 0xFE000000);
 	move_cursor();
 }
 
