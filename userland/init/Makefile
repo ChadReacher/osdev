@@ -4,7 +4,7 @@ LD = $(TOOLCHAIN_SRC)/i386-elf-ld
 ROOT_DIR = ../..
 LIBC = $(ROOT_DIR)/build/libc.a
 
-CFLAGS = -g -c -Wall -m32 -std=c11 -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -I $(ROOT_DIR)/libc/
+CFLAGS = -g -c -Wall -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -fno-stack-protector -I $(ROOT_DIR)/libc/
 
 default: init
 

@@ -2,7 +2,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-int main() {
+int main(i32 argc, i8 **argv, i8 **envp) {
+	printf("argc - %x\n", argc);
+	for (i32 i = 0; i < argc; ++i) {
+		printf("argv[%d] - %s\n", i, argv[i]);
+	}
 	printf("TEST message with infinite loop, pid - %d\n", getpid());
 	printf("Test malloc:\n");
 	u8 *x = (u8 *)malloc(4);

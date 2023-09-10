@@ -6,7 +6,8 @@ int main() {
 	i32 pid = fork();
 	if (pid == 0) {
 		printf("I'm a child\n");
-		exec("/bin/test");
+		i8 *m[] = {"/bin/test", "hi", "hello", 0};
+		execve("/bin/test", m, 0);
 		printf("After exec\n");
 	}
 	i32 y = wait(NULL);

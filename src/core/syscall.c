@@ -224,6 +224,34 @@ i32 syscall_yield(registers_state *regs) {
 
 i32 syscall_exec(registers_state *regs) {
 	i8 *pathname = (i8 *)regs->ebx;
+	i8 **u_argv = (i8 **)regs->ecx;
+	i8 **u_envp = (i8 **)regs->edx;
+
+	i32 argc = 0, envc = 0;
+	if (u_argv) {
+		for (i8 **arg_p = u_argv; *arg_p; ++arg_p) {
+			++argc;
+		}
+	}
+	if (u_envp) {
+		for (i8 **env_p = u_envp; *env_p; ++env_p) {
+			++envc;
+		}
+	}
+
+	i8 **argv = malloc((argc + 1) * sizeof(i8 *));
+	i8 **envp = malloc((envc + 1) * sizeof(i8 *));
+
+	argv[argc] = NULL;
+	envp[envc] = NULL;
+
+	for (u32 i = 0; i < argc; ++i) {
+		argv[i] = strdup(u_argv[i]);
+	}
+	for (u32 i = 0; i < envc; ++i) {
+		envp[i] = strdup(u_envp[i]);
+	}
+		
 
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
 	if (!vfs_node) {
@@ -233,6 +261,9 @@ i32 syscall_exec(registers_state *regs) {
 	memset((i8 *)data, 0, vfs_node->length);
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
 
+	if (argv == NULL) {
+		return -1;
+	}
 
 	void *prev_page_dir = current_process->directory;
 	void *new_page_dir_phys = paging_copy_page_dir(false);
@@ -247,12 +278,55 @@ i32 syscall_exec(registers_state *regs) {
 	current_process->kernel_stack_bottom = kernel_stack;
 	free(old_kernel_stack);
 
+	// Handle user stack:
 	memset(0xBFFFF000, 0, 4092);
+	i8 *usp = 0xBFFFFFFB;
+	// push envp strings
+	for (i32 i = envc - 1; i >= 0; --i) {
+		usp -= strlen(envp[i]) + 1;
+		strcpy((i8 *)usp, envp[i]);
+		free(envp[i]);
+		envp[i] = (i8 *)usp;
+	}
+	// push argv strings
+	for (i32 i = argc - 1; i >= 0; --i) {
+		usp -= strlen(argv[i]) + 1;
+		strcpy((i8 *)usp, argv[i]);
+		free(argv[i]);
+		argv[i] = (i8 *)usp;
+	}
+
+	// Push envp pointers to envp strings
+	usp -= (envc + 1) * 4;
+	memcpy((void *)usp, (void *)envp, (envc + 1) * 4);
+
+	// Save env ptr
+	u32 env_ptr = (u32)usp;
+
+	// Push argv pointers argv strings
+	usp -= (argc + 1) * 4;
+	memcpy((void *)usp, (void *)argv, (argc + 1) * 4);
+
+	// Save arg ptr
+	u32 arg_ptr = (u32)usp;
+
+	usp -= 4;
+	*((u32*)usp) = env_ptr;
+
+	usp -= 4;
+	*((u32*)usp) = arg_ptr;
+
+	usp -= 4;
+	*((u32*)usp) = argc;
+	usp -= 4; // allocate another 4 bytes for return address from main
+
+	free(argv);
+	free(envp);
 
 	u32 *sp = (u32 *)ALIGN_DOWN((u32)current_process->kernel_stack_bottom + 4096 - 1, 4);
 	// Setup kernel stack as we have returned from interrupt routine
 	*sp-- = 0x23;			// user DS
-	*sp-- = 0xBFFFFFFB;		// user stack
+	*sp-- = (u32)usp;		// user stack
 	*sp-- = 0x200;			// EFLAGS
 	*sp-- = 0x1B;			// user CS
 	*sp-- = 0x0;			// user eip

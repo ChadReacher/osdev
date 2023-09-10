@@ -54,12 +54,12 @@ void yield() {
 	__asm__ __volatile__ ("int $0x80" : : "a"(7));
 }
 
-i32 exec(const i8 *pathname) {
+i32 execve(const i8 *pathname, i8 *const argv[], i8 *const envp[]) {
 	i32 ret;
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(8), "b"(pathname));
+			: "a"(8), "b"(pathname), "c"(argv), "d"(envp));
 
 	return ret;
 }

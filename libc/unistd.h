@@ -13,7 +13,7 @@ u32 write(i32, const void *, u32);
 i32 close(i32);
 i32 lseek(i32, i32, i32);
 i32 unlink(const i8*);
-i32 exec(const i8 *);
+i32 execve(const i8 *, i8 *const [], i8 *const []);
 void yield();
 i32 fork();
 void exit(i32);
