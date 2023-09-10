@@ -54,6 +54,7 @@ i32 syscall_handler(registers_state *regs) {
 	}
 
 	PANIC("Received unimplemented syscall: %d\n", regs->eax);
+	return -1;
 }
 
 
@@ -318,7 +319,7 @@ i32 syscall_exec(registers_state *regs) {
 
 	usp -= 4;
 	*((u32*)usp) = argc;
-	usp -= 4; // allocate another 4 bytes for return address from main
+	//usp -= 4; // allocate another 4 bytes for return address from main
 
 	free(argv);
 	free(envp);
@@ -509,7 +510,7 @@ i32 syscall_waitpid(registers_state *regs) {
 				havekids = true;
 				if (p->state ==	ZOMBIE) {
 					if (wstatus) {
-						*wstatus = (p->exit_code << 8) & 0x7F;
+						*wstatus = p->exit_code & 0xFF;
 					}
 					u32 ret_pid = p->pid;
 					free(p->kernel_stack_bottom);
@@ -550,7 +551,7 @@ i32 syscall_dup(registers_state *regs) {
 		return -1;
 	}
 	current_process->fds[newfd] = current_process->fds[oldfd];
-	regs->eax = newfd;
+	return newfd;
 }
 
 i32 syscall_sbrk(registers_state *regs) {

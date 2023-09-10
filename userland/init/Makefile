@@ -8,7 +8,7 @@ CFLAGS = -g -c -Wall -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-built
 
 default: init
 
-init: init.o
+init: init.o 
 	$(LD) -emain -Ttext 0x0 -o $@ $^ $(LIBC)
 
 init.o: init.c

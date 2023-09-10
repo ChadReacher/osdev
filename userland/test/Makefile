@@ -10,7 +10,7 @@ CFLAGS = -g -c -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdi
 default: test
 
 test: test.o
-	$(LD) -emain -Ttext 0x0 -o $@ $^ $(LIBC)
+	$(LD) -Ttext 0x0 -o $@ $(ROOT_DIR)/build/crt0.o  $^ $(LIBC)
 
 test.o: test.c
 	$(CC) $(CFLAGS) $< -o $@

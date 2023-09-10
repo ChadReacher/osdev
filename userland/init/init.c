@@ -10,7 +10,8 @@ int main() {
 		execve("/bin/test", m, 0);
 		printf("After exec\n");
 	}
-	i32 y = wait(NULL);
+	i32 wstatus = 0;
+	i32 y = wait(&wstatus);
 	printf("Parent malloc\n");
 	u8 *x = (u8 *)malloc(4);
 	x[0] = 1;
@@ -22,6 +23,7 @@ int main() {
 	}
 	free(x);
 	printf("PID of terminated child - %d\n", y);
+	printf("Return value of terminated child - %d\n", wstatus);
 	for (;;);
 	return 0;
 }

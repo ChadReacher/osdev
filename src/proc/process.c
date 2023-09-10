@@ -39,10 +39,9 @@ void userinit() {
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(current_process->directory));
 	elf_load(data);
 	free(data);
+
 	// Get back to the kernel page directory
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
-
-
 }
 
 void sleep(void *chan) {
