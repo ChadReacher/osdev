@@ -9,6 +9,11 @@ int main(i32 argc, i8 **argv, i8 **envp) {
 	}
 	printf("TEST message with infinite loop, pid - %d\n", getpid());
 	printf("Test malloc:\n");
+	putchar('h');
+	putchar('i');
+	putchar('\n');
+	u8 m = getchar();
+	putchar(m);
 	u8 *x = (u8 *)malloc(4);
 	x[0] = 1;
 	x[1] = 2;

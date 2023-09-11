@@ -36,6 +36,6 @@ typedef struct tss_entry {
 extern void tss_flush();
 
 void tss_init(u32 idx, u32 kss, u32 kesp);
-void tss_set_stack2(u32 kesp);
+void tss_set_stack(u32 kesp);
 
 #endif

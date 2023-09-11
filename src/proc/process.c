@@ -9,6 +9,7 @@
 #include <panic.h>
 #include <scheduler.h>
 #include <string.h>
+#include <elf.h>
 
 extern void irq_ret();
 extern process_t *proc_list;
@@ -39,6 +40,58 @@ void userinit() {
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(current_process->directory));
 	elf_load(data);
 	free(data);
+
+	i32 argc = 0;
+	i32 envc = 0;
+	i8 **argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
+	i8 **envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
+	argv[argc] = NULL;
+	envp[envc] = NULL;
+	
+	// Handle user stack:
+	memset((void *)0xBFFFF000, 0, 4092);
+	i8 *usp = (i8 *)0xBFFFFFFB;
+	// push envp strings
+	for (i32 i = envc - 1; i >= 0; --i) {
+		usp -= strlen(envp[i]) + 1;
+		strcpy((i8 *)usp, envp[i]);
+		free(envp[i]);
+		envp[i] = (i8 *)usp;
+	}
+	// push argv strings
+	for (i32 i = argc - 1; i >= 0; --i) {
+		usp -= strlen(argv[i]) + 1;
+		strcpy((i8 *)usp, argv[i]);
+		free(argv[i]);
+		argv[i] = (i8 *)usp;
+	}
+
+	// Push envp pointers to envp strings
+	usp -= (envc + 1) * 4;
+	memcpy((void *)usp, (void *)envp, (envc + 1) * 4);
+
+	// Save env ptr
+	u32 env_ptr = (u32)usp;
+
+	// Push argv pointers argv strings
+	usp -= (argc + 1) * 4;
+	memcpy((void *)usp, (void *)argv, (argc + 1) * 4);
+
+	// Save arg ptr
+	u32 arg_ptr = (u32)usp;
+
+	usp -= 4;
+	*((u32*)usp) = env_ptr;
+
+	usp -= 4;
+	*((u32*)usp) = arg_ptr;
+
+	usp -= 4;
+	*((u32*)usp) = argc;
+
+	free(argv);
+	free(envp);
+	current_process->regs->useresp = (u32)usp;
 
 	// Get back to the kernel page directory
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));

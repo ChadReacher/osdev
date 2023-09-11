@@ -3,6 +3,18 @@
 #include "string.h"
 #include "unistd.h"
 
+i32 putchar(i32 c) {
+	return (i32)((u8)write(stdout, &c, 1));
+}
+
+i32 getchar() {
+	u8 c;
+	do {
+		read(stdin, &c, 1);
+	} while (c == 0);
+	return c;
+}
+
 void printf(const i8 *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);

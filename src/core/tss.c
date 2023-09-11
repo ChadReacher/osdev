@@ -1,5 +1,6 @@
 #include <tss.h>
 #include <gdt.h>
+#include <string.h>
 
 tss_entry_t kernel_tss;
 

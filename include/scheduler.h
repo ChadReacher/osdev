@@ -5,11 +5,11 @@
 #include <process.h>
 #include <isr.h>
 
-void run_init_process(i8 *file);
 void scheduler_init();
-process_t *get_current_process();
-void add_process_to_list(process_t *new_proc);
 void schedule(registers_state *regs);
-void process_kill(process_t *proc);
+void task_switch(process_t *next_proc);
+
+void add_process_to_list(process_t *new_proc);
+void remove_process_from_list(process_t *proc);
 
 #endif

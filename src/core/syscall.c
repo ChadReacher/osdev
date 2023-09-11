@@ -14,6 +14,8 @@
 #include <scheduler.h>
 #include <pmm.h>
 #include <idt.h>
+#include <heap.h>
+
 
 extern process_t *init_process;
 extern process_t *proc_list;
@@ -240,16 +242,16 @@ i32 syscall_exec(registers_state *regs) {
 		}
 	}
 
-	i8 **argv = malloc((argc + 1) * sizeof(i8 *));
-	i8 **envp = malloc((envc + 1) * sizeof(i8 *));
+	i8 **argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
+	i8 **envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
 
 	argv[argc] = NULL;
 	envp[envc] = NULL;
 
-	for (u32 i = 0; i < argc; ++i) {
+	for (i32 i = 0; i < argc; ++i) {
 		argv[i] = strdup(u_argv[i]);
 	}
-	for (u32 i = 0; i < envc; ++i) {
+	for (i32 i = 0; i < envc; ++i) {
 		envp[i] = strdup(u_envp[i]);
 	}
 		
@@ -258,7 +260,7 @@ i32 syscall_exec(registers_state *regs) {
 	if (!vfs_node) {
 		return -1;
 	}
-	u32 *data = malloc(vfs_node->length);
+	u32 *data = (u32 *)malloc(vfs_node->length);
 	memset((i8 *)data, 0, vfs_node->length);
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
 
@@ -280,8 +282,8 @@ i32 syscall_exec(registers_state *regs) {
 	free(old_kernel_stack);
 
 	// Handle user stack:
-	memset(0xBFFFF000, 0, 4092);
-	i8 *usp = 0xBFFFFFFB;
+	memset((void *)0xBFFFF000, 0, 4092);
+	i8 *usp = (i8 *)0xBFFFFFFB;
 	// push envp strings
 	for (i32 i = envc - 1; i >= 0; --i) {
 		usp -= strlen(envp[i]) + 1;
@@ -364,7 +366,7 @@ i32 syscall_exec(registers_state *regs) {
 
 	// Free the user code pages in the page directory
 	void *page_dir_phys = (void *)prev_page_dir;
-	map_page(page_dir_phys, 0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+	map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 	page_directory_t *page_dir = (page_directory_t *)0xE0000000;
 	for (u32 i = 0; i < 768; ++i) {
 		if (!page_dir->entries[i]) {
@@ -372,7 +374,7 @@ i32 syscall_exec(registers_state *regs) {
 		}
 		page_directory_entry pde = page_dir->entries[i];
 		void *table_phys = (void *)GET_FRAME(pde);
-		map_page(table_phys, 0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+		map_page(table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 		page_table_t *table = (page_table_t *)0xEA000000;
 		for (u32 j = 0; j < 1024; ++j) {
 			if (!table->entries[j]) {
@@ -383,11 +385,11 @@ i32 syscall_exec(registers_state *regs) {
 			free_blocks(page_frame, 1);
 		}
 		memset(table, 0, 4096);
-		unmap_page(0xEA000000);
+		unmap_page((void *)0xEA000000);
 		free_blocks(table_phys, 1);
 	}
 	memset(page_dir, 0, 4096);
-	unmap_page(0xE0000000);
+	unmap_page((void *)0xE0000000);
 	free_blocks(page_dir_phys, 1);
 	
 	// Flush TLB
@@ -398,12 +400,14 @@ i32 syscall_exec(registers_state *regs) {
 }
 
 i32 syscall_fork(registers_state *regs) {
+	(void)regs;
+
 	process_t *process = proc_alloc();
 
 	process->directory = paging_copy_page_dir(true);
 	process->cwd = strdup(current_process->cwd);
 	process->parent = current_process;
-	process->fds = malloc(FDS_NUM * sizeof(file));
+	process->fds = (file *)malloc(FDS_NUM * sizeof(file));
 	memcpy(process->fds, current_process->fds, FDS_NUM * sizeof(file));
 	process->timeslice = 20;
 	process->priority = 20;
@@ -424,7 +428,7 @@ i32 syscall_exit(registers_state *regs) {
 
 	// Free the user code pages in the page directory
 	void *page_dir_phys = (void *)current_process->directory;
-	map_page(page_dir_phys, 0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+	map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 	page_directory_t *page_dir = (page_directory_t *)0xE0000000;
 	for (u32 i = 0; i < 768; ++i) {
 		if (!page_dir->entries[i]) {
@@ -432,7 +436,7 @@ i32 syscall_exit(registers_state *regs) {
 		}
 		page_directory_entry pde = page_dir->entries[i];
 		void *table_phys = (void *)GET_FRAME(pde);
-		map_page(table_phys, 0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+		map_page(table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 		page_table_t *table = (page_table_t *)0xEA000000;
 		for (u32 j = 0; j < 1024; ++j) {
 			if (!table->entries[j]) {
@@ -443,17 +447,17 @@ i32 syscall_exit(registers_state *regs) {
 			free_blocks(page_frame, 1);
 		}
 		memset(table, 0, 4096);
-		unmap_page(0xEA000000);
+		unmap_page((void *)0xEA000000);
 		free_blocks(table_phys, 1);
 	}
 	memset(page_dir, 0, 768 * 4);
-	unmap_page(0xE0000000);
+	unmap_page((void *)0xE0000000);
 	free_blocks(page_dir_phys, 1);
 	
 	// Flush TLB
 	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
-
+	
 	// Pass current_process's children to INIT process
 	for (process_t *p = proc_list; p != NULL; p = p->next) {
 		if (p->state == RUNNING && p->parent == current_process) {
@@ -497,7 +501,7 @@ i32 syscall_waitpid(registers_state *regs) {
 
 	if (pid < -1) {
 		// Wait for any child process whose process group ID
-		// is equalt to the absolute value of 'pid'
+		// is equal to the absolute value of 'pid'
 		return 0;
 	} else if (pid == -1) {
 		// Wait for any child process
@@ -533,9 +537,11 @@ i32 syscall_waitpid(registers_state *regs) {
 		// Wait for the child whose process ID is equal to the value of 'pid'
 		return 0;
 	}
+	return -1;
 }
 
 i32 syscall_getpid(registers_state *regs) {
+	(void)regs;
 	return current_process->pid;
 }
 

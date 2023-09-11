@@ -4,15 +4,16 @@ LD = $(TOOLCHAIN_SRC)/i386-elf-ld
 ROOT_DIR = ../..
 LIBC = $(ROOT_DIR)/build/libc.a
 
-CFLAGS = -g -c -Wall -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -fno-stack-protector -I $(ROOT_DIR)/libc/
+CFLAGS = -g -c -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone\
+	 -fno-stack-protector -I $(ROOT_DIR)/libc/
 
 default: init
 
-init: init.o 
-	$(LD) -emain -Ttext 0x0 -o $@ $^ $(LIBC)
+init: $(ROOT_DIR)/build/init.o 
+	$(LD) -Ttext 0x0 -o ../bin/$@ $(ROOT_DIR)/build/crt0.o $^ $(LIBC)
 
-init.o: init.c
-	$(CC) -o $@ $^ $(CFLAGS)
+$(ROOT_DIR)/build/init.o: init.c
+	$(CC) $(CFLAGS) $< -o $@
 
 clean:
 	rm -rf init init.o

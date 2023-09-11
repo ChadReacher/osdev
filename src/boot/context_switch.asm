@@ -1,12 +1,13 @@
 global enter_usermode
 enter_usermode:
+	mov ebx, [esp + 4] ; user stack
 	mov eax, 0x23
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
 	push eax			; user SS
-	push 0xBFFFFFFB		; user stack
+	push ebx			; user stack
 	push 0x200			; EFLAGS
 	push 0x1B			; user CS
 	push 0x0			; EIP

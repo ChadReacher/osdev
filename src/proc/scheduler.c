@@ -6,7 +6,7 @@
 #include <debug.h>
 
 extern void switch_to(context_t **old_context, context_t *new_context);
-extern void enter_usermode();
+extern void enter_usermode(u32 useresp);
 
 process_t *proc_list = NULL;
 process_t *current_process = NULL;
@@ -14,10 +14,10 @@ process_t *init_process = NULL;
 
 void scheduler_init() {
 	register_interrupt_handler(IRQ0, schedule);
-	tss_set_stack(current_process->kernel_stack_top);
+	tss_set_stack((u32)current_process->kernel_stack_top);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
 
-	enter_usermode();
+	enter_usermode(current_process->regs->useresp);
 }
 
 void add_process_to_list(process_t *new_proc) {

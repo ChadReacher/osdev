@@ -67,8 +67,6 @@ all: prepare OS
 
 .PHONY: prepare
 prepare: 
-	@echo $(KERNEL_OBJECTS)
-	@echo $(dirs)
 	mkdir -p build/libc
 	mkdir -p build/libk
 
@@ -87,12 +85,8 @@ disk: userland
 .PHONY: userland
 userland: $(LIBC) build/crt0.o
 	mkdir -p userland/bin
-	$(MAKE) -C userland/init/ clean
 	$(MAKE) -C userland/init/
-	cp userland/init/init userland/bin
-	$(MAKE) -C userland/test/ clean
 	$(MAKE) -C userland/test/
-	cp userland/test/test userland/bin
 	cp -r userland/bin userland/hdd/
 
 build/crt0.o: userland/crt0.S

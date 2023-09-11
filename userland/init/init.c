@@ -2,7 +2,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-int main() {
+int main(i32 argc, i8 *argv[], i8 *envp[]) {
+	printf("argc - %d\n", argc);
+	for (i32 i = 0; i < argc; ++i) {
+		printf("argv[%d] - %s\n", argv[i]);
+	}
 	i32 pid = fork();
 	if (pid == 0) {
 		printf("I'm a child\n");

@@ -21,7 +21,7 @@ void pagefault_handler(registers_state *regs) {
 		DEBUG("%s", "User heap\r\n");
 		// Fault due to user heap expansion
 		void *new_heap_page = allocate_blocks(1);
-		map_page(new_heap_page, bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+		map_page(new_heap_page, (void *)bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
 	} else {
 		DEBUG("%s", "Not user heap\r\n");
 		while (1) {
@@ -32,9 +32,6 @@ void pagefault_handler(registers_state *regs) {
 
 // Return a page for a given virtual address in the current page directory
 page_table_entry *get_page(virtual_address virt_addr) {
-	// Get current page directory
-	page_directory_t *page_dir = cur_page_dir;
-
 	// Get page table in page directory
 	page_table_t *table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
 	
@@ -118,8 +115,8 @@ void *virtual_to_physical(void *virt_addr) {
 
 page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
-	map_page(new_page_dir_phys, 0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-	memset(0xE0000000, 0, 4096);
+	map_page(new_page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+	memset((void *)0xE0000000, 0, 4096);
 
 	page_directory_t *new_pd = (page_directory_t *)0xE0000000;
 	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
@@ -129,7 +126,7 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 	new_pd->entries[1023] = (u32)new_page_dir_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE;
 
 	if (!is_deep_copy) {
-		unmap_page(0xE0000000);
+		unmap_page((void *)0xE0000000);
 		return new_page_dir_phys;
 	}
 
@@ -141,8 +138,8 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 		page_table_t *cur_table = (page_table_t *)(0xFFC00000 + (i << 12));
 		page_table_t *new_table_phys = allocate_blocks(1);
 		page_table_t *new_table = (page_table_t *)0xEA000000;
-		map_page(new_table_phys, 0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE); // Temporary mapping
-		memset(0xEA000000, 0, 4096);
+		map_page(new_table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE); // Temporary mapping
+		memset((void *)0xEA000000, 0, 4096);
 		for (u32 j = 0; j < 1024; ++j) {
 			if (!cur_table->entries[j]) {
 				continue;
@@ -151,11 +148,11 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 			page_table_entry cur_pte = cur_table->entries[j];
 			u32 cur_page_frame = (u32)GET_FRAME(cur_pte);
 			void *new_page_frame = allocate_blocks(1);
-			map_page(cur_page_frame, 0xEB000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-			map_page(new_page_frame, 0xEC000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-			memcpy(0xEC000000, 0xEB000000, 4096);
-			unmap_page(0xEC000000);
-			unmap_page(0xEB000000);
+			map_page((void *)cur_page_frame, (void *)0xEB000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+			map_page(new_page_frame, (void *)0xEC000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+			memcpy((void *)0xEC000000, (void *)0xEB000000, 4096);
+			unmap_page((void *)0xEC000000);
+			unmap_page((void *)0xEB000000);
 
 			// Insert the corresponding page table entry
 			page_table_entry new_pte = 0;
@@ -177,7 +174,7 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 			new_pte = ((new_pte & ~0xFFFFF000) | (physical_address)new_page_frame);
 			new_table->entries[j] = new_pte;
 		}
-		unmap_page(0xEA000000);
+		unmap_page((void *)0xEA000000);
 
 		// Insert the corresponding page directory entry
 		page_directory_entry cur_pde = cur_pd->entries[i];
@@ -200,7 +197,7 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 		new_pde = ((new_pde & ~0xFFFFF000) | (physical_address)new_table_phys);
 		new_pd->entries[i] = new_pde;
 	}
-	unmap_page(0xE0000000);
+	unmap_page((void *)0xE0000000);
 
 	return new_page_dir_phys;
 }
