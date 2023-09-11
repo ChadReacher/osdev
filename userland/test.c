@@ -24,13 +24,12 @@ int main(i32 argc, i8 **argv, i8 **envp) {
 	}
 	printf("Before free\n");
 	free(x);
+	printf("Before yield\n");
+	yield();
+	printf("After yield\n");
 	printf("Exit on 5 out of 10\n");
 	for (u32 i = 0; i < 10; ++i) {
-		//if (i == 5) {
-		//	exit(123);
-		//}
 		printf("friends\n");
 	}
-	//for (;;);
 	return 123;
 }

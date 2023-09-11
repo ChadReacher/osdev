@@ -83,14 +83,10 @@ disk: userland
 	@echo "HDD has been created with EXT2 file system(revision 0). It has 1024 block size(bytes) and 8192 blocks per block group" 
 
 .PHONY: userland
-userland: $(LIBC) build/crt0.o
+userland: $(LIBC)
 	mkdir -p userland/bin
-	$(MAKE) -C userland/init/
-	$(MAKE) -C userland/test/
+	$(MAKE) -C userland
 	cp -r userland/bin userland/hdd/
-
-build/crt0.o: userland/crt0.S
-	nasm -f elf32 $< -o $@
 
 build/bootloader.bin: $(BIN_SRC)
 	cat $^ > build/bootloader.bin
