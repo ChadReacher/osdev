@@ -14,10 +14,10 @@ process_t *init_process = NULL;
 
 void scheduler_init() {
 	register_interrupt_handler(IRQ0, schedule);
-	tss_set_stack((u32)current_process->kernel_stack_top);
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
+	//tss_set_stack((u32)current_process->kernel_stack_top);
+	//__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)current_process->directory));
 
-	enter_usermode(current_process->regs->useresp);
+	//enter_usermode(current_process->regs->useresp);
 }
 
 void add_process_to_list(process_t *new_proc) {
@@ -60,6 +60,15 @@ void schedule(registers_state *regs) {
 	(void)regs;
 	process_t *next_proc;
 
+	for(process_t *p = proc_list; p != NULL; p = p->next) {
+		if (p->timeout > 0 && p->timeout < 0xFFFFFFFF) {
+			--p->timeout;
+			if (!p->timeout) {
+				wakeup_proc(p);
+			}
+		}
+	}
+
 	if (current_process->state == RUNNING && --current_process->timeslice > 0) {
 		return;
 	}
@@ -72,7 +81,7 @@ void schedule(registers_state *regs) {
 				next_proc = p;
 			}
 		}
-		if (count) {
+		if (count > 0) {
 			break;
 		}
 		for (process_t *p = proc_list; p != NULL; p = p->next) {

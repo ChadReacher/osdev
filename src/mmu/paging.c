@@ -25,6 +25,7 @@ void pagefault_handler(registers_state *regs) {
 	} else {
 		DEBUG("%s", "Not user heap\r\n");
 		while (1) {
+			__asm__ __volatile__ ("cli");
 			__asm__ __volatile__ ("hlt");
 		}
 	}

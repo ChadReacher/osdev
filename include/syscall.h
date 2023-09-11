@@ -5,7 +5,7 @@
 #include "isr.h"
 
 #define INT_SYSCALL "int $0x80"
-#define NB_SYSCALLS  15
+#define NB_SYSCALLS  16
 #define SYSCALL_TEST	0
 #define SYSCALL_READ	1
 #define SYSCALL_WRITE	2
@@ -21,6 +21,12 @@
 #define SYSCALL_GETPID	12
 #define SYSCALL_DUP		13
 #define SYSCALL_SBRK	14
+#define SYSCALL_NANOSLEEP 15
+
+struct timespec {
+	i32 tv_sec;
+	i32 tv_nsec;
+};
 
 typedef i32 (*syscall_handler_t)(registers_state *regs_state);
 
@@ -42,5 +48,6 @@ i32 syscall_waitpid(registers_state *regs);
 i32 syscall_getpid(registers_state *regs);
 i32 syscall_dup(registers_state *regs);
 i32 syscall_sbrk(registers_state *regs);
+i32 syscall_nanosleep(registers_state *regs);
 
 #endif

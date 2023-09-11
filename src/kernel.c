@@ -1,6 +1,7 @@
 #include <types.h>
 #include <stdio.h>
 #include <serial.h>
+#include <panic.h>
 #include <debug.h>
 #include <gdt.h>
 #include <isr.h>
@@ -53,6 +54,11 @@ void _start() {
 	userinit();
 	scheduler_init();
 
+	while (1) {
+		__asm__ __volatile__ ("hlt");
+	}
+	PANIC("End of kernel\r\n");
+	
 	//if (elf) {
 	//	DEBUG("Loaded elf entry at 0x%p\r\n", elf->entry);
 	//	typedef int callable(void);

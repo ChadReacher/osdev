@@ -122,3 +122,21 @@ void *sbrk(u32 incr) {
 
 	return (void *)ret;
 }
+
+i32 nanosleep(const struct timespec *req, struct timespec *rem) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(15), "b"(req), "c"(rem));
+
+	return ret;
+}
+
+u32 sleep(u32 seconds) {
+	struct timespec req;
+	req.tv_sec = seconds;
+	req.tv_nsec = 0;
+	nanosleep(&req, NULL);
+	return 0;
+}

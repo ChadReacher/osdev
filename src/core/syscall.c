@@ -37,7 +37,8 @@ syscall_handler_t syscall_handlers[NB_SYSCALLS] = {
 	syscall_waitpid,
 	syscall_getpid,
 	syscall_dup,
-	syscall_sbrk
+	syscall_sbrk,
+	syscall_nanosleep
 };
 
 void syscall_init() {
@@ -571,3 +572,21 @@ i32 syscall_sbrk(registers_state *regs) {
 	current_process->brk += incr;
 	return old_brk;
 }
+
+i32 syscall_nanosleep(registers_state *regs) {
+	const struct timespec *req = (const struct timespec *)regs->ebx;
+	const struct timespec *rem = (const struct timespec *)regs->ecx;
+
+	u32 nsec = req->tv_nsec;
+	if (nsec < 10000000) {
+		nsec *= 10;
+	}
+
+	u32 timeout = (req->tv_sec * 100) + (nsec * 100 / 1000000000L);
+	if (timeout) {
+		current_process->timeout = timeout;
+		sleep(&syscall_nanosleep);
+	}
+	return 0;
+}
+

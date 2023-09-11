@@ -7,6 +7,11 @@
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
 
+struct timespec {
+	i32 tv_sec;
+	i32 tv_nsec;
+};
+
 void test(const i8 *);
 u32 read(i32, const void *, u32);
 u32 write(i32, const void *, u32);
@@ -22,5 +27,7 @@ i32 wait(i32 *);
 i32 getpid();
 i32 dup(i32);
 void *sbrk(u32);
+i32 nanosleep(const struct timespec *, struct timespec *);
+u32 sleep(u32);
 
 #endif

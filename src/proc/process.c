@@ -19,6 +19,16 @@ extern process_t *init_process;
 u32 next_pid = 1;
 
 void userinit() {
+	process_t *idle = proc_alloc(); 
+	idle->regs->eflags = 0x202;
+	current_process = idle;
+	current_process->state = RUNNING;
+	current_process->parent = NULL; // or current_process ?
+	current_process->directory = virtual_to_physical(0xFFFFF000);
+	//current_process->regs->eip = cpu_idle;
+	current_process->regs->cs = 0x8;
+    current_process->priority = current_process->timeslice = 1;
+
 	vfs_node_t *vfs_node = vfs_get_node("/bin/init");
 	if (!vfs_node) {
 		PANIC("Failed to start 'init' process\r\n");
@@ -30,15 +40,21 @@ void userinit() {
 	process_t *new_proc = proc_alloc();
 	new_proc->cwd = strdup("/");
 	new_proc->directory = paging_copy_page_dir(false);
-	init_process = current_process = proc_list;
-	current_process->parent = NULL; // or current_process ?
-	current_process->priority = current_process->timeslice = 20;
-	current_process->state = RUNNING;
+	init_process = new_proc;
+	init_process->parent = NULL; // or current_process ?
+	init_process->priority = current_process->timeslice = 20;
+	init_process->state = RUNNING;
+	//init_process = current_process = proc_list;
+	//current_process->parent = NULL; // or current_process ?
+	//current_process->priority = current_process->timeslice = 20;
+	//current_process->state = RUNNING;
 
 
+	current_process = init_process;
 	void *kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(current_process->directory));
 	elf_load(data);
+	current_process = idle;
 	free(data);
 
 	i32 argc = 0;
@@ -91,7 +107,8 @@ void userinit() {
 
 	free(argv);
 	free(envp);
-	current_process->regs->useresp = (u32)usp;
+	init_process->regs->useresp = (u32)usp;
+	//current_process->regs->useresp = (u32)usp;
 
 	// Get back to the kernel page directory
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
@@ -106,6 +123,20 @@ void sleep(void *chan) {
 void wakeup(void *chan) {
 	for (process_t *p = proc_list; p != NULL; p = p->next) {
 		if (p->state == SLEEPING && p->wait_chan == chan) {
+			p->wait_chan = NULL;
+			p->state = RUNNING;
+			p->timeslice = p->priority;
+		}
+	}
+}
+
+void wakeup_proc(process_t *proc) {
+	if (proc->state != SLEEPING) {
+		return;
+	}
+
+	for (process_t *p = proc_list; p != NULL; p = p->next) {
+		if (p == proc) {
 			p->wait_chan = NULL;
 			p->state = RUNNING;
 			p->timeslice = p->priority;

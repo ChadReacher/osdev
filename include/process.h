@@ -40,6 +40,7 @@ typedef struct _process {
 	file *fds;
 	i8 *cwd;
 	u32 brk;
+	i32 timeout;
 } process_t;
 
 void userinit();
@@ -47,5 +48,6 @@ process_t *proc_alloc();
 i32 proc_get_fd(process_t *proc);
 void sleep(void *chan);
 void wakeup(void *chan);
+void wakeup_proc(process_t *proc);
 
 #endif
