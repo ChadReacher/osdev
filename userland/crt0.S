@@ -1,3 +1,4 @@
+extern environ
 extern exit
 extern main
 
@@ -11,6 +12,8 @@ _start:
 	push 0				; return address
 	push 0				; frame pointer
 	mov ebp, esp
+
+	;mov [environ], ecx
 
 	push ecx
 	push ebx

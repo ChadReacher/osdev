@@ -64,6 +64,10 @@ i32 execve(const i8 *pathname, i8 *const argv[], i8 *const envp[]) {
 	return ret;
 }
 
+i32 execv(const i8 *pathname, i8 *const argv[]) {
+	return execve(pathname, argv, environ);
+}
+
 i32 fork() {
 	i32 ret;
 
@@ -139,4 +143,15 @@ u32 sleep(u32 seconds) {
 	req.tv_nsec = 0;
 	nanosleep(&req, NULL);
 	return 0;
+}
+
+
+i8 *getcwd(i8 *buf, u32 size) {
+	i8 *ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(16), "b"(buf), "c"(size));
+
+	return ret;
 }

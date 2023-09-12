@@ -105,7 +105,7 @@ u8 keyboard_getchar() {
 			if (KEY_IS_PRESSED(scancode)) {
 				u8 c = keyboard_layout_us[(shift_mode ^ capslock_mode) ? 1 : 0][raw_scancode];
 				if (!c) {
-					return 0 ;
+					return 0;
 				}
 
 				if (ctrl_mode) {

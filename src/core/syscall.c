@@ -38,7 +38,8 @@ syscall_handler_t syscall_handlers[NB_SYSCALLS] = {
 	syscall_getpid,
 	syscall_dup,
 	syscall_sbrk,
-	syscall_nanosleep
+	syscall_nanosleep,
+	syscall_getcwd
 };
 
 void syscall_init() {
@@ -124,7 +125,7 @@ i32 syscall_read(registers_state *regs) {
 	if (fd == FD_STDIN) {
 		u8 c = keyboard_getchar();
 		if (c) {
-			buf[0] = c;
+			*((u8 *)buf) = c;
 			return 1;
 		}
 		return 0;
@@ -591,3 +592,19 @@ i32 syscall_nanosleep(registers_state *regs) {
 	return 0;
 }
 
+i32 syscall_getcwd(registers_state *regs) {
+	i8 *buf = (i8 *)regs->ebx;
+	u32 size = (u32)regs->ecx;
+
+	if (!size) {
+		return -1;
+	}
+
+	u32 len = strlen(current_process->cwd);
+	if (len + 1 > size) {
+		return -1;
+	}
+
+	memcpy(buf, current_process->cwd, len + 1);
+	return 0;
+}

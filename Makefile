@@ -12,7 +12,7 @@ C_FLAGS = -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc
 LIBC = build/libc.a
 LIBK = build/libk.a
 
-LIBC_OBJ = $(shell find libc/ -type f -name "*c")
+LIBC_OBJ = $(shell find libc/ -type f -name "*.c")
 LIBC_OBJ := $(LIBC_OBJ:libc/%.c=%.c)
 LIBC_OBJ := $(LIBC_OBJ:sys/%.c=%.c)
 LIBC_OBJ := $(LIBC_OBJ:%.c=build/libc/%.o)

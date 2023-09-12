@@ -142,16 +142,14 @@ i32 strcmp(const i8 *str1, const i8 *str2) {
 	return c1 - c2;
 }
 
-// Caller should free the memory
-// Uncomment when we have 'malloc'
-//i8 *strdup(const i8 *str) {
-//	u32 len = strlen(str);
-//	i8 *ret = malloc(len + 1);
-//	if (ret) {
-//		strncpy(ret, str, len + 1);
-//	}
-//	return ret;
-//}
+i8 *strdup(const i8 *str) {
+	u32 len = strlen(str);
+	i8 *ret = malloc(len + 1);
+	if (ret) {
+		strncpy(ret, str, len + 1);
+	}
+	return ret;
+}
 
 i8 *strcat(i8 *dest, const i8 *src) {
 	u32 dest_len = strlen(dest);
@@ -163,4 +161,16 @@ i8 *strcat(i8 *dest, const i8 *src) {
 	dest[dest_len + i] = '\0';
 
 	return dest;
+}
+
+i8 *strchr(const i8 *s, i32 c) {
+	i8 *s2 = s;
+	u32 sz = strlen(s);
+	for (u32 i = 0; i <= sz; ++i) {
+		if (*s2 == c) {
+			return s2;
+		}
+		++s2;
+	}
+	return NULL;
 }

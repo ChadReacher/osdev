@@ -7,13 +7,13 @@ int main(i32 argc, i8 *argv[], i8 *envp[]) {
 	for (i32 i = 0; i < argc; ++i) {
 		printf("argv[%d] - %s\n", i, argv[i]);
 	}
-	printf("TEST message with infinite loop, pid - %d\n", getpid());
-	printf("Test malloc:\n");
+	printf("pid - %d\n", getpid());
 	putchar('h');
 	putchar('i');
 	putchar('\n');
 	u8 m = getchar();
 	putchar(m);
+	printf("Test malloc:\n");
 	u8 *x = (u8 *)malloc(4);
 	x[0] = 1;
 	x[1] = 2;

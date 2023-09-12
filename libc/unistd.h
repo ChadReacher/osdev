@@ -7,6 +7,8 @@
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
 
+extern i8 **environ;
+
 struct timespec {
 	i32 tv_sec;
 	i32 tv_nsec;
@@ -19,6 +21,7 @@ i32 close(i32);
 i32 lseek(i32, i32, i32);
 i32 unlink(const i8*);
 i32 execve(const i8 *, i8 *const [], i8 *const []);
+i32 execv(const i8 *, i8 *const []);
 void yield();
 i32 fork();
 void exit(i32);
@@ -29,5 +32,6 @@ i32 dup(i32);
 void *sbrk(u32);
 i32 nanosleep(const struct timespec *, struct timespec *);
 u32 sleep(u32);
+i8 *getcwd(i8 *, u32);
 
 #endif

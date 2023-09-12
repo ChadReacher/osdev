@@ -14,7 +14,8 @@ i8 *strncpy(i8 *dest, const i8 *src, u32 len);
 u32 strcspn(const i8 *str1, const i8 *str2);
 i8 *strsep(i8 ** str, const i8 *sep);
 i32 strcmp(const i8 *str1, const i8 *str2);
-//i8 *strdup(const i8 *str);
+i8 *strdup(const i8 *str);
 i8 *strcat(i8 *dest, const i8 *src);
+i8 *strchr(const i8 *s, i32 c);
 
 #endif

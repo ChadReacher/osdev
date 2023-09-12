@@ -8,7 +8,7 @@ i32 putchar(i32 c) {
 }
 
 i32 getchar() {
-	u8 c;
+	u8 c = 0;
 	do {
 		read(stdin, &c, 1);
 	} while (c == 0);
