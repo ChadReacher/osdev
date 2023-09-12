@@ -875,6 +875,9 @@ void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dir
 	vfs_node->name[found_dirent->name_len] = '\0';
 	vfs_node->uid = inode->uid;
 	vfs_node->gid = inode->gid;
+	vfs_node->atime = inode->atime;
+	vfs_node->mtime = inode->mtime;
+	vfs_node->ctime = inode->ctime;
 	vfs_node->length = inode->size;
 	vfs_node->permission_mask = inode->mode & 0xFFF;
 	vfs_node->flags = 0;

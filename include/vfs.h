@@ -38,6 +38,9 @@ typedef struct vfs_node {
 	u32 gid;					// The group id
 	u32 inode;					// This is a device-specific - provides a way for filesystem to identify files
 	u32 length;					// Size of file, in bytes
+	u32 atime;
+	u32 mtime;
+	u32 ctime;
 
 	read_callback read;
 	write_callback write;

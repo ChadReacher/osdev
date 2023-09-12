@@ -308,7 +308,9 @@ void vfs_mount(i8 *path, vfs_node_t *vfs_node_to_mount) {
 				intermediary_node->uid = 0;
 				intermediary_node->gid = 0;
 				intermediary_node->inode = 0;
-				intermediary_node->length = 0; 
+				intermediary_node->atime = 0; 
+				intermediary_node->mtime = 0; 
+				intermediary_node->ctime = 0; 
 				intermediary_node->read = NULL;
 				intermediary_node->write = NULL;
 				intermediary_node->create = NULL;

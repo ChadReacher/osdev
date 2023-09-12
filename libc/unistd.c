@@ -1,4 +1,5 @@
 #include "unistd.h"
+#include "fcntl.h"
 
 void test(const i8 *s) {
 	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(0), "b"(s));
@@ -152,6 +153,24 @@ i8 *getcwd(i8 *buf, u32 size) {
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
 			: "a"(16), "b"(buf), "c"(size));
+
+	return ret;
+}
+
+i32 stat(const i8 *pathname, struct stat *statbuf) {
+	i32 fd;
+	if ((fd = open(pathname, O_RDONLY, 0)) < 0) {
+		return -1;
+	}
+	return fstat(fd, statbuf);
+}
+
+i32 fstat(i32 fd, struct stat *statbuf) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(17), "b"(fd), "c"(statbuf));
 
 	return ret;
 }

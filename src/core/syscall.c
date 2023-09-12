@@ -1,7 +1,7 @@
 #include <syscall.h>
 #include <stdio.h>
-#include <panic.h>
 #include <fd.h>
+#include <panic.h>
 #include <vfs.h>
 #include <debug.h>
 #include <fcntl.h>
@@ -39,7 +39,8 @@ syscall_handler_t syscall_handlers[NB_SYSCALLS] = {
 	syscall_dup,
 	syscall_sbrk,
 	syscall_nanosleep,
-	syscall_getcwd
+	syscall_getcwd,
+	syscall_fstat
 };
 
 void syscall_init() {
@@ -81,8 +82,8 @@ i32 syscall_open(registers_state *regs) {
 			vfs_node = vfs_get_node(filename);
 		}
 	} else if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
-		DEBUG("Cannot open a directory - %s\r\n", filename);
-		return -1;
+		//DEBUG("Cannot open a directory - %s\r\n", filename);
+		//return -1;
 	} else if((vfs_node->flags & O_TRUNC) == O_TRUNC) {
 		vfs_trunc(vfs_node);
 	}
@@ -145,8 +146,20 @@ i32 syscall_read(registers_state *regs) {
 		DEBUG("%s", "Cannot read file with O_WRONLY flag\r\n");
 		return 0;
 	}
-	u32 have_read = vfs_read(f->vfs_node, f->offset, count, buf);
-	f->offset += have_read;
+	u32 have_read;
+	if ((f->vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
+		u32 idx = f->offset / sizeof(dirent);
+		dirent *dent = vfs_readdir(f->vfs_node, idx);
+		if (dent == NULL) {
+			return 0;
+		}
+		memcpy((void *)buf, (void *)dent, sizeof(dent));
+		f->offset += sizeof(dirent);
+		have_read = sizeof(dirent);
+	} else {
+		have_read = vfs_read(f->vfs_node, f->offset, count, buf);
+		f->offset += have_read;
+	}
 
 	return have_read;
 }
@@ -606,5 +619,48 @@ i32 syscall_getcwd(registers_state *regs) {
 	}
 
 	memcpy(buf, current_process->cwd, len + 1);
+	return 0;
+}
+
+i32 syscall_fstat(registers_state *regs) {
+	i32 fd = (i32)regs->ebx;
+	struct stat *statbuf = (struct stat *)regs->ecx;
+
+	if (current_process->fds[fd].vfs_node == (void *)-1) {
+		return -1;
+	}
+
+	vfs_node_t *vfs_node = current_process->fds[fd].vfs_node;
+	statbuf->st_dev = 0;
+	statbuf->st_ino = vfs_node->inode;
+	statbuf->st_mode = 0;
+	if ((vfs_node->flags & FS_FILE) == FS_FILE) {
+		statbuf->st_mode = S_IFREG;
+	}
+	if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
+		statbuf->st_mode = S_IFDIR;
+	}
+	if ((vfs_node->flags & FS_CHARDEVICE) == FS_CHARDEVICE) {
+		statbuf->st_mode = S_IFCHR;
+	}
+	if ((vfs_node->flags & FS_BLOCKDEVICE) == FS_BLOCKDEVICE) {
+		statbuf->st_mode = S_IFBLK;
+	}
+	if ((vfs_node->flags & FS_PIPE) == FS_PIPE) {
+		statbuf->st_mode = S_IFIFO;
+	}
+	if ((vfs_node->flags & FS_SYMLINK) == FS_SYMLINK) {
+		statbuf->st_mode = S_IFLNK;
+	}
+	statbuf->st_nlink = 0;
+	statbuf->st_uid = vfs_node->uid;
+	statbuf->st_gid = vfs_node->gid;
+	statbuf->st_rdev = 0;
+	statbuf->st_size = vfs_node->length;
+	statbuf->st_atime = vfs_node->atime;
+	statbuf->st_mtime = vfs_node->mtime;
+	statbuf->st_ctime = vfs_node->ctime;
+	statbuf->st_blksize = 0;
+	statbuf->st_blocks = 0;
 	return 0;
 }

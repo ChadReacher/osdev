@@ -2,6 +2,7 @@
 #define UNISTD_H
 
 #include "types.h"
+#include "stat.h"
 
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
@@ -33,5 +34,7 @@ void *sbrk(u32);
 i32 nanosleep(const struct timespec *, struct timespec *);
 u32 sleep(u32);
 i8 *getcwd(i8 *, u32);
+i32 stat(const i8 *, struct stat *);
+i32 fstat(i32, struct stat *);
 
 #endif
