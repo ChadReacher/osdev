@@ -122,11 +122,12 @@ i32 syscall_read(registers_state *regs) {
 	u32 count = regs->edx;
 
 	if (fd == FD_STDIN) {
-		u8 scancode = keyboard_get_scancode();
-		if (scancode) {
-			buf[0] = scancode;
+		u8 c = keyboard_getchar();
+		if (c) {
+			buf[0] = c;
+			return 1;
 		}
-		return -1;
+		return 0;
 	}
 
 	if (fd < 3 || fd >= NB_DESCRIPTORS) {

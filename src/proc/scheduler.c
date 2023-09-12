@@ -4,6 +4,7 @@
 #include <vfs.h>
 #include <elf.h>
 #include <debug.h>
+#include <screen.h>
 
 extern void switch_to(context_t **old_context, context_t *new_context);
 extern void enter_usermode(u32 useresp);
@@ -56,9 +57,23 @@ void remove_process_from_list(process_t *proc) {
 	}
 }
 
+static u32 cursor_ticks = 50;
+static bool cursor_on = true;
+
 void schedule(registers_state *regs) {
 	(void)regs;
 	process_t *next_proc;
+
+	if (!--cursor_ticks) {
+		cursor_ticks = 50;
+		if (cursor_on) {
+			remove_cursor();
+			cursor_on = false;
+		} else {
+			move_cursor();
+			cursor_on = true;
+		}
+	}
 
 	for(process_t *p = proc_list; p != NULL; p = p->next) {
 		if (p->timeout > 0 && p->timeout < 0xFFFFFFFF) {

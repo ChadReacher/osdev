@@ -38,6 +38,8 @@ static u8 keyboard_layout_us[2][128] = {
 	}
 };
 
+
+
 static i8 cwd[100] = {0};
 
 #define NB_DOCUMENTED_COMMANDS 11
@@ -60,10 +62,10 @@ i8 readline[READLINE_SIZE] = {0};
 i8 last_readline[READLINE_SIZE] = {0};
 u32 readline_index = 0;
 // Scancode without info about pressed or released key
-u8 raw_scancode = 0;
-bool ctrl_mode = false;
-bool shift_mode = false;
-bool capslock_mode = false;
+static u8 raw_scancode = 0;
+static bool ctrl_mode = false;
+static bool shift_mode = false;
+static bool capslock_mode = false;
 
 void help(const i8 *command) {
 	if (strlen(command) == 4) {

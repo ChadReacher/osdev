@@ -21,7 +21,6 @@
 #include <ata.h>
 #include <ext2.h>
 #include <elf.h>
-#include <kshell.h>
 #include <string.h>
 
 void _start() {

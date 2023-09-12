@@ -111,7 +111,7 @@ void load_segment(u32 *data, elf_program_header_t *program_header) {
 
 	// Map necessary pages for code
 	for (u32 i = 0, addr = vaddr; i < len_in_blocks; ++i, addr += 0x1000) {
-		u32 phys_code_page = (u32)code_phys_frame + i * 0x100;
+		u32 phys_code_page = (u32)code_phys_frame + i * 0x1000;
 		map_page((void *)phys_code_page, (void *)addr, flags);
 	}
 

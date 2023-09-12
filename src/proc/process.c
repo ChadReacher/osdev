@@ -42,7 +42,7 @@ void userinit() {
 	new_proc->directory = paging_copy_page_dir(false);
 	init_process = new_proc;
 	init_process->parent = NULL; // or current_process ?
-	init_process->priority = current_process->timeslice = 20;
+	init_process->priority = init_process->timeslice = 20;
 	init_process->state = RUNNING;
 	//init_process = current_process = proc_list;
 	//current_process->parent = NULL; // or current_process ?
@@ -54,7 +54,6 @@ void userinit() {
 	void *kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(current_process->directory));
 	elf_load(data);
-	current_process = idle;
 	free(data);
 
 	i32 argc = 0;
@@ -112,6 +111,7 @@ void userinit() {
 
 	// Get back to the kernel page directory
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
+	current_process = idle;
 }
 
 void sleep(void *chan) {
