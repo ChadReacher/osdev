@@ -107,7 +107,6 @@ void load_segment(u32 *data, elf_program_header_t *program_header) {
 
 	void *code = (void *)((u32)data + offset);
 	void *code_phys_frame = allocate_blocks(len_in_blocks);
-	DEBUG("Allocated code_phys_frame at %p\r\n", code_phys_frame);
 
 	// Map necessary pages for code
 	for (u32 i = 0, addr = vaddr; i < len_in_blocks; ++i, addr += 0x1000) {

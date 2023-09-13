@@ -40,7 +40,8 @@ syscall_handler_t syscall_handlers[NB_SYSCALLS] = {
 	syscall_sbrk,
 	syscall_nanosleep,
 	syscall_getcwd,
-	syscall_fstat
+	syscall_fstat,
+	syscall_chdir
 };
 
 void syscall_init() {
@@ -114,7 +115,8 @@ i32 syscall_close(registers_state *regs) {
 		return -1;
 	}
 	vfs_close(f->vfs_node);
-	memset(&current_process->fds[fd], 0, sizeof(file));
+	free(f->vfs_node);
+	memset(f, 0, sizeof(file));
 	return 0;
 }
 
@@ -153,7 +155,8 @@ i32 syscall_read(registers_state *regs) {
 		if (dent == NULL) {
 			return 0;
 		}
-		memcpy((void *)buf, (void *)dent, sizeof(dent));
+		memcpy((void *)buf, (void *)dent, sizeof(dirent));
+		free(dent);
 		f->offset += sizeof(dirent);
 		have_read = sizeof(dirent);
 	} else {
@@ -271,11 +274,12 @@ i32 syscall_exec(registers_state *regs) {
 		envp[i] = strdup(u_envp[i]);
 	}
 		
-
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
 	if (!vfs_node) {
 		return -1;
 	}
+
+
 	u32 *data = (u32 *)malloc(vfs_node->length);
 	memset((i8 *)data, 0, vfs_node->length);
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
@@ -284,10 +288,12 @@ i32 syscall_exec(registers_state *regs) {
 		return -1;
 	}
 
+
 	void *prev_page_dir = current_process->directory;
 	void *new_page_dir_phys = paging_copy_page_dir(false);
 	current_process->directory = new_page_dir_phys;
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)new_page_dir_phys));
+
 	elf_load(data);
 	free(data);
 
@@ -337,7 +343,6 @@ i32 syscall_exec(registers_state *regs) {
 
 	usp -= 4;
 	*((u32*)usp) = argc;
-	//usp -= 4; // allocate another 4 bytes for return address from main
 
 	free(argv);
 	free(envp);
@@ -373,8 +378,6 @@ i32 syscall_exec(registers_state *regs) {
 
 	current_process->kernel_stack_top = (void *)sp;
 	current_process->context = (context_t *)sp;
-	free(current_process->cwd);
-	current_process->cwd = strdup("/");
 	current_process->timeslice = 20;
 	current_process->priority = 20;
 	// It fixes problem, but it's strange
@@ -411,7 +414,7 @@ i32 syscall_exec(registers_state *regs) {
 	// Flush TLB
 	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
-	// End of free user code
+
 	return 0;
 }
 
@@ -423,8 +426,6 @@ i32 syscall_fork(registers_state *regs) {
 	process->directory = paging_copy_page_dir(true);
 	process->cwd = strdup(current_process->cwd);
 	process->parent = current_process;
-	process->fds = (file *)malloc(FDS_NUM * sizeof(file));
-	memcpy(process->fds, current_process->fds, FDS_NUM * sizeof(file));
 	process->timeslice = 20;
 	process->priority = 20;
 	process->brk = current_process->brk;
@@ -489,6 +490,7 @@ i32 syscall_exit(registers_state *regs) {
 		file *f = &current_process->fds[i];
 		if (f && f->vfs_node && f->vfs_node != (void *)-1) {
 			vfs_close(f->vfs_node);
+			free(f->vfs_node);
 			memset(f, 0, sizeof(file));
 		}
 	}
@@ -535,6 +537,7 @@ i32 syscall_waitpid(registers_state *regs) {
 					u32 ret_pid = p->pid;
 					free(p->kernel_stack_bottom);
 					remove_process_from_list(p);
+					free(p);
 					return ret_pid;
 				}
 			}
@@ -662,5 +665,47 @@ i32 syscall_fstat(registers_state *regs) {
 	statbuf->st_ctime = vfs_node->ctime;
 	statbuf->st_blksize = 0;
 	statbuf->st_blocks = 0;
+	return 0;
+}
+
+// Caller should free the memory
+static i8 *make_absolute_path(i8 *rel_path) {
+	i8 *cwd = current_process->cwd;
+	i8 *abs_path = malloc(strlen(cwd) + 1 + strlen(rel_path) + 1);
+	memset(abs_path, 0, strlen(cwd) + 1 + strlen(rel_path) + 1);
+
+	memcpy(abs_path, cwd, strlen(cwd));
+
+	if (strlen(cwd) != 1) {
+		abs_path[strlen(abs_path)] = '/';
+	}
+	strcat(abs_path, rel_path);
+
+	i8 *canonilized_path = canonilize_path(abs_path);
+	if (abs_path) {
+		free(abs_path);
+	}
+
+	return canonilized_path;
+}
+
+i32 syscall_chdir(registers_state *regs) {
+	i8 *path = (i8 *)regs->ebx;
+	
+	i8 *abs_path;
+	if (path[0] == '/') {
+		abs_path = strdup(path);
+	} else {
+		abs_path = make_absolute_path(path);
+	}
+
+	vfs_node_t *vfs_node = vfs_get_node(abs_path);
+	if (!vfs_node || (vfs_node->flags & FS_DIRECTORY) != FS_DIRECTORY) {
+		free(abs_path);
+		return -1;
+	}
+
+	free(current_process->cwd);
+	current_process->cwd = abs_path;
 	return 0;
 }

@@ -209,7 +209,7 @@ i8 *ata_read_sector(ata_device_t *dev, u32 lba) {
 		}
 	}
 	
-	memcpy(buf, dev->mem_buffer, SECTOR_SIZE);	
+	memcpy((void *)buf, (void *)dev->mem_buffer, SECTOR_SIZE);
 	return buf;
 }
 

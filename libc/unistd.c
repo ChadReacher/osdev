@@ -174,3 +174,13 @@ i32 fstat(i32 fd, struct stat *statbuf) {
 
 	return ret;
 }
+
+i32 chdir(const i8 *path) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(18), "b"(path));
+
+	return ret;
+}

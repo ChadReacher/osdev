@@ -10,7 +10,6 @@ DIR *opendir(const i8 *name) {
 	DIR *dirp;
 
 	fd = open(name, O_RDONLY, 0);
-	printf("got fd for dir - %d\n", fd);
 	if (fd < 0) {
 		return NULL;
 	}

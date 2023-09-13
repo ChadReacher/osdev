@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static i8 cwd[256];
+
 struct cmd {
 	i32 type;
 	void *data;
@@ -20,12 +22,20 @@ void print_prompt();
 i8 *read_input();
 struct cmd *parse_cmd(i8 *input);
 void run_cmd(struct cmd *);
+void builtin_cd(i8 *path);
 
 i32 main() {
 	for (;;) {
 		print_prompt();
 		memset(buf, 0, 1024);
 		i8 *input = read_input();
+		if (strlen(input) == 0) {
+			continue;
+		}
+		if (strlen(input) > 2 && strncmp(input, "cd", 2) == 0) { 
+			i8 *path = input + 3;
+			builtin_cd(path);
+		}
 		struct cmd *cmd = parse_cmd(input);
 		if (cmd == NULL) {
 			printf("Invalid input\n");
@@ -35,6 +45,10 @@ i32 main() {
 			run_cmd(cmd);
 		}
 		wait(NULL);
+		if (cmd->type == 1) {
+			struct exec_cmd *exec = (struct exec_cmd *)cmd->data;
+			free(exec->argv);
+		}
 		free(cmd->data);
 		free(cmd);
 	}
@@ -43,9 +57,9 @@ i32 main() {
 }
 
 void print_prompt() {
-	static i8 cwd[256];
-	getcwd(cwd, 256);
-	printf("[%s]$ ", cwd);
+	if (getcwd(cwd, 256) == 0) {
+		printf("[%s]$ ", cwd);
+	}
 }
 
 i8 *read_input() {
@@ -99,7 +113,7 @@ struct cmd *parse_cmd(i8 *input) {
 		argv[i_argc] = strdup(arg);
 		++i_argc;
 		if (i_argc == 10) {
-			printf("too many args\n");
+			free(argv);
 			return NULL;
 		}
 	}
@@ -121,4 +135,14 @@ void run_cmd(struct cmd *cmd) {
 		struct exec_cmd *exec = (struct exec_cmd *)cmd->data;
 		execv(exec->argv[0], exec->argv);
 	}
+}
+
+void builtin_cd(i8 *path) {
+	if (!path || strlen(path) == 0) {
+		return;
+	}
+	if (chdir(path) == -1) {
+		return;
+	}
+	//memcpy(cwd, path, strlen(path));
 }

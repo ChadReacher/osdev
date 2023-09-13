@@ -52,7 +52,9 @@ vfs_node_t *vfs_get_node(i8 *path) {
 	}
 
 	if (strlen(path) == 1 && path[0] == '/') {
-		return vfs_tree->root->val;
+		vfs_node_t *root = malloc(sizeof(vfs_node_t));
+		memcpy(root, vfs_tree->root->val, sizeof(vfs_node_t));
+		return root;
 	}
 
 	path_dup = strdup(path);
@@ -92,9 +94,12 @@ vfs_node_t *vfs_get_node(i8 *path) {
 		free(saved_pathdup);
 		return NULL;
 	}
+	vfs_node_t *found_node;
 	while ((name = strsep(&path_dup, "/")) != NULL) {
-		node_ptr = vfs_finddir(node_ptr, name);
-		if (!node_ptr) {
+		found_node = vfs_finddir(node_ptr, name);
+		free(node_ptr);
+		node_ptr = found_node;
+		if (!found_node) {
 			free(saved_pathdup);
 			return NULL;
 		}

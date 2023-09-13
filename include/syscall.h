@@ -5,7 +5,7 @@
 #include "isr.h"
 
 #define INT_SYSCALL "int $0x80"
-#define NB_SYSCALLS  18
+#define NB_SYSCALLS  19
 #define SYSCALL_TEST	0
 #define SYSCALL_READ	1
 #define SYSCALL_WRITE	2
@@ -24,6 +24,7 @@
 #define SYSCALL_NANOSLEEP 15
 #define SYSCALL_GETCWD	16
 #define SYSCALL_FSTAT	17
+#define SYSCALL_CHDIR   18
 
 #define S_IFMT 0170000
 #define S_IFSOCK 014000
@@ -78,5 +79,6 @@ i32 syscall_sbrk(registers_state *regs);
 i32 syscall_nanosleep(registers_state *regs);
 i32 syscall_getcwd(registers_state *regs);
 i32 syscall_fstat(registers_state *regs);
+i32 syscall_chdir(registers_state *regs);
 
 #endif

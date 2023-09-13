@@ -25,7 +25,6 @@ void userinit() {
 	current_process->state = RUNNING;
 	current_process->parent = NULL; // or current_process ?
 	current_process->directory = virtual_to_physical(0xFFFFF000);
-	//current_process->regs->eip = cpu_idle;
 	current_process->regs->cs = 0x8;
     current_process->priority = current_process->timeslice = 1;
 
@@ -146,7 +145,7 @@ void wakeup_proc(process_t *proc) {
 
 process_t *proc_alloc() {
 	process_t *process = malloc(sizeof(process_t));
-	memset(process, 0, sizeof(process_t));
+	memset((void *)process, 0, sizeof(process_t));
 
 	process->pid = next_pid++;
 	process->state = RUNNING;

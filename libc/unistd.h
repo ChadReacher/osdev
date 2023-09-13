@@ -36,5 +36,6 @@ u32 sleep(u32);
 i8 *getcwd(i8 *, u32);
 i32 stat(const i8 *, struct stat *);
 i32 fstat(i32, struct stat *);
+i32 chdir(const i8 *);
 
 #endif

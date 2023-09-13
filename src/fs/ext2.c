@@ -320,14 +320,16 @@ u32 ext2_close(vfs_node_t *node) {
 	return 0;
 }
 
-// Caller can free return value.
+// Caller should free return value.
 dirent *ext2_readdir(vfs_node_t *node, u32 index) {
 	ext2_inode_table *inode = ext2_get_inode_table(node->inode);
 	if (!(inode->mode & EXT2_S_IFDIR)) {
 		DEBUG("%s", "It is not a directory\r\n");
+		free(inode);
 		return NULL;
 	}
 
+	DEBUG("Got inode %p\r\n", inode);
 	u32 curr_offset = 0;
 	u32 block_offset = 0;
 	u32 in_block_offset = 0;
@@ -366,6 +368,7 @@ dirent *ext2_readdir(vfs_node_t *node, u32 index) {
 	return NULL;
 }
 
+// Caller should free return value.
 vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name) {
 	ext2_inode_table *inode = ext2_get_inode_table(node->inode);
 	if (!(inode->mode & EXT2_S_IFDIR)) {
@@ -501,6 +504,7 @@ void ext2_trunc(vfs_node_t *node) {
 
 	inode_to_trunc->size = 0;
 	ext2_set_inode_table(inode_to_trunc, node->inode);
+	free(inode_to_trunc);
 }
 
 void ext2_mkdir(vfs_node_t *parent_node, i8 *entry_name, u16 permission) {
