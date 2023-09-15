@@ -152,9 +152,9 @@ process_t *proc_alloc() {
 	process->next = NULL;
 	process->fds = malloc(FDS_NUM * sizeof(file));
 	memset(process->fds, 0, FDS_NUM * sizeof(file));
-	process->kernel_stack_bottom = malloc(4096);
-	memset(process->kernel_stack_bottom, 0, 4096);
-	u32 *sp = (u32 *)ALIGN_DOWN((u32)process->kernel_stack_bottom + 4096 - 1, 4);
+	process->kernel_stack_bottom = malloc(4096 * 2);
+	memset(process->kernel_stack_bottom, 0, 4096 * 2);
+	u32 *sp = (u32 *)ALIGN_DOWN((u32)process->kernel_stack_bottom + 4096 * 2 - 1, 4);
 
 	// Setup kernel stack as we have returned from interrupt routine
 	*sp-- = 0x23;			// user DS

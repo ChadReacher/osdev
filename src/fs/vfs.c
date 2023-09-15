@@ -172,6 +172,7 @@ void vfs_create(i8 *name, u16 permission) {
 		parent_node->create(parent_node, dirname, permission);
 	}
 	free(saved_dirname);
+	free(parent_node);
 }
 
 void vfs_mkdir(i8 *name, u16 permission) {
@@ -202,6 +203,7 @@ void vfs_mkdir(i8 *name, u16 permission) {
 		parent_node->mkdir(parent_node, dirname, permission);
 	}
 	free(saved_dirname);
+	free(parent_node);
 }
 
 dirent *vfs_readdir(vfs_node_t *vfs_node, u32 index) {
@@ -249,9 +251,11 @@ i32 vfs_unlink(i8 *name) {
 	if ((parent_node->flags & FS_DIRECTORY) == FS_DIRECTORY && parent_node->unlink) {
 		i32 ret = parent_node->unlink(parent_node, dirname);
 		free(saved_dirname);
+		free(parent_node);
 		return ret;
 	}
 	free(saved_dirname);
+	free(parent_node);
 	return -1;
 }
 

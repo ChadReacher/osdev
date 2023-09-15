@@ -301,8 +301,8 @@ i32 syscall_exec(registers_state *regs) {
 	free(data);
 
 	void *old_kernel_stack = current_process->kernel_stack_bottom;
-	void *kernel_stack = malloc(4096);
-	memset(kernel_stack, 0, 4096);
+	void *kernel_stack = malloc(4096 * 2);
+	memset(kernel_stack, 0, 4096 * 2);
 	current_process->kernel_stack_bottom = kernel_stack;
 	free(old_kernel_stack);
 
@@ -350,7 +350,7 @@ i32 syscall_exec(registers_state *regs) {
 	free(argv);
 	free(envp);
 
-	u32 *sp = (u32 *)ALIGN_DOWN((u32)current_process->kernel_stack_bottom + 4096 - 1, 4);
+	u32 *sp = (u32 *)ALIGN_DOWN((u32)current_process->kernel_stack_bottom + 4096 * 2 - 1, 4);
 	// Setup kernel stack as we have returned from interrupt routine
 	*sp-- = 0x23;			// user DS
 	*sp-- = (u32)usp;		// user stack
