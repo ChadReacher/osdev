@@ -6,6 +6,8 @@
 #include <debug.h>
 #include <panic.h>
 
+static i8 internal_buf[1024];
+
 i32 serial_init() {
 	port_outb(COM1 + 1, 0x00); // Disable all interrupts
 	port_outb(COM1 + 3, 0x80); // Enable DLAB(divisor latch access bit) for baud rate divisor
@@ -58,7 +60,6 @@ void serial_printf(i8 *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 
-	i8 internal_buf[1024];
 	memset(internal_buf, 0, sizeof internal_buf);
 
 	kvsprintf(internal_buf, fmt, args);

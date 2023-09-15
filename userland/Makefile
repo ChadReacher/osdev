@@ -7,7 +7,7 @@ LIBC = $(ROOT_DIR)/build/libc.a
 CFLAGS = -g -c -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone\
 	 -fno-stack-protector -I $(ROOT_DIR)/libc/
 
-files = bin/init bin/test bin/sh bin/ls
+files = bin/init bin/test bin/sh bin/ls bin/cat
 
 default: userland
 .PHONY: userland

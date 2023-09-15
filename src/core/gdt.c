@@ -1,5 +1,4 @@
 #include <gdt.h>
-#include <debug.h>
 
 gdt_entry_t gdt[GDT_ENTRIES];
 gdtr_t gdtr;

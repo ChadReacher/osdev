@@ -11,6 +11,7 @@ void screen_init() {
 	cursor_x = 0;
 	cursor_y = 0;
 	map_page((void *)0xA000, (void *)0xFE000000, PAGING_FLAG_PRESENT);
+
 	// Identity map framebuffer
 	u32 fb_size_in_bytes = SCREEN_SIZE * 4;
 	u32 fb_size_in_pages = fb_size_in_bytes / PAGE_SIZE;
@@ -18,6 +19,7 @@ void screen_init() {
 	for (u32 i = 0, fb_start = 0xFD000000; i < fb_size_in_pages; ++i, fb_start += PAGE_SIZE) {
 		map_page((void *)fb_start, (void *)fb_start, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 	}
+
 	screen_clear();
 }
 

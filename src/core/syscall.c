@@ -275,7 +275,15 @@ i32 syscall_exec(registers_state *regs) {
 	}
 		
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
-	if (!vfs_node) {
+	if (!vfs_node || (vfs_node->flags & FS_FILE) != FS_FILE) {
+		for (u32 i = 0; i < argc; ++i) {
+			free(argv[i]);
+		}
+		for (u32 i = 0; i < envc; ++i) {
+			free(envp[i]);
+		}
+		free(argv);
+		free(envp);
 		return -1;
 	}
 
@@ -283,11 +291,6 @@ i32 syscall_exec(registers_state *regs) {
 	u32 *data = (u32 *)malloc(vfs_node->length);
 	memset((i8 *)data, 0, vfs_node->length);
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
-
-	if (argv == NULL) {
-		return -1;
-	}
-
 
 	void *prev_page_dir = current_process->directory;
 	void *new_page_dir_phys = paging_copy_page_dir(false);
