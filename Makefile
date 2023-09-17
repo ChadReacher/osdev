@@ -141,12 +141,18 @@ build/libc/%.o: libc/sys/%.c
 run:
 	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
 	    -drive file=disk.img,if=ide,format=raw,media=disk,index=1\
-		-rtc base=localtime,clock=host,driftfix=slew
+		-rtc base=localtime,clock=host,driftfix=slew\
+		-netdev user,id=u1\
+		-device rtl8139,netdev=u1\
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat
 
 log:
 	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
 		-drive file=disk.img,if=ide,format=raw,media=disk,index=1\
 		-rtc base=localtime,clock=host,driftfix=slew\
+		-netdev user,id=u1\
+		-device rtl8139,netdev=u1\
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat\
 		-d int -no-reboot\
 		-chardev stdio,id=char0,logfile=serial.log,signal=off\
 		-serial chardev:char0
@@ -154,6 +160,9 @@ log:
 debug:
 	qemu-system-i386 -drive format=raw,file=build/boot.img\
 	       	-drive file=disk.img,if=ide,format=raw,media=disk,index=1 \
+		-netdev user,id=u1\
+		-device rtl8139,netdev=u1\
+		-object filter-dump,id=f1,netdev=u1,file=dump.dat\
 	       	-boot a -s -S \
 		& gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf"\
 	       	-ex "br _start" -ex "layout src" -ex "continue" -ex "next"

@@ -22,7 +22,7 @@
 #include <ext2.h>
 #include <elf.h>
 #include <string.h>
-#include <vesa.h>
+#include <rtl8139.h>
 
 void _start() {
 	serial_init();
@@ -40,6 +40,7 @@ void _start() {
 	screen_init();
 	heap_init();
 	pci_init();
+	rtl8139_init();
 	vfs_init();
 	ata_init();
 	ext2_init("/dev/hdb", "/");

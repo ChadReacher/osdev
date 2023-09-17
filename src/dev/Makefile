@@ -1,5 +1,5 @@
 
-files = ata.o cmos.o keyboard.o pci.o pic.o screen.o serial.o timer.o vesa.o
+files = ata.o cmos.o keyboard.o pci.o pic.o screen.o serial.o timer.o rtl8139.o
 
 .PHONY: dev
 dev: $(files)
