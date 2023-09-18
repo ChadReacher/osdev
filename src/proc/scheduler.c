@@ -57,26 +57,12 @@ void remove_process_from_list(process_t *proc) {
 	}
 }
 
-static u32 cursor_ticks = 50;
-static bool cursor_on = true;
-
 void schedule(registers_state *regs) {
 	(void)regs;
 	process_t *next_proc;
 
-	//if (!--cursor_ticks) {
-	//	cursor_ticks = 50;
-	//	if (cursor_on) {
-	//		remove_cursor();
-	//		cursor_on = false;
-	//	} else {
-	//		move_cursor();
-	//		cursor_on = true;
-	//	}
-	//}
-
 	for(process_t *p = proc_list; p != NULL; p = p->next) {
-		if (p->timeout > 0 && p->timeout < 0xFFFFFFFF) {
+		if (p->timeout > 0 && p->timeout < (i32)0xFFFFFFFF) {
 			--p->timeout;
 			if (!p->timeout) {
 				wakeup_proc(p);

@@ -3,9 +3,11 @@
 #include "stat.h"
 #include "stdlib.h"
 #include "unistd.h"
+#include "stdio.h"
+#include "string.h"
 
 DIR *opendir(const i8 *name) {
-	u32 fd;
+	i32 fd;
 	struct stat st;
 	DIR *dirp;
 

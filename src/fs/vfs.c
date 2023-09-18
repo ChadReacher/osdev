@@ -5,13 +5,6 @@
 #include <stdio.h>
 #include <debug.h>
 
-
-// TODO: Should we strip '/' from the start and the end of path? 
-// For example: /home/games/host/ should become
-// home/games/host.
-// If we want to do it, then we should implement string
-// operation to strip a string from a character.
-
 // n-ary virtual file system tree
 tree_t *vfs_tree = NULL;
 // pointer to the root of vfs tree

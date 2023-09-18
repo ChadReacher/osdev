@@ -1,4 +1,5 @@
 #include "string.h"
+#include "stdlib.h"
 
 void *memset(void *ptr, u32 value, u32 num) {
 	u8 *c_ptr;
@@ -164,7 +165,7 @@ i8 *strcat(i8 *dest, const i8 *src) {
 }
 
 i8 *strchr(const i8 *s, i32 c) {
-	i8 *s2 = s;
+	i8 *s2 = (i8 *)s;
 	u32 sz = strlen(s);
 	for (u32 i = 0; i <= sz; ++i) {
 		if (*s2 == c) {

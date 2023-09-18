@@ -324,12 +324,10 @@ u32 ext2_close(vfs_node_t *node) {
 dirent *ext2_readdir(vfs_node_t *node, u32 index) {
 	ext2_inode_table *inode = ext2_get_inode_table(node->inode);
 	if (!(inode->mode & EXT2_S_IFDIR)) {
-		DEBUG("%s", "It is not a directory\r\n");
 		free(inode);
 		return NULL;
 	}
 
-	DEBUG("Got inode %p\r\n", inode);
 	u32 curr_offset = 0;
 	u32 block_offset = 0;
 	u32 in_block_offset = 0;
@@ -372,7 +370,6 @@ dirent *ext2_readdir(vfs_node_t *node, u32 index) {
 vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name) {
 	ext2_inode_table *inode = ext2_get_inode_table(node->inode);
 	if (!(inode->mode & EXT2_S_IFDIR)) {
-		DEBUG("%s", "It is not a directory\r\n");
 		free(inode);
 		return NULL;
 	}

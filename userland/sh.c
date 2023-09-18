@@ -144,5 +144,4 @@ void builtin_cd(i8 *path) {
 	if (chdir(path) == -1) {
 		return;
 	}
-	//memcpy(cwd, path, strlen(path));
 }

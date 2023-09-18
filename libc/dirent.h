@@ -19,7 +19,7 @@ struct dirent {
 };
 
 typedef struct DIR {
-	u32 fd;
+	i32 fd;
 	struct dirent dent;
 } DIR;
 

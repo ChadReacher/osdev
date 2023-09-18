@@ -276,10 +276,10 @@ i32 syscall_exec(registers_state *regs) {
 		
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
 	if (!vfs_node || (vfs_node->flags & FS_FILE) != FS_FILE) {
-		for (u32 i = 0; i < argc; ++i) {
+		for (i32 i = 0; i < argc; ++i) {
 			free(argv[i]);
 		}
-		for (u32 i = 0; i < envc; ++i) {
+		for (i32 i = 0; i < envc; ++i) {
 			free(envp[i]);
 		}
 		free(argv);
@@ -519,6 +519,7 @@ i32 syscall_waitpid(registers_state *regs) {
 	i32 pid = (i32)regs->ebx;
 	i32 *wstatus = (i32 *)regs->ecx;
 	i32 options = (i32)regs->edx;
+	(void)options;
 
 	if (pid < -1) {
 		// Wait for any child process whose process group ID
@@ -597,6 +598,7 @@ i32 syscall_sbrk(registers_state *regs) {
 i32 syscall_nanosleep(registers_state *regs) {
 	const struct timespec *req = (const struct timespec *)regs->ebx;
 	const struct timespec *rem = (const struct timespec *)regs->ecx;
+	(void)rem;
 
 	u32 nsec = req->tv_nsec;
 	if (nsec < 10000000) {
@@ -606,7 +608,7 @@ i32 syscall_nanosleep(registers_state *regs) {
 	u32 timeout = (req->tv_sec * 100) + (nsec * 100 / 1000000000L);
 	if (timeout) {
 		current_process->timeout = timeout;
-		sleep(&syscall_nanosleep);
+		sleep((void *)&syscall_nanosleep);
 	}
 	return 0;
 }
@@ -673,23 +675,23 @@ i32 syscall_fstat(registers_state *regs) {
 
 // Caller should free the memory
 static i8 *make_absolute_path(i8 *rel_path) {
-	i8 *cwd = current_process->cwd;
-	i8 *abs_path = malloc(strlen(cwd) + 1 + strlen(rel_path) + 1);
-	memset(abs_path, 0, strlen(cwd) + 1 + strlen(rel_path) + 1);
+       i8 *cwd = current_process->cwd;
+       i8 *abs_path = malloc(strlen(cwd) + 1 + strlen(rel_path) + 1);
+       memset(abs_path, 0, strlen(cwd) + 1 + strlen(rel_path) + 1);
 
-	memcpy(abs_path, cwd, strlen(cwd));
+       memcpy(abs_path, cwd, strlen(cwd));
 
-	if (strlen(cwd) != 1) {
-		abs_path[strlen(abs_path)] = '/';
-	}
-	strcat(abs_path, rel_path);
+       if (strlen(cwd) != 1) {
+               abs_path[strlen(abs_path)] = '/';
+       }
+       strcat(abs_path, rel_path);
 
-	i8 *canonilized_path = canonilize_path(abs_path);
-	if (abs_path) {
-		free(abs_path);
-	}
+       i8 *canonilized_path = canonilize_path(abs_path);
+       if (abs_path) {
+               free(abs_path);
+       }
 
-	return canonilized_path;
+       return canonilized_path;
 }
 
 i32 syscall_chdir(registers_state *regs) {

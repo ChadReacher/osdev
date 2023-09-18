@@ -1,6 +1,6 @@
 #include <ctype.h>
 #include <unistd.h>
-
+#include <stdio.h>
 
 i32 main(i32 argc, i8 *argv[]) {
 	if (argc < 2) {

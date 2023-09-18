@@ -37,6 +37,6 @@
 #define SEEK_CUR 2
 #define SEEK_END 3
 
-u32 open(i8 *filename, u32 oflags, u32 mode);
+u32 open(const i8 *filename, u32 oflags, u32 mode);
 
 #endif

@@ -24,7 +24,7 @@ void userinit() {
 	current_process = idle;
 	current_process->state = RUNNING;
 	current_process->parent = NULL; // or current_process ?
-	current_process->directory = virtual_to_physical(0xFFFFF000);
+	current_process->directory = virtual_to_physical((void *)0xFFFFF000);
 	current_process->regs->cs = 0x8;
     current_process->priority = current_process->timeslice = 1;
 
