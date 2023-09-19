@@ -11,7 +11,6 @@ i32 main(i32 argc, i8 *argv[]) {
 	struct dirent *entry;
 	DIR *dirp;
 	
-
 	if (argc == 1) {
 		getcwd(dirname, 256);
 	} else if (argc > 1) {

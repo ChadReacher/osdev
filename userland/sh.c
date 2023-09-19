@@ -35,6 +35,7 @@ i32 main() {
 		if (strlen(input) > 2 && strncmp(input, "cd", 2) == 0) { 
 			i8 *path = input + 3;
 			builtin_cd(path);
+			continue;
 		}
 		struct cmd *cmd = parse_cmd(input);
 		if (cmd == NULL) {
@@ -45,10 +46,7 @@ i32 main() {
 			run_cmd(cmd);
 		}
 		wait(NULL);
-		if (cmd->type == 1) {
-			struct exec_cmd *exec = (struct exec_cmd *)cmd->data;
-			free(exec->argv);
-		}
+
 		free(cmd->data);
 		free(cmd);
 	}
@@ -96,7 +94,7 @@ struct cmd *parse_cmd(i8 *input) {
 	if (!input || !strlen(input)) {
 		return NULL;
 	}
-	i8 **argv = malloc(10);
+	i8 **argv = malloc(10 * sizeof(i8 *));
 	i32 i_argc = 0;
 
 	i8 *s = input;
@@ -108,19 +106,28 @@ struct cmd *parse_cmd(i8 *input) {
 	}
 
 	i8 *arg;
-	while((arg = strsep(&s, " ")) != NULL) {
-		printf("arg - %s\n", arg);
+	while ((arg = strsep(&s, " ")) != NULL) {
+		if (strcmp(arg, "") == 0) {
+			continue;
+		}
+		printf("arg - '%s'\n", arg);
 		argv[i_argc] = strdup(arg);
 		++i_argc;
 		if (i_argc == 10) {
+			printf("error: max args - 10\n");
+			for (i32 i = 0; i < i_argc; ++i) {
+				free(argv[i]);
+			}
 			free(argv);
 			return NULL;
 		}
 	}
 	struct exec_cmd *execmd = malloc(sizeof(struct exec_cmd));
+	memset(execmd, 0, sizeof(struct exec_cmd));
 	execmd->argc = i_argc;
 	argv[i_argc] = NULL;
-	memcpy(execmd->argv, argv, (i_argc + 1) * 4);
+	memcpy(execmd->argv, argv, 10 * sizeof(i8 *));
+
 	struct cmd *cmd = malloc(sizeof(struct cmd));
 	cmd->type = 1;
 	cmd->data = (void *)execmd;
@@ -142,6 +149,7 @@ void builtin_cd(i8 *path) {
 		return;
 	}
 	if (chdir(path) == -1) {
+		printf("cd: could not change directory\n");
 		return;
 	}
 }

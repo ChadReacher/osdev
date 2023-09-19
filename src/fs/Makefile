@@ -1,5 +1,5 @@
 
-files = ext2.o fd.o vfs.o
+files = ext2.o vfs.o
 
 .PHONY: fs
 fs: $(files)

@@ -1,6 +1,5 @@
 #include <syscall.h>
 #include <stdio.h>
-#include <fd.h>
 #include <panic.h>
 #include <vfs.h>
 #include <debug.h>
@@ -81,6 +80,8 @@ i32 syscall_open(registers_state *regs) {
 		if (oflags & O_CREAT) {
 			vfs_create(filename, mode);
 			vfs_node = vfs_get_node(filename);
+		} else {
+			return -1;
 		}
 	} else if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
 		//DEBUG("Cannot open a directory - %s\r\n", filename);
@@ -104,8 +105,8 @@ i32 syscall_open(registers_state *regs) {
 }
 
 i32 syscall_close(registers_state *regs) {
-	u32 fd = regs->ebx;
-	if (fd < 3 || fd >= NB_DESCRIPTORS) {
+	i32 fd = (i32)regs->ebx;
+	if (fd < 3 || fd >= FDS_NUM) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
 		return -1;
 	}
@@ -121,9 +122,9 @@ i32 syscall_close(registers_state *regs) {
 }
 
 i32 syscall_read(registers_state *regs) {
-	i32 fd = regs->ebx;
+	i32 fd = (i32)regs->ebx;
 	i8 *buf = (i8 *)regs->ecx;
-	u32 count = regs->edx;
+	u32 count = (u32)regs->edx;
 
 	if (fd == FD_STDIN) {
 		u8 c = keyboard_getchar();
@@ -134,7 +135,7 @@ i32 syscall_read(registers_state *regs) {
 		return 0;
 	}
 
-	if (fd < 3 || fd >= NB_DESCRIPTORS) {
+	if (fd < 3 || fd >= FDS_NUM) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
 		return 0;
 	}
@@ -180,7 +181,7 @@ i32 syscall_write(registers_state *regs) {
 		return i;
 	}
 
-	if (fd < 3 || fd >= NB_DESCRIPTORS) {
+	if (fd < 3 || fd >= FDS_NUM) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
 		return 0;
 	}
@@ -208,7 +209,7 @@ i32 syscall_lseek(registers_state *regs) {
 	i32 offset = regs->ecx;
 	i32 whence = regs->edx;
 
-	if (fd < 3 || fd >= NB_DESCRIPTORS) {
+	if (fd < 3 || fd >= FDS_NUM) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
 		return 0;
 	}
@@ -571,7 +572,7 @@ i32 syscall_getpid(registers_state *regs) {
 i32 syscall_dup(registers_state *regs) {
 	i32 oldfd = (i32)regs->ebx;
 
-	if (oldfd > FDS_NUM || current_process->fds[oldfd].used || current_process->fds[oldfd].vfs_node == (void *) -1) {
+	if (oldfd > FDS_NUM || current_process->fds[oldfd].used) {
 		return -1;
 	}
 

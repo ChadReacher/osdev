@@ -193,7 +193,7 @@ process_t *proc_alloc() {
 }
 
 i32 proc_get_fd(process_t *proc) {
-	for (u32 i = 3; i < 32; ++i) {
+	for (u32 i = 3; i < FDS_NUM; ++i) {
 		if (!proc->fds[i].used) {
 			proc->fds[i].used = true;
 			return i;

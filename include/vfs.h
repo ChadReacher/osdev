@@ -56,6 +56,9 @@ typedef struct vfs_node {
 } vfs_node_t;
 
 #define FDS_NUM 32
+#define FD_STDIN 0
+#define FD_STDOUT 1
+#define FD_STDERR 2
 
 typedef struct {
 	vfs_node_t *vfs_node;
