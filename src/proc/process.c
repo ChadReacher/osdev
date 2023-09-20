@@ -15,18 +15,36 @@ extern void irq_ret();
 extern process_t *proc_list;
 extern process_t *current_process;
 extern process_t *init_process;
+extern process_t *idle_process;
 
-u32 next_pid = 1;
+u32 next_pid = 0;
+
+void cpu_idle() {
+    while (1) {
+		__asm__ __volatile__ ("cli");
+        kprintf("kernel idle - %d\n", idle_process->pid);
+		__asm__ __volatile__ ("sti");
+		__asm__ __volatile__ ("hlt");
+	}
+}
 
 void userinit() {
 	process_t *idle = proc_alloc(); 
+    remove_process_from_list(idle);
 	idle->regs->eflags = 0x202;
-	current_process = idle;
-	current_process->state = RUNNING;
-	current_process->parent = NULL; // or current_process ?
-	current_process->directory = virtual_to_physical((void *)0xFFFFF000);
-	current_process->regs->cs = 0x8;
-    current_process->priority = current_process->timeslice = 1;
+	idle->state = RUNNING;
+	idle->parent = NULL;
+	idle->directory = virtual_to_physical((void *)0xFFFFF000);
+	idle->regs->cs = 0x8;
+	idle->regs->ds = 0x8;
+	idle->regs->es = 0x8;
+	idle->regs->fs = 0x8;
+	idle->regs->gs = 0x8;
+	idle->regs->useresp = 0x0;
+	idle->regs->ss = 0x0;
+    idle->regs->eip = (u32)cpu_idle;
+    idle->priority = idle->timeslice = 20;
+    idle_process = idle;
 
 	vfs_node_t *vfs_node = vfs_get_node("/bin/init");
 	if (!vfs_node) {
@@ -56,9 +74,10 @@ void userinit() {
 	free(data);
 
 	i32 argc = 0;
-	i32 envc = 0;
+	i32 envc = 1;
 	i8 **argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
 	i8 **envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
+    envp[0] = strdup("PATH=/bin");
 	argv[argc] = NULL;
 	envp[envc] = NULL;
 	
@@ -110,7 +129,7 @@ void userinit() {
 
 	// Get back to the kernel page directory
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
-	current_process = idle;
+	//current_process = idle;
 }
 
 void sleep(void *chan) {

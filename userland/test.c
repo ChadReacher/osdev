@@ -9,7 +9,6 @@ int main(i32 argc, i8 *argv[]) {
 	for (i32 i = 0; i < argc; ++i) {
 		printf("argv[%d] - %s\n", i, argv[i]);
 	}
-	printf("pid - %d\n", getpid());
 	printf("Enter character: ");
 	u8 m = getchar();
 	putchar(m);

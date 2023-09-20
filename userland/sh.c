@@ -140,7 +140,7 @@ void run_cmd(struct cmd *cmd) {
 	}
 	if (cmd->type == 1) {
 		struct exec_cmd *exec = (struct exec_cmd *)cmd->data;
-		execv(exec->argv[0], exec->argv);
+		execvpe(exec->argv[0], exec->argv, environ);
 	}
 }
 

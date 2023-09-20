@@ -160,4 +160,4 @@ debug:
 
 .PHONY: clean
 clean:
-	rm -rf build/* disk.img userland/bin/* 
+	rm -rf build/* disk.img userland/bin/* userland/hdd/bin/*

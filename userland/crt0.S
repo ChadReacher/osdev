@@ -13,7 +13,7 @@ _start:
 	push 0				; frame pointer
 	mov ebp, esp
 
-	;mov [environ], ecx
+	mov [environ], ecx
 
 	push ecx
 	push ebx

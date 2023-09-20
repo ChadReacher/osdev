@@ -642,24 +642,24 @@ i32 syscall_fstat(registers_state *regs) {
 	vfs_node_t *vfs_node = current_process->fds[fd].vfs_node;
 	statbuf->st_dev = 0;
 	statbuf->st_ino = vfs_node->inode;
-	statbuf->st_mode = 0;
+	statbuf->st_mode = vfs_node->mode;
 	if ((vfs_node->flags & FS_FILE) == FS_FILE) {
-		statbuf->st_mode = S_IFREG;
+		statbuf->st_mode |= S_IFREG;
 	}
 	if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
-		statbuf->st_mode = S_IFDIR;
+		statbuf->st_mode |= S_IFDIR;
 	}
 	if ((vfs_node->flags & FS_CHARDEVICE) == FS_CHARDEVICE) {
-		statbuf->st_mode = S_IFCHR;
+		statbuf->st_mode |= S_IFCHR;
 	}
 	if ((vfs_node->flags & FS_BLOCKDEVICE) == FS_BLOCKDEVICE) {
-		statbuf->st_mode = S_IFBLK;
+		statbuf->st_mode |= S_IFBLK;
 	}
 	if ((vfs_node->flags & FS_PIPE) == FS_PIPE) {
-		statbuf->st_mode = S_IFIFO;
+		statbuf->st_mode |= S_IFIFO;
 	}
 	if ((vfs_node->flags & FS_SYMLINK) == FS_SYMLINK) {
-		statbuf->st_mode = S_IFLNK;
+		statbuf->st_mode |= S_IFLNK;
 	}
 	statbuf->st_nlink = 0;
 	statbuf->st_uid = vfs_node->uid;
@@ -715,3 +715,4 @@ i32 syscall_chdir(registers_state *regs) {
 	current_process->cwd = abs_path;
 	return 0;
 }
+

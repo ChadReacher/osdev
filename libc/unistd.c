@@ -1,5 +1,6 @@
 #include "unistd.h"
 #include "fcntl.h"
+#include "string.h"
 
 void test(const i8 *s) {
 	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(0), "b"(s));
@@ -55,14 +56,52 @@ void yield() {
 	__asm__ __volatile__ ("int $0x80" : : "a"(7));
 }
 
-i32 execve(const i8 *pathname, i8 *const argv[], i8 *const envp[]) {
-	i32 ret;
-
+static i32 execve(const i8 *pathname, i8 *const argv[], i8 *const envp[]) {
+    i32 ret;
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
 			: "a"(8), "b"(pathname), "c"(argv), "d"(envp));
 
 	return ret;
+}
+
+#define PATH_LEN_MAX 256
+i32 execvpe(const i8 *file, i8 *const argv[], i8 *const envp[]) {
+    i8 cmd[PATH_LEN_MAX];
+    memset(cmd, 0, PATH_LEN_MAX * sizeof(i8));
+
+    if (strchr(file, '/') == NULL) {
+        u32 n;
+        i8 *endp;
+        i8 *envpath = getenv("PATH");
+        while (envpath != NULL) {
+            endp = strchr(envpath, ':');
+            if (endp != NULL) {
+                n = endp - envpath;
+            } else {
+                n = strlen(envpath);
+            }
+            if (n + 2 + strlen(file) > PATH_LEN_MAX) {
+                continue;
+            }
+            memcpy(cmd, envpath, n);
+            cmd[n++] = '/';
+            strcpy(cmd + n, file);
+            if (access(cmd, F_OK) == 0) {
+                break;
+            }
+            if (!endp) {
+                return -1;
+            }
+            envpath = endp + 1;
+        }
+    } else {
+        if (strlen(file) >= PATH_LEN_MAX) {
+            return -1;
+        }
+        strcpy(cmd, file);
+    }
+    return execve(cmd, argv, envp);
 }
 
 i32 execv(const i8 *pathname, i8 *const argv[]) {
@@ -184,3 +223,38 @@ i32 chdir(const i8 *path) {
 
 	return ret;
 }
+
+i32 access(const i8 *pathname, i32 mode) {
+    struct stat st;
+
+    if (stat(pathname, &st) != 0) {
+        return -1;
+    }
+    // TODO: add proper checking for user permissions.
+    // It probably involves to revise the 'fstat' syscall
+    printf("stat - 0x%x\n", st.st_mode);
+    if (mode == F_OK) {
+        return 0;
+    }
+    return 0;
+}
+
+i8 *getenv(const i8 *name) {
+    u32 name_len = strlen(name);
+    if (name == NULL || name_len == 0 || strchr(name, '=') != NULL) {
+        return NULL;
+    }
+
+    u32 i = 0;
+    i8 *value = NULL;
+    while (environ[i] != NULL) {
+        if (strncmp(name, environ[i], name_len) == 0) {
+            value = environ[i] + name_len + 1;
+            break;
+        }
+        ++i;
+    }
+
+    return value;
+}
+

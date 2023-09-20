@@ -22,6 +22,7 @@
 #include <ext2.h>
 #include <elf.h>
 #include <string.h>
+#include <vesa.h>
 
 void _start() {
 	serial_init();
@@ -37,7 +38,6 @@ void _start() {
 	pmm_init();
 	paging_init();
 	screen_init();
-	screen_clear();
 	heap_init();
 	pci_init();
 	vfs_init();
@@ -53,8 +53,5 @@ void _start() {
 	userinit();
 	scheduler_init();
 
-	while (1) {
-		__asm__ __volatile__ ("hlt");
-	}
 	PANIC("End of kernel\r\n");
 }
