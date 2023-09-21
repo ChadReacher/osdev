@@ -4,6 +4,9 @@ The goal of writing this OS is to get practical experience with C, get more knol
 
 # Do not test on real hardware!
 
+# OS DEMO
+![OS DEMO](os_demo.gif)
+
 ## Main features:
 * Custom bootloader
 * 32 bit mode. Runs on Intel i386
