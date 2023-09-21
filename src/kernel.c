@@ -22,7 +22,6 @@
 #include <ext2.h>
 #include <elf.h>
 #include <string.h>
-#include <rtl8139.h>
 
 void _start() {
 	serial_init();

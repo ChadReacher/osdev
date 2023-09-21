@@ -68,7 +68,6 @@ void schedule(registers_state *regs) {
 		if (p->timeout > 0 && p->timeout < 0xFFFFFFFF) {
 			--p->timeout;
 			if (!p->timeout) {
-                kprintf("wake\n");
 				wakeup_proc(p);
 			}
 		}

@@ -141,6 +141,8 @@ void run_cmd(struct cmd *cmd) {
 	if (cmd->type == 1) {
 		struct exec_cmd *exec = (struct exec_cmd *)cmd->data;
 		execvpe(exec->argv[0], exec->argv, environ);
+        printf("sh: exec %s failed\n", exec->argv[0]);
+        exit(-1);
 	}
 }
 

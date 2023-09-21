@@ -639,7 +639,6 @@ i32 syscall_fstat(registers_state *regs) {
 	statbuf->st_dev = 0;
 	statbuf->st_ino = vfs_node->inode;
 	statbuf->st_mode = vfs_node->permission_mask;
-    kprintf("permission mask - 0x%x\r\n", statbuf->st_mode);
 	if ((vfs_node->flags & FS_FILE) == FS_FILE) {
 		statbuf->st_mode |= S_IFREG;
 	}
