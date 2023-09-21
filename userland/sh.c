@@ -110,7 +110,6 @@ struct cmd *parse_cmd(i8 *input) {
 		if (strcmp(arg, "") == 0) {
 			continue;
 		}
-		printf("arg - '%s'\n", arg);
 		argv[i_argc] = strdup(arg);
 		++i_argc;
 		if (i_argc == 10) {

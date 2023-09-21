@@ -7,8 +7,6 @@ extern i8 **environ;
 int main() {
 	i32 pid = fork();
 	if (pid == 0) {
-		printf("I'm a child\n");
-        printf("envp[0] - '%s'\n", environ[0]);
 		i8 *m[] = {"/bin/sh", 0};
 		execv("/bin/sh", m);
 		printf("After exec\n");

@@ -7,7 +7,8 @@ The goal of writing this OS is to get practical experience with C, get more knol
 ## Main features:
 * Custom bootloader
 * 32 bit mode. Runs on Intel i386
-* Devices: keyboard, CMOS RTS, timer, video graphics(VESA), serial ports
+* Devices: keyboard, CMOS RTS, timer, serial ports
+* Video graphics: VBE 1920x1080 with a custom font
 * Virtual memory(paging)
 * Userspace programs(ELF loading)
 * Small C library
@@ -17,9 +18,11 @@ The goal of writing this OS is to get practical experience with C, get more knol
 
 #Build
 In order to build you need a cross-compiler(i387-elf-gcc, i386-elf-ld), NASM and qemu(qemu-system-i386)
+
+To build an OS and disk - run:
 ```
-	make
-	make disk
+make
+make disk
 ```
 
 To start the OS - run `make run`
