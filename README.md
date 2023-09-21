@@ -19,8 +19,9 @@ The goal of writing this OS is to get practical experience with C, get more knol
 * Virtual File System
 * EXT2 file system
 
-#Build
-In order to build you need a cross-compiler(i387-elf-gcc, i386-elf-ld), NASM and qemu(qemu-system-i386)
+# Build
+In order to build you need a cross-compiler(i387-elf-gcc, i386-elf-ld), NASM and qemu(qemu-system-i386).
+Also, you need to provide your own path to cross-compiler toolchain in the variable TOOLCHAIN_SRC in the Makefile.
 
 To build an OS and disk - run:
 ```
