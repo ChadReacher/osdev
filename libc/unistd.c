@@ -230,13 +230,47 @@ i32 access(const i8 *pathname, i32 mode) {
     if (stat(pathname, &st) != 0) {
         return -1;
     }
-    // TODO: add proper checking for user permissions.
-    // It probably involves to revise the 'fstat' syscall
-    printf("stat - 0x%x\n", st.st_mode);
-    if (mode == F_OK) {
-        return 0;
+    i32 res = 0;
+    if ((mode & F_OK) == F_OK) {
+        res = 0;
     }
-    return 0;
+    if ((mode & R_OK) == R_OK)  {
+        if ((st.st_mode & S_IRWXU) == S_IRWXU
+                || (st.st_mode & S_IRUSR) == S_IRUSR
+                || (st.st_mode & S_IRWXG) == S_IRWXG
+                || (st.st_mode & S_IRGRP) == S_IRGRP
+                || (st.st_mode & S_IRWXO) == S_IRWXO
+                || (st.st_mode & S_IROTH) == S_IROTH) {
+            res = 0;
+        } else { 
+            return -1;
+        }
+    }    
+    if ((mode & W_OK) == W_OK)  {
+        if ((st.st_mode & S_IRWXU) == S_IRWXU
+                || (st.st_mode & S_IWUSR) == S_IWUSR
+                || (st.st_mode & S_IRWXG) == S_IRWXG
+                || (st.st_mode & S_IWGRP) == S_IWGRP
+                || (st.st_mode & S_IRWXO) == S_IRWXO
+                || (st.st_mode & S_IWOTH) == S_IWOTH) {
+            res = 0;
+        } else { 
+            return -1;
+        }
+    }
+    if ((mode & X_OK) == X_OK)  {
+        if ((st.st_mode & S_IRWXU) == S_IRWXU
+                || (st.st_mode & S_IXUSR) == S_IXUSR
+                || (st.st_mode & S_IRWXG) == S_IRWXG
+                || (st.st_mode & S_IXGRP) == S_IXGRP
+                || (st.st_mode & S_IRWXO) == S_IRWXO
+                || (st.st_mode & S_IXOTH) == S_IXOTH) {
+            res = 0;
+        } else { 
+            return -1;
+        }
+    }
+    return res;
 }
 
 i8 *getenv(const i8 *name) {

@@ -17,6 +17,7 @@ void ata_init() {
 	ata_device = pci_get_device(ATA_VENDOR_ID, ATA_DEVICE_ID, -1);
 	
 	register_interrupt_handler(IRQ14, ata_handler);
+	register_interrupt_handler(IRQ15, ata_handler);
 
 	ata_device_detect(&primary_master, 1);
 	ata_device_detect(&primary_slave, 1);
@@ -280,6 +281,7 @@ u32 ata_write(vfs_node_t *node, u32 offset, u32 size, i8 *buf) {
 		buf += write_size;
 		total_read_bytes += write_size;
 		++sector_counter;
+        free(ret_buf);
 	}
 	return total_read_bytes;
 }

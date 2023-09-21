@@ -505,10 +505,6 @@ i32 syscall_exit(registers_state *regs) {
 
 	wakeup(current_process->parent);
 	
-	// TODO: Should we maintain another list for zombie processes or
-	// just keep the running list and list of ALL processes?
-	// remove_process_from_list(current_process)
-
 	current_process->state = ZOMBIE;
 	schedule(NULL);
 
@@ -642,7 +638,8 @@ i32 syscall_fstat(registers_state *regs) {
 	vfs_node_t *vfs_node = current_process->fds[fd].vfs_node;
 	statbuf->st_dev = 0;
 	statbuf->st_ino = vfs_node->inode;
-	statbuf->st_mode = vfs_node->mode;
+	statbuf->st_mode = vfs_node->permission_mask;
+    kprintf("permission mask - 0x%x\r\n", statbuf->st_mode);
 	if ((vfs_node->flags & FS_FILE) == FS_FILE) {
 		statbuf->st_mode |= S_IFREG;
 	}

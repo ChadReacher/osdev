@@ -40,7 +40,7 @@ void clear_irq_mask(u8 irq_line) {
 	}
 	
 	// Get current IMR value, set on the IRQ bit to unmask it
-	value = port_inb(port) | ~(1 << irq_line);
+	value = port_inb(port) & ~(1 << irq_line);
 	
 	// Write new value to IMR
 	port_outb(port, value);

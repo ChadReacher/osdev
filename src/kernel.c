@@ -40,7 +40,6 @@ void _start() {
 	screen_init();
 	heap_init();
 	pci_init();
-	rtl8139_init();
 	vfs_init();
 	ata_init();
 	ext2_init("/dev/hdb", "/");
