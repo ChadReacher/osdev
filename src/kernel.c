@@ -30,8 +30,10 @@ void _start() {
 	isr_init();
 	tss_init(5, 0x10, 0);
 	irq_init();
+	clear_irq_mask(2);
+	clear_irq_mask(11);
 	syscall_init();
-	timer_init(50);
+	timer_init(TIMER_FREQ);
 	keyboard_init();
 	cmos_rtc_init();
 	pmm_init();
@@ -49,8 +51,8 @@ void _start() {
 
 	vfs_print();
 
-	userinit();
 	scheduler_init();
+	userinit();
 
 	PANIC("End of kernel\r\n");
 }

@@ -3,6 +3,8 @@
 #include <port.h>
 #include <debug.h>
 
+extern u32 startup_time;
+
 bool rtc_values_are_not_equal(cmos_rtc_t left, cmos_rtc_t right) {
 	return (
 		left.seconds != right.seconds ||
@@ -99,12 +101,32 @@ void cmos_rtc_handler(registers_state *regs) {
 
 	cmos_rtc_t date_and_time;
 
-	date_and_time = cmos_read_rtc();	
+	date_and_time = cmos_read_rtc();
 	(void)date_and_time;
 
 	// Read Status Register C so that future IRQ8s can occur
 	cmos_read_register(CMOS_REG_STATUS_C);
 }
+
+#define MINUTE 60
+#define HOUR (60*MINUTE)
+#define DAY (24*HOUR)
+#define YEAR (365*DAY)
+
+static i32 month[12] = {
+	0,
+	DAY*(31),
+	DAY*(31+29),
+	DAY*(31+29+31),
+	DAY*(31+29+31+30),
+	DAY*(31+29+31+30+31),
+	DAY*(31+29+31+30+31+30),
+	DAY*(31+29+31+30+31+30+31),
+	DAY*(31+29+31+30+31+30+31+31),
+	DAY*(31+29+31+30+31+30+31+31+30),
+	DAY*(31+29+31+30+31+30+31+31+30+31),
+	DAY*(31+29+31+30+31+30+31+31+30+31+30),
+};
 
 void cmos_rtc_init() {
 	// Enable RTC
@@ -119,5 +141,16 @@ void cmos_rtc_init() {
 	// Register a handler for CMOS RTC
 	register_interrupt_handler(IRQ8, cmos_rtc_handler);
 	DEBUG("%s", "CMOS RTC has been initialized\r\n");
+	cmos_rtc_t time = cmos_read_rtc();
+	u16 year = time.year - 70;
+	startup_time = ((year+1)/4)*DAY + year*YEAR;
+	startup_time += month[time.month];
+	if (time.month > 1 && ((year + 2) % 4)) {
+		startup_time -= DAY;
+	}
+	startup_time += (time.day-1)*DAY;
+	startup_time += time.hours*HOUR;
+	startup_time += time.minutes*MINUTE;
+	startup_time += time.seconds;
 }
 

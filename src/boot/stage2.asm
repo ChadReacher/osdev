@@ -94,18 +94,41 @@ setup_vesa:
 	jne error	
 
 	; Find mode that matches our width, height and bpp(bits per pixel)
+	;mov ax, [mode_info_block.x_resolution]
+	;call print_number
+	;mov al, ' '
+	;mov ah, 0x0e
+	;int 0x10
+	;mov ax, [mode_info_block.y_resolution]
+	;call print_number
+	;mov al, ' '
+	;mov ah, 0x0e
+	;int 0x10
+	;xor ax, ax
+	;mov al, [mode_info_block.bits_per_pixel]
+	;call print_number
+	;mov al, ' '
+	;mov ah, 0x0e
+	;int 0x10
+	;mov al, 0x0a
+	;mov ah, 0x0e
+	;int 0x10
+	;mov al, 0x0d
+	;mov ah, 0x0e
+	;int 0x10
+	;call timer
+	;jmp .next_mode
+
 	mov ax, [width]
 	cmp ax, [mode_info_block.x_resolution]
 	jne .next_mode
-
 	mov ax, [height]
 	cmp ax, [mode_info_block.y_resolution]
 	jne .next_mode
-
 	mov ax, [bpp]
 	cmp al, [mode_info_block.bits_per_pixel]
 	jne .next_mode
-	
+
 	; We have found a mode, let's set this VBE mode
 	mov ax, 0x4F02
 	mov bx, [mode]
@@ -213,7 +236,7 @@ jump_to_kernel:
 	jmp 0x10000						; Jump to memory where we have loaded the kernel
 
 drive_num: db 0
-kernel_size_in_sectors: db 190
+kernel_size_in_sectors: db 200
 
 bits 16
 enable_a20:
@@ -277,6 +300,54 @@ end_of_modes:
 	hlt
 	ret
 
+bits 16
+; ax is number
+print_number:
+	push ax
+	mov bp, 4
+	mov bx, 10
+.loop:
+	xor dx, dx
+	div bx
+	add dl, '0'
+	mov byte [num_str + bp], dl
+	dec bp
+	test al, al
+	jz .done
+	jmp .loop
+
+.done:
+	mov si, num_str
+	mov ah, 0x0E
+	mov cx, 5
+.loop2:
+	lodsb
+	int 0x10
+	loop .loop2
+	pop ax
+	mov byte [num_str], "0"
+	mov byte [num_str + 1], "0"
+	mov byte [num_str + 2], "0"
+	mov byte [num_str + 3], "0"
+	mov byte [num_str + 4], "0"
+	ret
+
+num_str: db "00000", 0
+
+timer:
+	mov ah, 0x09
+	int 0x21
+	mov cx, 15
+	mov dx, 16960
+	mov ah, 0x86
+	int 0x15
+	ret
+
+wait_time: db 0x0
+	
+end:
+	ret
+
 gdt_start:
 	dq 0
 gdt_code_segment:
@@ -296,7 +367,7 @@ gdt_data_segment:
 gdt_end:
 
 gdtp:
-	dw gdt_end - gdt_start - 1					; Limit(size of GDT)
+	dw gdt_end - gdt_start - 1				; Limit(size of GDT)
 	dd gdt_start							; Base of GDT
 
 idt:

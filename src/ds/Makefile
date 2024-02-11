@@ -1,5 +1,5 @@
 
-files = generic_tree.o list.o
+files = generic_tree.o list.o queue.o
 
 .PHONY: ds
 ds: $(files)

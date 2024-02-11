@@ -177,11 +177,18 @@ i32 nanosleep(const struct timespec *req, struct timespec *rem) {
 	return ret;
 }
 
-u32 sleep(u32 seconds) {
-	struct timespec req;
-	req.tv_sec = seconds;
-	req.tv_nsec = 0;
-	nanosleep(&req, NULL);
+u32 sleep(u32 secs) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(26), "b"(secs));
+
+	return ret;
+	//struct timespec req;
+	//req.tv_sec = seconds;
+	//req.tv_nsec = 0;
+	//nanosleep(&req, NULL);
 	return 0;
 }
 
@@ -290,5 +297,147 @@ i8 *getenv(const i8 *name) {
     }
 
     return value;
+}
+
+u32 alarm(u32 secs) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(25), "b"(secs));
+
+	return ret;
+}
+
+i32 getppid() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(28));
+
+	return ret;
+}
+
+u16 getuid() {
+
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(29));
+
+	return ret;
+}
+
+u16 geteuid() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(30));
+
+	return ret;
+}
+
+u8 getgid() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(31));
+
+	return ret;
+}
+
+u8 getegid() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(32));
+
+	return ret;
+}
+
+i32 setuid() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(33));
+
+	return ret;
+}
+
+i32 setgid() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(34));
+
+	return ret;
+}
+
+i32 getpgrp() {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(35));
+
+	return ret;
+}
+
+
+i32 setsid() {	
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(36));
+
+	return ret;
+}
+
+i32 setpgid(i32 pid, i32 pgid) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(37), "b"(pid), "c"(pgid));
+
+	return ret;
+}
+
+i32 uname(utsname *name) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(38), "b"(name));
+
+	return ret;
+}
+
+i32 time(i32 *tloc) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(39), "b"(tloc));
+
+	return ret;
+}
+
+i32 times(tms *buffer) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(40), "b"(buffer));
+
+	return ret;
 }
 

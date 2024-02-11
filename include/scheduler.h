@@ -3,13 +3,11 @@
 
 #include <types.h>
 #include <process.h>
-#include <isr.h>
 
 void scheduler_init();
-void schedule(registers_state *regs);
-void task_switch(process_t *next_proc);
-
-void add_process_to_list(process_t *new_proc);
-void remove_process_from_list(process_t *proc);
+void schedule();
+i32 handle_signal();
+u32 send_signal(process_t *proc, i32 sig);
+process_t *get_proc_by_id(u32 pid);
 
 #endif

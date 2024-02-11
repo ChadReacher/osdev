@@ -17,7 +17,7 @@ i32 serial_init() {
 	port_outb(COM1 + 2, 0xC7); // Enable FIFO, clear them, with 14 byte threshold
 	port_outb(COM1 + 4, 0x0B); // IRQs enabled, RTS/DSR set
 	port_outb(COM1 + 4, 0x1E); // Set in loopback mode, test the serial chip
-	port_outb(COM1 + 0, 0xAB); // Test the serial chip(send byte 0xAB and check if serial returns same byte)
+	port_outb(COM1 + 0, 0xAB); // Test the serial chip(send byte 0xAB and check if serial returns the same byte)
 
 	if (port_inb(COM1 + 0) != 0xAB) {
 		PANIC("Could not initiliaze serial port communication");

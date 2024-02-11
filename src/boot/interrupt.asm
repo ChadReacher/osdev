@@ -4,7 +4,6 @@ extern irq_handler
 %macro def_isr_handler 1
 	global isr%1
 	isr%1:
-		;cli
 		push %1			; Push an interrupt number
 		push %1			; Push a stub error code
 		jmp isr_common_stub
@@ -13,7 +12,6 @@ extern irq_handler
 %macro def_isr_handler_with_error_code 1
 	global isr%1
 	isr%1:
-		;cli
 		push %1			; Push an interrupt number
 		jmp isr_common_stub
 %endmacro
@@ -21,7 +19,6 @@ extern irq_handler
 %macro def_irq_handler 1
 	global irq%1
 	irq%1:
-		;cli
 		push %1			; Push an interrupt number
 		push %1 + 32  		; Push a stub error code
 		jmp irq_common_stub

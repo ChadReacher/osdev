@@ -2,12 +2,31 @@
 #include <isr.h>
 #include <port.h>
 #include <debug.h>
+#include <process.h>
 
-static u32 ticks = 0;
+extern process_t *current_process;
+
+u32 startup_time;
+u32 ticks = 0;
 
 static void timer_handler(registers_state *regs) {
 	(void)regs;
-	++ticks;	
+	++ticks;
+
+	if (current_process == NULL) {
+		return;
+	}
+	// TODO: Think about it...
+	if (regs->cs == 0x18 || regs->cs == 0x20) {
+		++current_process->stime;
+	} else {
+		++current_process->utime;
+	}
+	if ((--current_process->timeslice) > 0) {
+		return;
+	}
+	current_process->timeslice = 20;
+	schedule();
 }
 
 void timer_init(u32 freq) {

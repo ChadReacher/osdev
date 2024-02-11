@@ -10,9 +10,12 @@
 #include <scheduler.h>
 #include <string.h>
 #include <elf.h>
+#include <queue.h>
+#include <signal.h>
 
 extern void irq_ret();
-extern process_t *proc_list;
+extern queue_t *ready_queue;
+extern queue_t *procs;
 extern process_t *current_process;
 extern process_t *init_process;
 extern process_t *idle_process;
@@ -29,8 +32,9 @@ void cpu_idle() {
 }
 
 void userinit() {
-	process_t *idle = proc_alloc(); 
-    remove_process_from_list(idle);
+	__asm__ __volatile__ ("cli");
+	process_t *idle = proc_alloc();
+	queue_dequeue(ready_queue);
 	idle->regs->eflags = 0x202;
 	idle->state = RUNNING;
 	idle->parent = NULL;
@@ -43,7 +47,6 @@ void userinit() {
 	idle->regs->useresp = 0x0;
 	idle->regs->ss = 0x0;
     idle->regs->eip = (u32)cpu_idle;
-    idle->priority = idle->timeslice = 20;
     idle_process = idle;
 
 	vfs_node_t *vfs_node = vfs_get_node("/bin/init");
@@ -54,22 +57,18 @@ void userinit() {
 	memset((i8 *)data, 0, vfs_node->length);
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
 
-	process_t *new_proc = proc_alloc();
-	new_proc->cwd = strdup("/");
-	new_proc->directory = paging_copy_page_dir(false);
-	init_process = new_proc;
-	init_process->parent = NULL; // or current_process ?
-	init_process->priority = init_process->timeslice = 20;
-	init_process->state = RUNNING;
-	//init_process = current_process = proc_list;
-	//current_process->parent = NULL; // or current_process ?
-	//current_process->priority = current_process->timeslice = 20;
-	//current_process->state = RUNNING;
+	init_process = proc_alloc();
+	init_process->parent = NULL;
+	init_process->directory = paging_copy_page_dir(false);
+	init_process->cwd = strdup("/");
+	for (i32 i = 0; i < NSIG; ++i) {
+		memset(init_process->signals, 0, sizeof(sigaction_t));
+		init_process->signals[i].sa_handler = SIG_DFL;
+	}
 
-
-	current_process = init_process;
+	current_process = queue_dequeue(ready_queue);
 	void *kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(current_process->directory));
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(init_process->directory));
 	elf_load(data);
 	free(data);
 
@@ -125,41 +124,18 @@ void userinit() {
 	free(argv);
 	free(envp);
 	init_process->regs->useresp = (u32)usp;
-	//current_process->regs->useresp = (u32)usp;
 
 	// Get back to the kernel page directory
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
-	//current_process = idle;
-}
 
-void sleep(void *chan) {
-	current_process->wait_chan = chan;
-	current_process->state = SLEEPING;
-	schedule(NULL);
-}
+	// Enter usermode
+	tss_set_stack((u32)current_process->kernel_stack_top);
+	__asm__ __volatile__ ("movl %%eax, %%cr3" 
+            : 
+            : "a"((u32)current_process->directory));
 
-void wakeup(void *chan) {
-	for (process_t *p = proc_list; p != NULL; p = p->next) {
-		if (p->state == SLEEPING && p->wait_chan == chan) {
-			p->wait_chan = NULL;
-			p->state = RUNNING;
-			p->timeslice = p->priority;
-		}
-	}
-}
-
-void wakeup_proc(process_t *proc) {
-	if (proc->state != SLEEPING) {
-		return;
-	}
-
-	for (process_t *p = proc_list; p != NULL; p = p->next) {
-		if (p == proc) {
-			p->wait_chan = NULL;
-			p->state = RUNNING;
-			p->timeslice = p->priority;
-		}
-	}
+	__asm__ __volatile__ ("sti");
+	enter_usermode(current_process->regs->useresp);
 }
 
 process_t *proc_alloc() {
@@ -167,8 +143,8 @@ process_t *proc_alloc() {
 	memset((void *)process, 0, sizeof(process_t));
 
 	process->pid = next_pid++;
+	process->timeslice = 20;
 	process->state = RUNNING;
-	process->next = NULL;
 	process->fds = malloc(FDS_NUM * sizeof(file));
 	memset(process->fds, 0, FDS_NUM * sizeof(file));
 	process->kernel_stack_bottom = malloc(4096 * 2);
@@ -206,8 +182,11 @@ process_t *proc_alloc() {
 	process->kernel_stack_top = (void *)sp;
 	process->context = (context_t *)sp;
 
-	add_process_to_list(process);
+	sigemptyset(&process->sigpending);
+	sigemptyset(&process->sigmask);
 
+	queue_enqueue(ready_queue, process);
+	queue_enqueue(procs, process);
 	return process;
 }
 

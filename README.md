@@ -21,7 +21,13 @@ The goal of writing this OS is to get practical experience with C, get more knol
 
 # Build
 In order to build you need a cross-compiler(i387-elf-gcc, i386-elf-ld), NASM and qemu(qemu-system-i386).
-Also, you need to provide your own path to cross-compiler toolchain in the variable TOOLCHAIN_SRC in the Makefile.
+To build a cross-compiler - run `./build.sh`. This will build binutils and gcc for Intel i386 architecture.
+To get other tools, run:
+```
+sudo apt install make
+sudo apt install nasm
+sudo apt install qemu-system-i386
+```
 
 To build an OS and disk - run:
 ```

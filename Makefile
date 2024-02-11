@@ -138,9 +138,13 @@ build/libc/%.o: libc/sys/%.c
 	$(CC) -g -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone -fno-stack-protector -I ./include/ -c $< -o $@
 
 run:
-	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
+	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk \
 	    -drive file=disk.img,if=ide,format=raw,media=disk,index=1\
-		-rtc base=localtime,clock=host,driftfix=slew
+		-rtc base=localtime,clock=host,driftfix=slew #\
+		#-netdev tap,id=net1,ifname=tap,script=no,downscript=no -device rtl8139,netdev=net1 -object filter-dump,id=f1,netdev=net1,file=dump.dat
+		#-device rtl8139,netdev=net0\
+		#-netdev user,id=net0\
+		#-object filter-dump,id=net0,netdev=net0,file=dump.dat
 
 log:
 	qemu-system-i386 -drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
@@ -152,9 +156,9 @@ log:
 
 debug:
 	qemu-system-i386 -drive format=raw,file=build/boot.img\
-	       	-drive file=disk.img,if=ide,format=raw,media=disk,index=1 \
-	       	-boot a -s -S \
-		& gdb -ex "target remote localhost:1234" -ex "symbol-file build/kernel.elf"\
+		-boot a -s -S &\
+		gdb -ex "target remote localhost:1234" #-ex "symbol-file build/kernel.elf"\
+		#-drive file=disk.img,if=ide,format=raw,media=disk,index=1 \
 	       	-ex "br _start" -ex "layout src" -ex "continue" -ex "next"
 
 .PHONY: clean
