@@ -2,7 +2,7 @@
 #define STDIO_H
 
 #include "stdarg.h"
-#include "types.h"
+#include "sys/types.h"
 
 #define stdin 0
 #define stdout 1

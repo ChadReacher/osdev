@@ -1,7 +1,7 @@
 #ifndef STDLIB_H
 #define STDLIB_H
 
-#include "types.h"
+#include "sys/types.h"
 
 #define ALIGN(sz) ((sz / 0x10 + 1) * 0x10)
 

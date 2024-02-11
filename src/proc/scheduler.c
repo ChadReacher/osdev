@@ -4,11 +4,13 @@
 #include <debug.h>
 #include <syscall.h>
 #include <stdlib.h>
+#include <string.h>
+#include <heap.h>
+#include <syscall.h>
 
 
 extern u32 ticks;
 extern void switch_to(context_t **old_context, context_t *new_context);
-extern void enter_usermode(u32 useresp);
 
 queue_t *ready_queue;
 queue_t *stopped_queue;
@@ -16,6 +18,8 @@ queue_t *procs;
 process_t *current_process = NULL;
 process_t *init_process = NULL;
 process_t *idle_process = NULL;
+
+void task_switch(process_t *next_proc);
 
 void scheduler_init() {
 	ready_queue = queue_new();
@@ -92,7 +96,7 @@ void schedule() {
 	node = procs->head;
 	for (u32 i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
-		if (p->alarm && p->alarm < ticks) {
+		if (p->alarm && (u32)p->alarm < ticks) {
 			send_signal(p, SIGALRM);
 			p->alarm = 0;
 		}
@@ -115,16 +119,6 @@ void schedule() {
 		queue_enqueue(ready_queue, current_process);
 	}
 	task_switch(next_proc);
-	/*
-	if (!ready_queue->len) {
-		return;
-	}
-	next_proc = queue_dequeue(ready_queue);
-	if (current_process->state == RUNNING) {
-		queue_enqueue(ready_queue, current_process);
-	}
-	task_switch(next_proc);
-	*/
 }
 
 void task_switch(process_t *next_proc) {
@@ -169,39 +163,32 @@ i32 handle_signal() {
 		if (sig == SIGSTOP || sig == SIGTSTP || sig == SIGTTIN || sig == SIGTTOU) {
 			if (!(current_process->parent->signals[SIGCHLD].sa_flags & SA_NOCLDSTOP)) {
 				send_signal(current_process->parent, SIGCHLD);
-				// TODO: Notify parent with SIGCHLD signal
 			}
 			current_process->state = STOPPED;
 			current_process->exit_code = sig;
 			queue_enqueue(stopped_queue, current_process);
 			schedule();
-			return;
-			// TODO: Stop the process
+			return 0;
 		} else if (sig == SIGCHLD || sig == SIGCONT) {
 			return 0;
-			// TODO: Ignore the signal
 		} else {
-			current_process->regs->ebx = sig;
-			syscall_exit(current_process->regs);
+			syscall_exit(sig);
 			// TODO: Abnormal termination of the process
 		}
 	} else if (action->sa_handler == SIG_IGN) {
 		return 0;
-		// TODO: Ignore the signal
 	}
 
-	// TODO: Otherwise, it's a pointer to user-defined handler(function)
 	memcpy(&current_process->old_sigmask, &current_process->sigmask, sizeof(sigset_t));
 
 	current_process->signal_old_regs = *(current_process->regs);
-	current_process->regs->eip = action->sa_handler;
+	current_process->regs->eip = (u32)action->sa_handler;
 	u32 *esp = (u32 *)current_process->regs->useresp;
 	++esp;
 	*esp = sig;
 	--esp;
-	*esp = current_process->sigreturn;
+	*esp = (u32)current_process->sigreturn;
 	return 0;
-	// TODO: Unimplemented
 }
 
 u32 send_signal(process_t *proc, i32 sig) {

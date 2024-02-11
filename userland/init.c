@@ -3,6 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/utsname.h>
+#include <sys/times.h>
+#include <sys/wait.h>
+#include <time.h>
 
 extern i8 **environ;
 
@@ -116,29 +120,33 @@ void signal_fpe_handler(i32 signo) {
 }
 
 int main() {
+	/*
+	int x = 10;
+	int y = 20;
 	utsname name;
 	uname(&name);
 	printf("sysname - %s, nodename - %s, release - %s, version - %s, machine - %s\n",
 			name.sysname, name.nodename, name.release, name.version, name.machine);
 	i8 pid = fork();
 	if (pid == 0) {
+		printf("x - %d\n", x);
+		printf("y - %d\n", y);
 		sigaction_t act;
 		act.sa_handler = signal_fpe_handler;
 		sigemptyset(&act.sa_mask);
 		act.sa_flags = 0; 
 		sigaction(SIGFPE, &act, NULL);
-		//test_sigxset();
-		//test_sigaction();
-		//test_sigprocmask();
-		//test_sigsuspend();
-		//int x = 1 / 0;
+		test_sigxset();
+		test_sigaction();
+		test_sigprocmask();
+		test_sigsuspend();
+		int x = 1 / 0;
 		for (int i = 0; i < 100; ++i) {
 			printf("sky child: %d\n", i);
 			if (i == 50) {
 				kill(getpid(), SIGFPE);
 			}
 		}
-		return 123;
 	} else {
 		i32 stat_loc;
 		i32 ch_pid = wait(&stat_loc);
@@ -157,7 +165,7 @@ int main() {
 		}
 
 	}
-	/*
+	*/
 	i32 pid = fork();
 	if (pid == 0) {
 		i8 *m[] = {"/bin/sh", 0};
@@ -172,6 +180,5 @@ int main() {
 	} while (pid != -1);
 	printf("PID of last terminated child - %d\n", pid);
 	printf("Return value of last terminated child - %d\n", stat_loc);
-	*/
 	return 0;
 }

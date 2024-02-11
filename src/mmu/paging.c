@@ -116,6 +116,9 @@ void *virtual_to_physical(void *virt_addr) {
 
 page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
+	if (new_page_dir_phys == NULL) {
+		return NULL;
+	}
 	map_page(new_page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 	memset((void *)0xE0000000, 0, 4096);
 
@@ -138,6 +141,9 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 		}
 		page_table_t *cur_table = (page_table_t *)(0xFFC00000 + (i << 12));
 		page_table_t *new_table_phys = allocate_blocks(1);
+		if (new_table_phys == NULL) {
+			return NULL;
+		}
 		page_table_t *new_table = (page_table_t *)0xEA000000;
 		map_page(new_table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE); // Temporary mapping
 		memset((void *)0xEA000000, 0, 4096);
@@ -149,6 +155,9 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 			page_table_entry cur_pte = cur_table->entries[j];
 			u32 cur_page_frame = (u32)GET_FRAME(cur_pte);
 			void *new_page_frame = allocate_blocks(1);
+			if (new_page_frame == NULL) {
+				return NULL;
+			}
 			map_page((void *)cur_page_frame, (void *)0xEB000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 			map_page(new_page_frame, (void *)0xEC000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 			memcpy((void *)0xEC000000, (void *)0xEB000000, 4096);

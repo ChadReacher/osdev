@@ -1,7 +1,7 @@
 #ifndef DIRENT_H
 #define DIRENT_H
 
-#include <types.h>
+#include <sys/types.h>
 
 // Stat mode constants
 #define S_IFMT      0170000
@@ -24,8 +24,8 @@ typedef struct DIR {
 } DIR;
 
 DIR *opendir(const i8 *name);
-i32 closedir(DIR *dirp);
 struct dirent *readdir(DIR *dirp);
+i32 closedir(DIR *dirp);
 
 #endif
 

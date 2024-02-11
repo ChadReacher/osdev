@@ -1,6 +1,5 @@
 #include "stdlib.h"
 #include "string.h"
-#include "ctype.h"
 #include "unistd.h"
 #include "stdio.h"
 
@@ -58,15 +57,6 @@ i8 *utoa(u32 value, i8 *str, u32 base) {
 	strrev(str);
 
 	return str;
-}
-
-u32 atoi(const i8 *str) {
-	u32 i = 0;
-	while (isdigit(*str)) {
-		i = i * 10  + (*str - '0');
-		++str;
-	}
-	return i;
 }
 
 heap_block *best_fit(u32 size) {

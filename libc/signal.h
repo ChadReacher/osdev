@@ -1,7 +1,7 @@
 #ifndef SIGNAL_H
 #define SIGNAL_H
 
-#include "types.h"
+#include <sys/types.h>
 
 typedef u32 sigset_t;
 

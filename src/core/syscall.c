@@ -17,6 +17,7 @@
 #include <queue.h>
 #include <tss.h>
 #include <timer.h>
+#include <errno.h>
 
 
 extern u32 startup_time;
@@ -189,7 +190,6 @@ i32 syscall_yield() {
 	return 0;
 }
 
-// TODO: Rename u_argv, u_envp to argv, envp correspondingly
 i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	i32 argc = 0, envc = 0;
 	if (u_argv) {
@@ -217,7 +217,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	}
 		
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
-	if (!vfs_node || (vfs_node->flags & FS_FILE) != FS_FILE) {
+	if (!vfs_node) {
 		for (i32 i = 0; i < argc; ++i) {
 			free(argv[i]);
 		}
@@ -226,7 +226,27 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		}
 		free(argv);
 		free(envp);
-		return -1;
+		return ENOENT;
+	} else if ((vfs_node->flags & FS_FILE) != FS_FILE) {
+		for (i32 i = 0; i < argc; ++i) {
+			free(argv[i]);
+		}
+		for (i32 i = 0; i < envc; ++i) {
+			free(envp[i]);
+		}
+		free(argv);
+		free(envp);
+		return EACCES;
+	} else if ((vfs_node->permission_mask & 0x40) != 0x40 && (vfs_node->permission_mask & 0x08) != 0x08 && (vfs_node->permission_mask & 0x01) != 0x01) {
+		for (i32 i = 0; i < argc; ++i) {
+			free(argv[i]);
+		}
+		for (i32 i = 0; i < envc; ++i) {
+			free(envp[i]);
+		}
+		free(argv);
+		free(envp);
+		return EACCES;
 	}
 
 
@@ -239,7 +259,21 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	current_process->directory = new_page_dir_phys;
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)new_page_dir_phys));
 
-	elf_load(data);
+	if (elf_load(data) == NULL) {
+		// TODO: free 'new_page_dir_phys' ?
+		for (i32 i = 0; i < argc; ++i) {
+			free(argv[i]);
+		}
+		for (i32 i = 0; i < envc; ++i) {
+			free(envp[i]);
+		}
+		free(argv);
+		free(envp);
+		free(data);
+		current_process->directory = prev_page_dir;
+		__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)prev_page_dir));
+		return ENOEXEC;
+	}
 	free(data);
 
 	void *old_kernel_stack = current_process->kernel_stack_bottom;
@@ -370,13 +404,19 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 i32 syscall_fork() {
 	// TODO: Create a separate function to copy process
 	process_t *child_process = proc_alloc();
+	if (!child_process) {
+		return EAGAIN;
+	}
 
-	// TODO: Copy all of parent's file descriptors to child
 	child_process->directory = paging_copy_page_dir(true);
+	if (!child_process->directory) {
+		return EAGAIN;
+	}
 	child_process->parent = current_process;
 	child_process->cwd = strdup(current_process->cwd);
 	child_process->brk = current_process->brk;
 	child_process->timeslice = current_process->timeslice;
+	memcpy(child_process->fds, current_process->fds, FDS_NUM * sizeof(file));	
 	sigemptyset(&child_process->sigpending);
 	memcpy(&child_process->sigmask, &current_process->sigmask, sizeof(sigset_t));
 	memcpy(&child_process->signals, &current_process->signals, sizeof(current_process->signals));
@@ -714,7 +754,6 @@ i32 syscall_sigaction(i32 sig, sigaction_t *act, sigaction_t *oact, u32 *sigretu
 	if (act) {
 		memcpy(&current_process->signals[sig], act, sizeof(sigaction_t));
 		current_process->sigreturn = sigreturn;
-		// TODO: Refactor
 		if (act->sa_handler == SIG_DFL 
 				&& sigismember(&current_process->sigpending, sig)
 				&& sig == SIGCHLD) {
@@ -773,17 +812,13 @@ i32 syscall_pause() {
 }
 
 i32 syscall_sigsuspend(sigset_t *sigmask) {
-	//TODO: Implement proper syscall function declaration with needed parameters
 	sigset_t osigmask;
 	if (sigmask == NULL) {
 		return -1;
 	}
 	syscall_sigprocmask(SIG_SETMASK, sigmask, &osigmask);
-
 	syscall_pause();
-
 	syscall_sigprocmask(SIG_SETMASK, &osigmask, NULL);
-
 	return 0;
 }
 
@@ -802,8 +837,7 @@ i32 syscall_sleep(u32 secs) {
 	return 0;
 }
 
-// TODO: FIXME: What should we do?
-i32 syscall_sigreturn(registers_state *regs) {
+i32 syscall_sigreturn() {
 	*current_process->regs = current_process->signal_old_regs;
 	memcpy(&current_process->sigmask, &current_process->old_sigmask,  sizeof(sigset_t));
 	return 0;
@@ -871,7 +905,7 @@ i32 syscall_setsid() {
 	return current_process->pgrp;
 }
 
-i32 syscall_setpgid(i32 pid, i32 pgid) {
+i32 syscall_setpgid(u32 pid, i32 pgid) {
 	if (!pid) {
 		pid = current_process->pid;
 	}

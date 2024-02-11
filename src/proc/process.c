@@ -19,6 +19,7 @@ extern queue_t *procs;
 extern process_t *current_process;
 extern process_t *init_process;
 extern process_t *idle_process;
+extern void enter_usermode(u32 useresp);
 
 u32 next_pid = 0;
 
@@ -34,6 +35,9 @@ void cpu_idle() {
 void userinit() {
 	__asm__ __volatile__ ("cli");
 	process_t *idle = proc_alloc();
+	if (!idle) {
+		kernel_panic("Failed to create 'idle' process\n");
+	}
 	queue_dequeue(ready_queue);
 	idle->regs->eflags = 0x202;
 	idle->state = RUNNING;
@@ -58,6 +62,9 @@ void userinit() {
 	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
 
 	init_process = proc_alloc();
+	if (!init_process) {
+		kernel_panic("Failed to create 'init' process\n");
+	}
 	init_process->parent = NULL;
 	init_process->directory = paging_copy_page_dir(false);
 	init_process->cwd = strdup("/");
@@ -140,14 +147,23 @@ void userinit() {
 
 process_t *proc_alloc() {
 	process_t *process = malloc(sizeof(process_t));
+	if (!process) {
+		return NULL;
+	}
 	memset((void *)process, 0, sizeof(process_t));
 
 	process->pid = next_pid++;
 	process->timeslice = 20;
 	process->state = RUNNING;
 	process->fds = malloc(FDS_NUM * sizeof(file));
+	if (!process->fds) {
+		return NULL;
+	}
 	memset(process->fds, 0, FDS_NUM * sizeof(file));
 	process->kernel_stack_bottom = malloc(4096 * 2);
+	if (!process->kernel_stack_bottom) {
+		return NULL;
+	}
 	memset(process->kernel_stack_bottom, 0, 4096 * 2);
 	u32 *sp = (u32 *)ALIGN_DOWN((u32)process->kernel_stack_bottom + 4096 * 2 - 1, 4);
 

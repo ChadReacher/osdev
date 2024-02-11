@@ -1,7 +1,7 @@
 #ifndef STAT_H
 #define STAT_H
 
-#include <types.h>
+#include <sys/types.h>
 
 struct stat {
 	u32 st_dev;
@@ -19,5 +19,7 @@ struct stat {
 	u32 st_blocks;
 };
 
+extern i32 stat(const i8 *filename, struct stat *stat_buf);
+extern i32 fstat(i32 fd, struct stat *stat_buf);
 
 #endif

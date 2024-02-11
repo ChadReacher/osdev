@@ -1,7 +1,7 @@
 #ifndef STRING_H
 #define STRING_H
 
-#include "types.h"
+#include "sys/types.h"
 
 void *memset(void *ptr, u32 value, u32 num);
 void *memcpy(void *dst, const void* src, u32 num); 

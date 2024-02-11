@@ -1,6 +1,9 @@
 #include "unistd.h"
 #include "fcntl.h"
 #include "string.h"
+#include "sys/utsname.h"
+#include "sys/times.h"
+#include "sys/stat.h"
 
 void test(const i8 *s) {
 	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(0), "b"(s));
@@ -118,7 +121,7 @@ i32 fork() {
 	return ret;
 }
 
-void exit(i32 exit_code) {
+void _exit(i32 exit_code) {
 	__asm__ __volatile__ ("int $0x80" : : "a"(10), "b"(exit_code));
 }
 

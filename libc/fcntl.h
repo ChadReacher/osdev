@@ -1,7 +1,7 @@
 #ifndef FCNTL_H
 #define FCNTL_H
 
-#include "types.h"
+#include <sys/types.h>
 
 // Open a file for reading only
 #define O_RDONLY 0x0000
@@ -32,11 +32,8 @@
 #define S_IWOTH 0x0002
 #define S_IXOTH 0x0001
 
-// lseek 'whence' symbolic constants
-#define SEEK_SET 1
-#define SEEK_CUR 2
-#define SEEK_END 3
 
 u32 open(const i8 *filename, u32 oflags, u32 mode);
+// creat, fcntl
 
 #endif

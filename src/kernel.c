@@ -30,8 +30,6 @@ void _start() {
 	isr_init();
 	tss_init(5, 0x10, 0);
 	irq_init();
-	clear_irq_mask(2);
-	clear_irq_mask(11);
 	syscall_init();
 	timer_init(TIMER_FREQ);
 	keyboard_init();

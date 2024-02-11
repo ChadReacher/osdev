@@ -1,5 +1,5 @@
 extern environ
-extern exit
+extern _exit
 extern main
 
 global _start
@@ -23,4 +23,4 @@ _start:
 
 	; Terminate the process with an exit code
 	push eax
-	call exit
+	call _exit

@@ -3,6 +3,7 @@
 #include <port.h>
 #include <debug.h>
 #include <process.h>
+#include <scheduler.h>
 
 extern process_t *current_process;
 

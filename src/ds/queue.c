@@ -1,5 +1,7 @@
 #include <queue.h>
 #include <stdlib.h>
+#include <heap.h>
+#include <string.h>
 
 queue_t *queue_new() {
 	queue_t *self = malloc(sizeof(queue_t));

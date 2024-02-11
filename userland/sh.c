@@ -1,8 +1,8 @@
-#include <ctype.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 static i8 cwd[256];
 
@@ -141,7 +141,7 @@ void run_cmd(struct cmd *cmd) {
 		struct exec_cmd *exec = (struct exec_cmd *)cmd->data;
 		execvpe(exec->argv[0], exec->argv, environ);
         printf("sh: exec %s failed\n", exec->argv[0]);
-        exit(-1);
+        _exit(-1);
 	}
 }
 
