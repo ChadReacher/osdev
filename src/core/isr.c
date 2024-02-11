@@ -147,6 +147,7 @@ void isr_handler(registers_state *regs) {
 	if (regs->int_number == SYSCALL) {
 		current_process->regs = regs;
 		regs->eax = syscall_handler(regs);
+
 		//*current_process->regs = *regs;
 		//syscall_handler(regs);
 		//memcpy(regs, current_process->regs, sizeof(registers_state));

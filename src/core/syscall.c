@@ -21,82 +21,17 @@
 
 extern u32 startup_time;
 extern u32 ticks;
-extern queue_t *ready_queue;
 extern queue_t *procs;
 extern process_t *init_process;
 extern process_t *current_process;
 extern void irq_ret();
 
-syscall_handler_t syscall_handlers[NB_SYSCALLS] = {
-	syscall_test,
-	syscall_read,
-	syscall_write,
-	syscall_open,
-	syscall_close,
-	syscall_lseek,
-	syscall_unlink,
-	syscall_yield,
-	syscall_exec,
-	syscall_fork,
-	syscall_exit,
-	syscall_waitpid,
-	syscall_getpid,
-	syscall_dup,
-	syscall_sbrk,
-	syscall_nanosleep,
-	syscall_getcwd,
-	syscall_fstat,
-	syscall_chdir,
-	syscall_kill,
-	syscall_sigaction,
-	syscall_sigprocmask,
-	syscall_sigpending,
-	syscall_sigsuspend,
-	syscall_pause,
-	syscall_alarm,
-	syscall_sleep,
-	syscall_sigreturn,
-	syscall_getppid,
-	syscall_getuid,
-	syscall_geteuid,
-	syscall_getgid,
-	syscall_getegid,
-	syscall_setuid,
-	syscall_setgid,
-	syscall_getpgrp,
-	syscall_setsid,
-	syscall_setpgid,
-	syscall_uname,
-	syscall_time,
-	syscall_times,
-};
-
-void syscall_init() {
-	idt_set(SYSCALL, (u32)isr0x80, 0xEE);
-}
-
-i32 syscall_handler(registers_state *regs) {
-	syscall_handler_t handler = syscall_handlers[regs->eax];
-
-	if (handler != 0) {
-		return handler(regs);
-	}
-
-	PANIC("Received unimplemented syscall: %d\n", regs->eax);
-	return -1;
-}
-
-
-i32 syscall_test(registers_state *regs) {
-	kprintf("Hello from syscall_test(), %s\n", regs->ebx);
+i32 syscall_test(u8 *str) {
+	kprintf("Hello from syscall_test(), %s\n", str);
 	return 0;
 }
 
-i32 syscall_open(registers_state *regs) {
-	i8 *filename = (i8* )regs->ebx;
-	u32 oflags = regs->ecx;
-	u32 mode = regs->edx;
-
+i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 	vfs_node_t *vfs_node;
 
 	vfs_node = vfs_get_node(filename);
@@ -128,8 +63,7 @@ i32 syscall_open(registers_state *regs) {
 	return fd;
 }
 
-i32 syscall_close(registers_state *regs) {
-	i32 fd = (i32)regs->ebx;
+i32 syscall_close(i32 fd) {
 	if (fd < 3 || fd >= FDS_NUM) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
 		return -1;
@@ -145,11 +79,7 @@ i32 syscall_close(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_read(registers_state *regs) {
-	i32 fd = (i32)regs->ebx;
-	i8 *buf = (i8 *)regs->ecx;
-	u32 count = (u32)regs->edx;
-
+i32 syscall_read(i32 fd, i8 *buf, u32 count) {
 	if (fd == FD_STDIN) {
 		u8 c = keyboard_getchar();
 		if (c) {
@@ -192,11 +122,7 @@ i32 syscall_read(registers_state *regs) {
 	return have_read;
 }
 
-i32 syscall_write(registers_state *regs) {
-	i32 fd = regs->ebx;
-	i8 *buf = (i8 *)regs->ecx;
-	u32 count = regs->edx;
-
+i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 	if (fd == FD_STDOUT || fd == FD_STDERR) {
 		u32 i;
 		for (i = 0; i < count; ++i) {
@@ -228,11 +154,7 @@ i32 syscall_write(registers_state *regs) {
 	return have_written;
 }
 
-i32 syscall_lseek(registers_state *regs) {
-	i32 fd = regs->ebx;
-	i32 offset = regs->ecx;
-	i32 whence = regs->edx;
-
+i32 syscall_lseek(i32 fd, i32 offset, i32 whence) {
 	if (fd < 3 || fd >= FDS_NUM) {
 		DEBUG("Invalid file descriptor - %d\r\n", fd);
 		return 0;
@@ -258,23 +180,17 @@ i32 syscall_lseek(registers_state *regs) {
 	return f->offset;
 }
 
-i32 syscall_unlink(registers_state *regs) {
-	i8 *filename = (i8 *)regs->ebx;
-	i32 ret = vfs_unlink(filename);
-	return ret;
+i32 syscall_unlink(i8 *filename) {
+	return vfs_unlink(filename);
 }
 
-i32 syscall_yield(registers_state *regs) {
-	(void)regs;
+i32 syscall_yield() {
 	schedule();
 	return 0;
 }
 
-i32 syscall_exec(registers_state *regs) {
-	i8 *pathname = (i8 *)regs->ebx;
-	i8 **u_argv = (i8 **)regs->ecx;
-	i8 **u_envp = (i8 **)regs->edx;
-
+// TODO: Rename u_argv, u_envp to argv, envp correspondingly
+i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	i32 argc = 0, envc = 0;
 	if (u_argv) {
 		for (i8 **arg_p = u_argv; *arg_p; ++arg_p) {
@@ -397,7 +313,7 @@ i32 syscall_exec(registers_state *regs) {
 	*sp-- = 0x23; 			// es
 	*sp-- = 0x23; 			// fs
 	*sp-- = 0x23; 			// gs
-	current_process->regs = (registers_state *)(sp + 1);
+	*current_process->regs = *((registers_state *)(sp + 1));
 	*sp-- = (u32)irq_ret;	// irq_ret eip (to return back to the end of the interrupt routine)
 	*sp-- = 0x0;			// ebp
 	*sp-- = 0x0; 			// ebx
@@ -414,8 +330,6 @@ i32 syscall_exec(registers_state *regs) {
 			current_process->signals[i].sa_handler = SIG_DFL;
 		}
 	}
-	// It fixes problem, but it's strange
-	*regs = *current_process->regs;
 
 	// Free the user code pages in the page directory
 	void *page_dir_phys = (void *)prev_page_dir;
@@ -453,10 +367,8 @@ i32 syscall_exec(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_fork(registers_state *regs) {
+i32 syscall_fork() {
 	// TODO: Create a separate function to copy process
-	(void)regs;
-
 	process_t *child_process = proc_alloc();
 
 	// TODO: Copy all of parent's file descriptors to child
@@ -481,9 +393,31 @@ i32 syscall_fork(registers_state *regs) {
 	return child_process->pid;
 }
 
-i32 syscall_exit(registers_state *regs) {
-	i32 exit_code = (i32)regs->ebx;
 
+i32 syscall_kill(i32 pid, i32 sig) {
+	process_t *proc = get_proc_by_id(pid);
+	if (proc == NULL) {
+		return -1;
+	}
+	if (sig <= 0 || sig >= NSIG) {
+		return -1;
+	}
+
+	if (pid > 0) {
+		return send_signal(proc, sig);
+	} else if (pid == 0) {
+		// TODO: Process group id of sender + permission to send a signal
+		return -1;
+	} else if (pid == -1) {
+		return 0;
+	} else if (pid < 0) {
+		// TODO: Process group id == abs(pid) + have permission to send a signal
+		return -1;
+	}
+	return 0;
+}
+
+i32 syscall_exit(i32 exit_code) {
 	if (current_process->pid == 1) {
 		PANIC("Can't exit the INIT process\r\n");
 	}
@@ -544,13 +478,7 @@ i32 syscall_exit(registers_state *regs) {
 		node = node->next;
 	}
 
-	u32 ebx = current_process->regs->ebx;
-	u32 ecx = current_process->regs->ecx;
-	current_process->regs->ebx = current_process->parent->pid;
-	current_process->regs->ecx = SIGCHLD;
-	syscall_kill(current_process->regs);
-	current_process->regs->ebx = ebx;
-	current_process->regs->ecx = ecx;
+	syscall_kill(current_process->parent->pid, SIGCHLD);
 
 	current_process->state = ZOMBIE;
 	schedule();
@@ -559,10 +487,7 @@ i32 syscall_exit(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_waitpid(registers_state *regs) {
-	i32 pid = (i32)regs->ebx;
-	i32 *stat_loc = (i32 *)regs->ecx;
-	i32 options = (i32)regs->edx;
+i32 syscall_waitpid(i32 pid, i32 *stat_loc, i32 options) {
 	(void)options;
 
 	if (pid < -1) {
@@ -584,6 +509,9 @@ i32 syscall_waitpid(registers_state *regs) {
 				havekids = true;
 
 				if (p->state !=	ZOMBIE && p->state != STOPPED) {
+					if (node->next == NULL) {
+						break;
+					}
 					node = node->next;
 					continue;
 				}
@@ -642,14 +570,11 @@ i32 syscall_waitpid(registers_state *regs) {
 	return -1;
 }
 
-i32 syscall_getpid(registers_state *regs) {
-	(void)regs;
+i32 syscall_getpid() {
 	return current_process->pid;
 }
 
-i32 syscall_dup(registers_state *regs) {
-	i32 oldfd = (i32)regs->ebx;
-
+i32 syscall_dup(i32 oldfd) {
 	if (oldfd > FDS_NUM || current_process->fds[oldfd].used) {
 		return -1;
 	}
@@ -662,8 +587,7 @@ i32 syscall_dup(registers_state *regs) {
 	return newfd;
 }
 
-i32 syscall_sbrk(registers_state *regs) {
-	u32 incr = (u32)regs->ebx; 
+i32 syscall_sbrk(i32 incr) {
 	u32 old_brk = current_process->brk;
 
 	if (!incr) {
@@ -674,20 +598,14 @@ i32 syscall_sbrk(registers_state *regs) {
 	return old_brk;
 }
 
-i32 syscall_nanosleep(registers_state *regs) {
-	(void)regs;
+i32 syscall_nanosleep(struct timespec *req, struct timespec *rem) {
+	(void)req;
+	(void)rem;
 	kernel_panic("syscall_nanosleep(): UNIMPLEMENTED\n");
-	//const struct timespec *req = (const struct timespec *)regs->ebx;
-	//const struct timespec *rem = (const struct timespec *)regs->ecx;
-	//(void)rem;
-
 	return 0;
 }
 
-i32 syscall_getcwd(registers_state *regs) {
-	i8 *buf = (i8 *)regs->ebx;
-	u32 size = (u32)regs->ecx;
-
+i32 syscall_getcwd(i8 *buf, u32 size) {
 	if (!size) {
 		return -1;
 	}
@@ -701,10 +619,7 @@ i32 syscall_getcwd(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_fstat(registers_state *regs) {
-	i32 fd = (i32)regs->ebx;
-	struct stat *statbuf = (struct stat *)regs->ecx;
-
+i32 syscall_fstat(i32 fd, struct stat *statbuf) {
 	if (current_process->fds[fd].vfs_node == (void *)-1) {
 		return -1;
 	}
@@ -765,9 +680,7 @@ static i8 *make_absolute_path(i8 *rel_path) {
        return canonilized_path;
 }
 
-i32 syscall_chdir(registers_state *regs) {
-	i8 *path = (i8 *)regs->ebx;
-	
+i32 syscall_chdir(i8 *path) {
 	i8 *abs_path;
 	if (path[0] == '/') {
 		abs_path = strdup(path);
@@ -786,39 +699,8 @@ i32 syscall_chdir(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_kill(registers_state *regs) {
-	i32 pid = (i32)regs->ebx;
-	i32 sig = (i32)regs->ecx;
 
-	process_t *proc = get_proc_by_id(pid);
-	if (proc == NULL) {
-		return -1;
-	}
-	if (sig <= 0 || sig >= NSIG) {
-		return -1;
-	}
-
-	if (pid > 0) {
-		return send_signal(proc, sig);
-	} else if (pid == 0) {
-		// TODO: Process group id of sender + permission to send a signal
-		return -1;
-	} else if (pid == -1) {
-		return 0;
-	} else if (pid < 0) {
-		// TODO: Process group id == abs(pid) + have permission to send a signal
-		return -1;
-	}
-	return 0;
-}
-
-i32 syscall_sigaction(registers_state *regs) {
-	i32 sig = (i32)regs->ebx;
-	sigaction_t *act = (sigaction_t *)regs->ecx;
-	sigaction_t *oact = (sigaction_t *)regs->edx;
-	u32 *sigreturn = (u32 *)regs->esi;
-	kprintf("[kernel] sigreturn: 0x%x\n", sigreturn);
-
+i32 syscall_sigaction(i32 sig, sigaction_t *act, sigaction_t *oact, u32 *sigreturn) {
 	if (sig < 0 || sig >= NSIG) {
 		return -1;
 	}
@@ -845,11 +727,7 @@ i32 syscall_sigaction(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_sigprocmask(registers_state *regs) {
-	i32 how = (i32)regs->ebx;
-	sigset_t *set = (sigset_t *)regs->ecx;
-	sigset_t *oset = (sigset_t *)regs->edx;
-
+i32 syscall_sigprocmask(i32 how, sigset_t *set, sigset_t *oset) {
 	if (how != SIG_BLOCK && how != SIG_UNBLOCK && how != SIG_SETMASK) {
 		return -1;
 	}
@@ -880,8 +758,7 @@ i32 syscall_sigprocmask(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_sigpending(registers_state *regs) {
-	sigset_t *set = (sigset_t *)regs->ebx;
+i32 syscall_sigpending(sigset_t *set) {
 	if (!set) {
 		return -1;
 	}
@@ -889,46 +766,29 @@ i32 syscall_sigpending(registers_state *regs) {
 	return 0;
 }
 
-
-i32 syscall_sigsuspend(registers_state *regs) {
-	//TODO: Implement proper syscall function declaration with needed parameters
-	sigset_t osigmask;
-
-	sigset_t *sigmask = (sigset_t *)regs->ebx;
-	if (sigmask == NULL) {
-		return -1;
-	}
-	u32 ebx = regs->ebx;
-	u32 ecx = regs->ecx;
-	u32 edx = regs->edx;
-	regs->ebx = (u32)SIG_SETMASK;
-	regs->ecx = (u32)sigmask;
-	regs->edx = (u32)&osigmask;
-	syscall_sigprocmask(regs);
-	regs->ebx = ebx;
-	regs->ecx = ecx;
-	regs->edx = edx;
-
-	syscall_pause(NULL);
-
-	regs->ebx = (u32)SIG_SETMASK;
-	regs->ecx = (u32)&osigmask;
-	regs->edx = (u32)NULL;
-	syscall_sigprocmask(regs);
-
-	return 0;
-}
-
-
-i32 syscall_pause(registers_state *regs) {
-	(void)regs;
+i32 syscall_pause() {
 	current_process->state = INTERRUPTIBLE;
 	schedule();
 	return 0;
 }
 
-i32 syscall_alarm(registers_state *regs) {
-	u32 secs = (u32)regs->ebx;
+i32 syscall_sigsuspend(sigset_t *sigmask) {
+	//TODO: Implement proper syscall function declaration with needed parameters
+	sigset_t osigmask;
+	if (sigmask == NULL) {
+		return -1;
+	}
+	syscall_sigprocmask(SIG_SETMASK, sigmask, &osigmask);
+
+	syscall_pause();
+
+	syscall_sigprocmask(SIG_SETMASK, &osigmask, NULL);
+
+	return 0;
+}
+
+
+i32 syscall_alarm(u32 secs) {
 	if (!secs) {
 		return 0;
 	}
@@ -936,21 +796,20 @@ i32 syscall_alarm(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_sleep(registers_state *regs) {
-	u32 secs = (u32)regs->ebx;
+i32 syscall_sleep(u32 secs) {
 	(void)secs;
 	kernel_panic("syscall_sleep(): UNIMPLEMENTED\n");
 	return 0;
 }
 
+// TODO: FIXME: What should we do?
 i32 syscall_sigreturn(registers_state *regs) {
-	*regs = current_process->signal_old_regs;
+	*current_process->regs = current_process->signal_old_regs;
 	memcpy(&current_process->sigmask, &current_process->old_sigmask,  sizeof(sigset_t));
 	return 0;
 }
 
-i32 syscall_getppid(registers_state *regs) {
-	(void)regs;
+i32 syscall_getppid() {
 	if (current_process->parent) {
 		return current_process->parent->pid;
 	} else {
@@ -958,28 +817,23 @@ i32 syscall_getppid(registers_state *regs) {
 	}
 }
 
-i32 syscall_getuid(registers_state *regs) {
-	(void)regs;
+i32 syscall_getuid() {
 	return current_process->uid;
 }
 
-i32 syscall_geteuid(registers_state *regs) {
-	(void)regs;
+i32 syscall_geteuid() {
 	return current_process->euid;
 }
 
-i32 syscall_getgid(registers_state *regs) {
-	(void)regs;
+i32 syscall_getgid() {
 	return current_process->gid;
 }
 
-i32 syscall_getegid(registers_state *regs) {
-	(void)regs;
+i32 syscall_getegid() {
 	return current_process->egid;
 }
 
-i32 syscall_setuid(registers_state *regs) {
-	u16 uid = (u16)regs->ebx;
+i32 syscall_setuid(u16 uid) {
 	if (current_process->euid && current_process->uid) {
 		if (uid == current_process->uid) {
 			current_process->euid = uid;
@@ -991,8 +845,7 @@ i32 syscall_setuid(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_setgid(registers_state *regs) {
-	u16 gid = (u16)regs->ebx;
+i32 syscall_setgid(u32 gid) {
 	if (current_process->euid && current_process->uid) {
 		if (gid == current_process->gid) {
 			current_process->egid = gid;
@@ -1004,14 +857,12 @@ i32 syscall_setgid(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_getpgrp(registers_state *regs) {
-	(void)regs;
+i32 syscall_getpgrp() {
 	return current_process->pgrp;
 }
 
 
-i32 syscall_setsid(registers_state *regs) {
-	(void)regs;
+i32 syscall_setsid() {
 	if (current_process->leader) {
 		return -1;
 	}
@@ -1020,9 +871,7 @@ i32 syscall_setsid(registers_state *regs) {
 	return current_process->pgrp;
 }
 
-i32 syscall_setpgid(registers_state *regs) {
-	i32 pid = (i32)regs->ebx;
-	i32 pgid = (i32)regs->ecx;
+i32 syscall_setpgid(i32 pid, i32 pgid) {
 	if (!pid) {
 		pid = current_process->pid;
 	}
@@ -1046,11 +895,10 @@ i32 syscall_setpgid(registers_state *regs) {
 	return -1;
 }
 
-i32 syscall_uname(registers_state *regs) {
+i32 syscall_uname(utsname *name) {
 	static utsname thisname = {
 		"forest.0", "nodename", "release ", "version ", "machine "
 	};
-	utsname *name = (utsname *)regs->ebx;
 	if (!name) {
 		return -1;
 	}
@@ -1058,8 +906,7 @@ i32 syscall_uname(registers_state *regs) {
 	return 0;
 }
 
-i32 syscall_time(registers_state *regs) {
-	i32 *tloc = (i32 *)regs->ebx;
+i32 syscall_time(i32 *tloc) {
 	i32 tm = startup_time + ticks / TIMER_FREQ;
 	if (tloc) {
 		*tloc = tm;
@@ -1067,8 +914,7 @@ i32 syscall_time(registers_state *regs) {
 	return tm;
 }
 
-i32 syscall_times(registers_state *regs) {
-	tms *buffer = (tms *)regs->ebx;
+i32 syscall_times(tms *buffer) {
 	if (!buffer) {
 		return ticks;
 	}
@@ -1078,4 +924,62 @@ i32 syscall_times(registers_state *regs) {
 	buffer->tms_cstime = current_process->cstime;
 
 	return ticks;
+}
+
+syscall_fn syscall_handlers[] = {
+	syscall_test,
+	syscall_read,
+	syscall_write,
+	syscall_open,
+	syscall_close,
+	syscall_lseek,
+	syscall_unlink,
+	syscall_yield,
+	syscall_exec,
+	syscall_fork,
+	syscall_exit,
+	syscall_waitpid,
+	syscall_getpid,
+	syscall_dup,
+	syscall_sbrk,
+	syscall_nanosleep,
+	syscall_getcwd,
+	syscall_fstat,
+	syscall_chdir,
+	syscall_kill,
+	syscall_sigaction,
+	syscall_sigprocmask,
+	syscall_sigpending,
+	syscall_sigsuspend,
+	syscall_pause,
+	syscall_alarm,
+	syscall_sleep,
+	syscall_sigreturn,
+	syscall_getppid,
+	syscall_getuid,
+	syscall_geteuid,
+	syscall_getgid,
+	syscall_getegid,
+	syscall_setuid,
+	syscall_setgid,
+	syscall_getpgrp,
+	syscall_setsid,
+	syscall_setpgid,
+	syscall_uname,
+	syscall_time,
+	syscall_times,
+};
+
+i32 syscall_handler(registers_state *regs) {
+	if (regs->eax > NR_SYSTEM_CALLS) {
+		DEBUG("Received unimplemented syscall: %d\n", regs->eax);
+		return -1;
+	}
+	syscall_fn sys = syscall_handlers[regs->eax];
+
+	return sys(regs->ebx, regs->ecx, regs->edx, regs->esi);
+}
+
+void syscall_init() {
+	idt_set(SYSCALL, (u32)isr0x80, 0xEE);
 }
