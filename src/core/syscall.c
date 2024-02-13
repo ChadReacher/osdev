@@ -215,7 +215,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	for (i32 i = 0; i < envc; ++i) {
 		envp[i] = strdup(u_envp[i]);
 	}
-		
+
 	vfs_node_t *vfs_node = vfs_get_node(pathname);
 	if (!vfs_node) {
 		for (i32 i = 0; i < argc; ++i) {
@@ -246,7 +246,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		}
 		free(argv);
 		free(envp);
-		return EACCES;
+		return ENOEXEC;
 	}
 
 
@@ -962,46 +962,46 @@ i32 syscall_times(tms *buffer) {
 
 syscall_fn syscall_handlers[] = {
 	syscall_test,
+	syscall_exit,
+	syscall_fork,
 	syscall_read,
 	syscall_write,
 	syscall_open,
 	syscall_close,
-	syscall_lseek,
-	syscall_unlink,
-	syscall_yield,
-	syscall_exec,
-	syscall_fork,
-	syscall_exit,
 	syscall_waitpid,
-	syscall_getpid,
-	syscall_dup,
-	syscall_sbrk,
-	syscall_nanosleep,
-	syscall_getcwd,
-	syscall_fstat,
+	syscall_unlink,
+	syscall_exec,
 	syscall_chdir,
-	syscall_kill,
-	syscall_sigaction,
-	syscall_sigprocmask,
-	syscall_sigpending,
-	syscall_sigsuspend,
-	syscall_pause,
-	syscall_alarm,
-	syscall_sleep,
-	syscall_sigreturn,
-	syscall_getppid,
-	syscall_getuid,
-	syscall_geteuid,
-	syscall_getgid,
-	syscall_getegid,
+	syscall_time,
+	syscall_lseek,
+	syscall_getpid,
 	syscall_setuid,
+	syscall_getuid,
+	syscall_alarm,
+	syscall_fstat,
+	syscall_pause,
+	syscall_kill,
+	syscall_dup,
+	syscall_times,
+	syscall_sbrk,
 	syscall_setgid,
-	syscall_getpgrp,
-	syscall_setsid,
+	syscall_getgid,
+	syscall_geteuid,
+	syscall_getegid,
 	syscall_setpgid,
 	syscall_uname,
-	syscall_time,
-	syscall_times,
+	syscall_getppid,
+	syscall_getpgrp,
+	syscall_setsid,
+	syscall_sigaction,
+	syscall_sigpending,
+	syscall_sigsuspend,
+	syscall_sigprocmask,
+	syscall_sigreturn,
+	syscall_nanosleep,
+	syscall_yield,
+	syscall_getcwd,
+	syscall_sleep,
 };
 
 i32 syscall_handler(registers_state *regs) {

@@ -34,6 +34,5 @@
 
 
 u32 open(const i8 *filename, u32 oflags, u32 mode);
-// creat, fcntl
 
 #endif

@@ -113,6 +113,9 @@ void *malloc(u32 size) {
 			block = best_block;
 		} else {
 			block = sbrk(real_size);
+			if (!block) {
+				return NULL;
+			}
 			block->size = size;
 			block->next = NULL;
 			block->free = false;
@@ -124,6 +127,9 @@ void *malloc(u32 size) {
 		}
 	} else {
 		block = sbrk(real_size);
+		if (!block) {
+			return NULL;
+		}
 		block->size = size;
 		block->next = NULL;
 		block->free = false;
@@ -195,6 +201,9 @@ void *realloc(void *ptr, u32 size) {
 		memcpy((void *)(block + 1), ptr, old_size);
 	} else {
 		heap_block *new_block = (heap_block*)sbrk(real_size);
+		if (!new_block) {
+			return NULL;
+		}
 		new_block->size = size;
 		new_block->next = NULL;
 		new_block->free = false;

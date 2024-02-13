@@ -4,9 +4,10 @@
 #include "sys/utsname.h"
 #include "sys/times.h"
 #include "sys/stat.h"
+#include "errno.h"
 
 void test(const i8 *s) {
-	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(0), "b"(s));
+	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(__NR_test), "b"(s));
 }
 
 u32 read(i32 fd, const void *buf, u32 count) {
@@ -14,7 +15,7 @@ u32 read(i32 fd, const void *buf, u32 count) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(1), "b"(fd), "c"(buf), "d"(count));
+			: "a"(__NR_read), "b"(fd), "c"(buf), "d"(count));
 
 	return ret;
 }
@@ -24,14 +25,14 @@ u32 write(i32 fd, const void *buf, u32 count) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(2), "b"(fd), "c"(buf), "d"(count));
+			: "a"(__NR_write), "b"(fd), "c"(buf), "d"(count));
 
 	return ret;
 }
 
 i32 close(i32 fd) {
 	i32 ret;
-	__asm__ __volatile__ ("int $0x80" : "=a"(ret) : "a"(4), "b"(fd));
+	__asm__ __volatile__ ("int $0x80" : "=a"(ret) : "a"(__NR_close), "b"(fd));
 	return ret;
 }
 
@@ -40,7 +41,7 @@ i32 lseek(i32 fd, i32 offset, i32 whence) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(5), "b"(fd), "c"(offset), "d"(whence));
+			: "a"(__NR_lseek), "b"(fd), "c"(offset), "d"(whence));
 
 	return ret;
 }
@@ -50,20 +51,20 @@ i32 unlink(const i8 *pathname) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(6), "b"(pathname));
+			: "a"(__NR_unlink), "b"(pathname));
 
 	return ret;
 }
 
 void yield() {
-	__asm__ __volatile__ ("int $0x80" : : "a"(7));
+	__asm__ __volatile__ ("int $0x80" : : "a"(__NR_yield));
 }
 
 static i32 execve(const i8 *pathname, i8 *const argv[], i8 *const envp[]) {
     i32 ret;
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(8), "b"(pathname), "c"(argv), "d"(envp));
+			: "a"(__NR_execve), "b"(pathname), "c"(argv), "d"(envp));
 
 	return ret;
 }
@@ -116,28 +117,28 @@ i32 fork() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(9));
+			: "a"(__NR_fork));
 
 	return ret;
 }
 
 void _exit(i32 exit_code) {
-	__asm__ __volatile__ ("int $0x80" : : "a"(10), "b"(exit_code));
+	__asm__ __volatile__ ("int $0x80" : : "a"(__NR_exit), "b"(exit_code));
 }
 
 
-i32 waitpid(i32 pid, i32 *wstatus, i32 options) {
+i32 waitpid(i32 pid, i32 *stat_loc, i32 options) {
 	i32 ret;
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(11), "b"(pid), "c"(wstatus), "d"(options));
+			: "a"(__NR_waitpid), "b"(pid), "c"(stat_loc), "d"(options));
 
 	return ret;
 }
 
-i32 wait(i32 *wstatus) {
-	return waitpid(-1, wstatus, 0);
+i32 wait(i32 *stat_loc) {
+	return waitpid(-1, stat_loc, 0);
 }
 
 i32 getpid() {
@@ -145,7 +146,7 @@ i32 getpid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(12));
+			: "a"(__NR_getpid));
 
 	return ret;
 }
@@ -155,7 +156,7 @@ i32 dup(i32 oldfd) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(13), "b"(oldfd));
+			: "a"(__NR_dup), "b"(oldfd));
 
 	return ret;
 }
@@ -165,7 +166,7 @@ void *sbrk(u32 incr) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(14), "b"(incr));
+			: "a"(__NR_sbrk), "b"(incr));
 
 	return (void *)ret;
 }
@@ -175,7 +176,7 @@ i32 nanosleep(const struct timespec *req, struct timespec *rem) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(15), "b"(req), "c"(rem));
+			: "a"(__NR_nanosleep), "b"(req), "c"(rem));
 
 	return ret;
 }
@@ -185,14 +186,9 @@ u32 sleep(u32 secs) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(26), "b"(secs));
+			: "a"(__NR_sleep), "b"(secs));
 
 	return ret;
-	//struct timespec req;
-	//req.tv_sec = seconds;
-	//req.tv_nsec = 0;
-	//nanosleep(&req, NULL);
-	return 0;
 }
 
 
@@ -201,7 +197,7 @@ i8 *getcwd(i8 *buf, u32 size) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(16), "b"(buf), "c"(size));
+			: "a"(__NR_getcwd), "b"(buf), "c"(size));
 
 	return ret;
 }
@@ -219,7 +215,7 @@ i32 fstat(i32 fd, struct stat *statbuf) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(17), "b"(fd), "c"(statbuf));
+			: "a"(__NR_fstat), "b"(fd), "c"(statbuf));
 
 	return ret;
 }
@@ -229,7 +225,7 @@ i32 chdir(const i8 *path) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(18), "b"(path));
+			: "a"(__NR_chdir), "b"(path));
 
 	return ret;
 }
@@ -307,7 +303,7 @@ u32 alarm(u32 secs) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(25), "b"(secs));
+			: "a"(__NR_alarm), "b"(secs));
 
 	return ret;
 }
@@ -317,7 +313,7 @@ i32 getppid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(28));
+			: "a"(__NR_getppid));
 
 	return ret;
 }
@@ -328,7 +324,7 @@ u16 getuid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(29));
+			: "a"(__NR_getuid));
 
 	return ret;
 }
@@ -338,7 +334,7 @@ u16 geteuid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(30));
+			: "a"(__NR_geteuid));
 
 	return ret;
 }
@@ -348,7 +344,7 @@ u8 getgid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(31));
+			: "a"(__NR_getgid));
 
 	return ret;
 }
@@ -358,7 +354,7 @@ u8 getegid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(32));
+			: "a"(__NR_getegid));
 
 	return ret;
 }
@@ -368,7 +364,7 @@ i32 setuid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(33));
+			: "a"(__NR_setuid));
 
 	return ret;
 }
@@ -378,7 +374,7 @@ i32 setgid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(34));
+			: "a"(__NR_setgid));
 
 	return ret;
 }
@@ -388,7 +384,7 @@ i32 getpgrp() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(35));
+			: "a"(__NR_getpgrp));
 
 	return ret;
 }
@@ -399,7 +395,7 @@ i32 setsid() {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(36));
+			: "a"(__NR_setsid));
 
 	return ret;
 }
@@ -409,7 +405,7 @@ i32 setpgid(i32 pid, i32 pgid) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(37), "b"(pid), "c"(pgid));
+			: "a"(__NR_setpgid), "b"(pid), "c"(pgid));
 
 	return ret;
 }
@@ -419,7 +415,7 @@ i32 uname(utsname *name) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(38), "b"(name));
+			: "a"(__NR_uname), "b"(name));
 
 	return ret;
 }
@@ -429,7 +425,7 @@ i32 time(i32 *tloc) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(39), "b"(tloc));
+			: "a"(__NR_time), "b"(tloc));
 
 	return ret;
 }
@@ -439,7 +435,7 @@ i32 times(tms *buffer) {
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
-			: "a"(40), "b"(buffer));
+			: "a"(__NR_times), "b"(buffer));
 
 	return ret;
 }

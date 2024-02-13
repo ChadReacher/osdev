@@ -206,6 +206,22 @@ process_t *proc_alloc() {
 	return process;
 }
 
+process_t *copy_process() {
+	process_t *p = malloc(sizeof(process_t));
+	if (!p) {
+		return NULL;
+	}
+	*p = *current_process;
+	p->kernel_stack_bottom = malloc(4096 * 2);
+	if (!p->kernel_stack_bottom) {
+		return NULL;
+	}
+	memset(p->kernel_stack_bottom, 0, 4096 * 2);
+	u32 *sp = (u32 *)ALIGN_DOWN((u32)p->kernel_stack_bottom + 4096 * 2 - 1, 4);
+	(void)sp;
+	return p;
+}
+
 i32 proc_get_fd(process_t *proc) {
 	for (u32 i = 3; i < FDS_NUM; ++i) {
 		if (!proc->fds[i].used) {
