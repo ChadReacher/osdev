@@ -1,23 +1,15 @@
-TOOLCHAIN_SRC = /usr/bin/i386elfgcc/bin
-CC = $(TOOLCHAIN_SRC)/i386-elf-gcc
-LD = $(TOOLCHAIN_SRC)/i386-elf-ld
-ROOT_DIR = ..
-LIBC = $(ROOT_DIR)/build/libc.a
+CFLAGS += -c -I ../libc
 
-CFLAGS = -g -c -W -Wall -pedantic -m32 -std=c11 -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles -nodefaultlibs -mno-red-zone\
-	 -fno-stack-protector -I $(ROOT_DIR)/libc/
+binaries = bin/init bin/test bin/sh bin/ls bin/cat bin/rm
 
-files = bin/init bin/test bin/sh bin/ls bin/cat bin/rm
+all: userland
 
-default: userland
 .PHONY: userland
-userland: ../build/crt0.o $(files)
+userland: ../build/crt0.o $(binaries)
 
 ../build/crt0.o: crt0.S
-	nasm -f elf32 -I ./libc/ $< -o $@
+	nasm -f elf32 $< -o $@
 
-bin/%: $(ROOT_DIR)/build/%.o 
-	$(LD) -Ttext 0x0 -o $@ $(ROOT_DIR)/build/crt0.o $^ $(LIBC)
-
-$(ROOT_DIR)/build/%.o: %.c
-	$(CC) $(CFLAGS) $< -o $@
+bin/%: %.c
+	$(CC) $(CFLAGS) $< -o ../build/$*.o
+	$(LD) -Ttext 0x0 -o $@ ../build/crt0.o ../build/$*.o ../build/libc.a
