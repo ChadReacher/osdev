@@ -1,4 +1,4 @@
-CFLAGS += -c -I ../libc
+CFLAGS += -c -I ../libc/include
 
 binaries = bin/init bin/test bin/sh bin/ls bin/cat bin/rm
 

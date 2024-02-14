@@ -5,6 +5,121 @@
 #include "sys/times.h"
 #include "sys/stat.h"
 #include "errno.h"
+#include "stdarg.h"
+
+extern i8 **environ;
+
+syscall0(pid_t, fork)
+
+syscall3(i32, execve, const i8 *, pathname, i8 **, argv, i8 **, envp)
+
+i32 execv(const i8 *pathname, i8 **argv) {
+	return execve(pathname, argv, environ);
+}
+
+#define PATH_MAX 4096 // TODO: move it to 'limits.h'
+i32 find_file_in_path(const i8 *file, i8 *buf, u32 sz) {
+    u32 n;
+    i8 *endp, *envpath;
+
+    envpath = getenv("PATH");
+    while (envpath != NULL) {
+        endp = strchr(envpath, ':');
+        if (endp != NULL) {
+            n = endp - envpath;
+        } else {
+            n = strlen(envpath);
+        }
+        if (n + 2 + strlen(file) > PATH_MAX) {
+            continue;
+        }
+        memcpy(buf, envpath, n);
+        buf[n++] = '/';
+        strcpy(buf + n, file);
+		// TODO: change to 'stat'
+        if (access(buf, F_OK) == 0) {
+			return 0;
+        }
+        if (!endp) {
+            return -1;
+        }
+        envpath = endp + 1;
+    }
+	return -1;
+}
+
+i32 execvp(const i8 *file, i8 **argv) {
+	if (!file || !argv || !environ) {
+		errno = -ENOENT;
+		return -1;
+	}
+	if (file[0] == '/') {
+		execve(file, argv, environ);
+	}
+	i8 absolute_path[PATH_MAX] = { 0 };
+	if (find_file_in_path(file, absolute_path, PATH_MAX) == 0) {
+		return execve(absolute_path, argv, environ);
+	}
+	return -1;
+}
+
+
+#define ARG_MAX 1024 // TODO: move to 'limits.h'
+i32 execl(const i8 *path, const i8 *arg, ...) {
+	va_list args;
+	i32 argc;
+	i8 *argv[ARG_MAX];
+
+	va_start(args, arg);
+	for (argc = 0; argc < ARG_MAX; ++argc) {
+		argv[argc] = (i8 *)arg;
+		if (argv[argc] == NULL) {
+			break;
+		}
+		arg = va_arg(args, i8 *);
+	}
+	va_end(args);
+
+	return execve(path, argv, environ);
+}
+
+i32 execlp(const i8 *file, const i8 *arg, ...) {
+	va_list args;
+	i32 argc;
+	i8 *argv[ARG_MAX];
+
+	va_start(args, arg);
+	for (argc = 0; argc < ARG_MAX; ++argc) {
+		argv[argc] = (i8 *)arg;
+		if (argv[argc] == NULL) {
+			break;
+		}
+		arg = va_arg(args, i8 *);
+	}
+	va_end(args);
+
+	return execvp(file, argv);
+}
+
+i32 execle(const i8 *path, const i8 *arg, ...) {
+	va_list args;
+	i32 argc;
+	i8 *argv[ARG_MAX];
+
+	va_start(args, arg);
+	for (argc = 0; argc < ARG_MAX; ++argc) {
+		argv[argc] = (i8 *)arg;
+		if (argv[argc] == NULL) {
+			break;
+		}
+		arg = va_arg(args, i8 *);
+	}
+	i8 **envp = va_arg(args, i8 **);
+	va_end(args);
+	
+	return execve(path, argv, envp);
+}
+
 
 void test(const i8 *s) {
 	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(__NR_test), "b"(s));
@@ -58,68 +173,6 @@ i32 unlink(const i8 *pathname) {
 
 void yield() {
 	__asm__ __volatile__ ("int $0x80" : : "a"(__NR_yield));
-}
-
-static i32 execve(const i8 *pathname, i8 *const argv[], i8 *const envp[]) {
-    i32 ret;
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_execve), "b"(pathname), "c"(argv), "d"(envp));
-
-	return ret;
-}
-
-#define PATH_LEN_MAX 256
-i32 execvpe(const i8 *file, i8 *const argv[], i8 *const envp[]) {
-    i8 cmd[PATH_LEN_MAX];
-    memset(cmd, 0, PATH_LEN_MAX * sizeof(i8));
-
-    if (strchr(file, '/') == NULL) {
-        u32 n;
-        i8 *endp;
-        i8 *envpath = getenv("PATH");
-        while (envpath != NULL) {
-            endp = strchr(envpath, ':');
-            if (endp != NULL) {
-                n = endp - envpath;
-            } else {
-                n = strlen(envpath);
-            }
-            if (n + 2 + strlen(file) > PATH_LEN_MAX) {
-                continue;
-            }
-            memcpy(cmd, envpath, n);
-            cmd[n++] = '/';
-            strcpy(cmd + n, file);
-            if (access(cmd, F_OK) == 0) {
-                break;
-            }
-            if (!endp) {
-                return -1;
-            }
-            envpath = endp + 1;
-        }
-    } else {
-        if (strlen(file) >= PATH_LEN_MAX) {
-            return -1;
-        }
-        strcpy(cmd, file);
-    }
-    return execve(cmd, argv, envp);
-}
-
-i32 execv(const i8 *pathname, i8 *const argv[]) {
-	return execve(pathname, argv, environ);
-}
-
-i32 fork() {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_fork));
-
-	return ret;
 }
 
 void _exit(i32 exit_code) {

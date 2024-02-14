@@ -22,6 +22,7 @@ clean:
 clean-all:
 	rm -rf src/kernel.o $(OBJECTS) $(DEPENDENCIES)
 
+#TODO: Prevent executing this rule when 'make clean' or 'make clean-all'
 %.d: %.c
 	$(CC) -I ./include/ -I ../libk -M $< -MF $*.d
 
