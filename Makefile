@@ -4,9 +4,9 @@ LD = $(TOOLCHAIN_SRC)/i386-elf-ld
 OBJCOPY = $(TOOLCHAIN_SRC)/i386-elf-objcopy
 AS = nasm
 AR = ar
-CFLAGS = -g -W -Wall -pedantic -m32 -std=c11
+CFLAGS = -g -W -Wall -pedantic -m32 -std=c11 -march=i386
 CFLAGS += -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles
-CFLAGS += -nodefaultlibs -mno-red-zone -fno-stack-protector
+CFLAGS += -nodefaultlibs -mno-red-zone -fno-stack-protector -nolibc
 
 export CC LD OBJCOPY AS AR CFLAGS
 
@@ -24,7 +24,7 @@ image: build/bootloader.bin build/kernel.bin
 build/bootloader.bin:
 	$(MAKE) -C boot
 
-build/kernel.bin: libk 
+build/kernel.bin: libk
 	$(MAKE) -C kernel
 
 user: libc
@@ -46,7 +46,7 @@ libc:
 	
 run:
 	qemu-system-i386\
-		-drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
+		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
 	    -drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
 		-rtc base=localtime,clock=host,driftfix=slew
 
@@ -78,5 +78,5 @@ clean-all:
 # $@ - target name
 # $? - all prerequisites newer than the target
 # $^ - all prerequisites
-# $< - current prerequisite 
+# $< - current prerequisite
 # $* - the same as % in target or prerequisite
