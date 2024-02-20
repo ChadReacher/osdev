@@ -33,8 +33,9 @@ user: libc
 	mv -f userland/bin/* userland/hdd/bin
 	echo "hi" > userland/hdd/file
 	echo "del" > userland/hdd/del
-	dd if=/dev/zero of=build/disk.img bs=1M count=4096
+	dd if=/dev/zero of=build/disk.img bs=1024 count=4096
 	mkfs.ext2 -b 1024 -g 8192 -i 1024 -r 0 -d userland/hdd/ build/disk.img
+	./disk_part.sh
 
 libk:
 	mkdir -p build/libk

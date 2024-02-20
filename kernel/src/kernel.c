@@ -39,18 +39,37 @@ void _start() {
 	screen_init();
 	heap_init();
 	pci_init();
-	vfs_init();
+	//vfs_init();
 	ata_init();
-	ext2_init("/dev/hdb", "/");
 
-	kprintf("/----------------------------------------------\\\n");
-	kprintf("                Welcome to the OS.\n");
-	kprintf("\\----------------------------------------------/\n");
+	extern ata_device_t devices[4];
+	u32 sector = 0, nsect = 1;
+	i8 *buf = ata_read(&devices[0], sector, nsect);
+	for (u32 i = 0; i < 512; i += 16) {
+		kprintf("0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x "
+				"0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n",
+				buf[i + 0], buf[i + 1], buf[i + 2], buf[i + 3],
+				buf[i + 4], buf[i + 5], buf[i + 6], buf[i + 7],
+				buf[i + 8], buf[i + 9], buf[i + 10], buf[i + 11],
+				buf[i + 12], buf[i + 13], buf[i + 14], buf[i + 15]);
+	}
+	buf = malloc(1024);
+	kprintf("got buf: %p\n", buf);
+	memset(buf+512*0, 0x12, 512);
+	memset(buf+512*1, 0x34, 512);
 
-	vfs_print();
+	sector = 2, nsect = 2;
+	ata_write(&devices[0], sector, nsect, buf);
 
-	scheduler_init();
-	userinit();
+	for (;;);
 
-	PANIC("End of kernel\r\n");
+	//ext2_init("/dev/hdb", "/");
+	//kprintf("/----------------------------------------------\\\n");
+	//kprintf("                Welcome to the OS.\n");
+	//kprintf("\\----------------------------------------------/\n");
+	//vfs_print();
+	//scheduler_init();
+	//userinit();
+
+	//PANIC("End of kernel\r\n");
 }

@@ -3,7 +3,6 @@
 
 #include "types.h"
 #include "isr.h"
-#include "vfs.h"
 
 typedef struct phys_reg_desc {
 	u32 phys_data_buf;
@@ -47,11 +46,7 @@ typedef struct ata_device {
 
 	phys_reg_desc_t *prdt;
 	u8 *prdt_phys;
-
 	u8 *mem_buffer;
-
-	i8 mountpoint[32];
-
 } __attribute__((packed)) ata_device_t;
 
 // PCI characterists
@@ -63,13 +58,5 @@ typedef struct ata_device {
 #define SECTOR_SIZE 512
 
 void ata_init();
-void ata_handler(registers_state *regs);
-void ata_software_reset(ata_device_t *dev);
-void ata_io_wait(ata_device_t *dev);
-void ata_device_detect(ata_device_t *dev, u32 primary);
-void ata_device_init(ata_device_t *dev, u32 primary);
-vfs_node_t *ata_create_device(ata_device_t *dev);
-i8 *ata_read_sector(ata_device_t *dev, u32 lba);
-void ata_write_sector(ata_device_t *dev, u32 lba, i8 *buf);
 
 #endif
