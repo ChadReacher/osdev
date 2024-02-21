@@ -47,16 +47,17 @@ typedef struct ata_device {
 	phys_reg_desc_t *prdt;
 	u8 *prdt_phys;
 	u8 *mem_buffer;
-} __attribute__((packed)) ata_device_t;
+} ata_device_t;
 
-// PCI characterists
-#define ATA_VENDOR_ID 0x8086
-#define ATA_DEVICE_ID 0x7010
+#define ATA_PCI_VENDOR_ID 0x8086
+#define ATA_PCI_DEVICE_ID 0x7010
 
+#define NRATADEV 4
 #define IDENTIFY_COMMAND 0xEC
 
 #define SECTOR_SIZE 512
 
 void ata_init();
+void rw_ata(u32 rw, u16 dev, u32 block, i8 **buf);
 
 #endif
