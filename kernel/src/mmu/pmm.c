@@ -117,15 +117,15 @@ void pmm_init() {
 
 void _pmm_init(u32 start_address, u32 size) {
 	memory_map = (u32 *)start_address;
-	total_blocks = size / BLOCK_SIZE;
+	total_blocks = size / PMM_BLOCK_SIZE;
 	used_blocks = total_blocks;
 
 	memset(memory_map, 0xFF, total_blocks / BLOCKS_PER_BYTE);
 }
 
 void mark_memory_as_free(u32 base_address, u32 size) {
-	u32 align = base_address / BLOCK_SIZE;
-	u32 num_blocks = size / BLOCK_SIZE;
+	u32 align = base_address / PMM_BLOCK_SIZE;
+	u32 num_blocks = size / PMM_BLOCK_SIZE;
 	for (; num_blocks > 0; --num_blocks) {
 		clear_block(align++);
 		--used_blocks;
@@ -135,9 +135,9 @@ void mark_memory_as_free(u32 base_address, u32 size) {
 }
 
 void mark_memory_as_used(u32 base_address, u32 size) {
-	u32 align = base_address / BLOCK_SIZE;
-	u32 num_blocks = size / BLOCK_SIZE;
-	if (size % BLOCK_SIZE > 0) {
+	u32 align = base_address / PMM_BLOCK_SIZE;
+	u32 num_blocks = size / PMM_BLOCK_SIZE;
+	if (size % PMM_BLOCK_SIZE > 0) {
 		++num_blocks;
 	}
 	for (; num_blocks > 0; --num_blocks) {
@@ -161,12 +161,12 @@ void *allocate_blocks(u32 num_blocks) {
 	used_blocks += num_blocks;
 
 	// Return its address
-	u32 address = starting_block * BLOCK_SIZE;
+	u32 address = starting_block * PMM_BLOCK_SIZE;
 	return (void *)address;
 }
 
 void free_blocks(void *address, u32 num_blocks) {
-	u32 starting_block = (u32)address / BLOCK_SIZE;
+	u32 starting_block = (u32)address / PMM_BLOCK_SIZE;
 	for (u32 i = 0; i < num_blocks; ++i) {
 		clear_block(starting_block + i);
 	}

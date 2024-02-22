@@ -42,10 +42,11 @@ void _start() {
 	//vfs_init();
 	ata_init();
 
-	i8 *buf = malloc(208);
-	u32 pos = 0x1B0;
-	block_read(0x301, &pos, buf, 208);
-	for (u32 i = 0; i < 208; i += 16) {
+	i32 sz = 512;
+	i8 *buf = malloc(sz);
+	u32 pos = 0;
+	block_read(0x306, &pos, buf, sz);
+	for (u32 i = 0; i < sz; i += 16) {
 		kprintf("0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x "
 				"0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n",
 				buf[i + 0], buf[i + 1], buf[i + 2], buf[i + 3],
@@ -53,12 +54,13 @@ void _start() {
 				buf[i + 8], buf[i + 9], buf[i + 10], buf[i + 11],
 				buf[i + 12], buf[i + 13], buf[i + 14], buf[i + 15]);
 	}
+	kprintf("\n");
 	buf = malloc(1024);
 	memset(buf+512*0, 0xAA, 512);
 	memset(buf+512*1, 0x34, 512);
 
-	pos = 0;
-	block_write(0x301, &pos, buf, 1024);
+	pos = 3075;
+	block_write(0x306, &pos, buf, 10);
 	for (;;);
 
 	//ext2_init("/dev/hdb", "/");

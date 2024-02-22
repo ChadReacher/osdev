@@ -1,5 +1,8 @@
 #include <blk_dev.h>
 #include <ata.h>
+#include <heap.h>
+#include <string.h>
+#include <panic.h>
 
 i32 block_write(u16 dev, u32 *pos, i8 *buf, u32 count) {
 	u32 block = *pos / BLOCK_SIZE;
@@ -14,9 +17,15 @@ i32 block_write(u16 dev, u32 *pos, i8 *buf, u32 count) {
 			chars = count;
 		}
 		rw_block(READ, dev, block, &ret_buf);
+		if (ret_buf == NULL) {
+			return written;
+		}
 		p = ret_buf + offset;
 		memcpy(p, buf, chars);
 		rw_block(WRITE, dev, block, &ret_buf);
+		if (ret_buf == NULL) {
+			return written;
+		}
 		offset = 0;
 		++block;
 		*pos += chars;
@@ -41,6 +50,9 @@ i32 block_read(u16 dev, u32 *pos, i8 *buf, u32 count) {
 			chars = count;
 		}
 		rw_block(READ, dev, block, &ret_buf);
+		if (ret_buf == NULL) {
+			return read;
+		}
 		p = ret_buf + offset;
 		offset = 0;
 		++block;

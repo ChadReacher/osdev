@@ -6,9 +6,14 @@
 #include <debug.h>
 #include <paging.h>
 #include <blk_dev.h>
+#include <panic.h>
 
 static pci_device_t ata_dev;
-static ata_device_t devices[NRATADEV];
+static struct hd_disk {
+	u32 start_sect;
+	u32 nr_sects;
+} hd_disks[NR_HD*5];
+static ata_device_t devices[NR_HD];
 
 static void ata_device_init(ata_device_t *dev, u32 primary);
 
@@ -235,16 +240,24 @@ static void ata_handler(registers_state *regs) {
 }
 
 void rw_ata(u32 rw, u16 dev, u32 block, i8 **buf) {
-	ata_device_t *ata_dev;
-	u16 minor;
+	ata_device_t *devp;
+	u32 sector;
 
-	if ((minor=MINOR(dev)) >= NRATADEV || !(ata_dev=&devices[minor])) {
+	sector = block * 2;
+	if ((dev=MINOR(dev)) >= 5*NR_HD || sector+1 > hd_disks[dev].nr_sects) {
+		i8 *s = (rw == READ) ? "read" : "write";
+		DEBUG("Cannot %s to block %d, sector %d nr_sects: %d\r\n", s,
+				block, sector, hd_disks[dev].nr_sects);
+		*buf = NULL;
 		return;
 	}
+	sector += hd_disks[dev].start_sect;
+	dev /= 5;
+	devp = &devices[dev];
 	if (rw == READ) {
-		*buf = ata_read(ata_dev, block * 2, 2);
+		*buf = ata_read(devp, sector, 2);
 	} else if (rw == WRITE) {
-		ata_write(ata_dev, block * 2, 2, *buf);
+		ata_write(devp, sector, 2, *buf);
 	}
 }
 
@@ -262,10 +275,23 @@ void ata_init() {
 
 	devices[0].slave = 0;
 	devices[1].slave = 1;
-	devices[2].slave = 0;
-	devices[3].slave = 1;
 	ata_device_detect(&devices[0], 1);
 	ata_device_detect(&devices[1], 1);
-	ata_device_detect(&devices[2], 0);
-	ata_device_detect(&devices[3], 0);
+
+	i8 *boot_sect;
+	struct partition *p;
+	for (u32 drive = 0; drive < NR_HD; ++drive) {
+		boot_sect = ata_read(&devices[drive], 0, 1);
+		if (boot_sect[510] != 0x55 && (u8)boot_sect[511] != 0xAA) {
+			kernel_panic("Bad partition table on drive %d\n", drive);
+		}
+		p = (struct partition *)(boot_sect + 0x1BE);
+		for (u32 i = 1; i < 5; ++i, ++p) {
+			hd_disks[i + 5 * drive].start_sect = p->start_sect;
+			hd_disks[i + 5 * drive].nr_sects = p->nr_sects;
+			DEBUG("Drive #%d, partition #%d: start_sect - %d, nr_sects - %d\r\n", 
+					drive, i, p->start_sect, p->nr_sects);
+		}
+		free(boot_sect);
+	}
 }

@@ -8,7 +8,7 @@ extern u32 *memory_map;
 extern u32 total_blocks;
 extern u32 used_blocks;
 
-#define BLOCK_SIZE		4096
+#define PMM_BLOCK_SIZE		4096
 #define BLOCKS_PER_BYTE 8
 
 #define INDEX_FROM_BIT(b) (b / 32)

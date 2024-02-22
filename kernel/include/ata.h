@@ -49,10 +49,24 @@ typedef struct ata_device {
 	u8 *mem_buffer;
 } ata_device_t;
 
+struct partition {
+	u8 boot_ind;
+	u8 head;
+	u8 sector;
+	u8 cyl;
+	u8 sys_id;
+	u8 end_head;
+	u8 end_sector;
+	u8 end_cyl;
+	u32 start_sect;
+	u32 nr_sects;
+};
+
 #define ATA_PCI_VENDOR_ID 0x8086
 #define ATA_PCI_DEVICE_ID 0x7010
 
-#define NRATADEV 4
+// For now supporting only 2 drives
+#define NR_HD 2
 #define IDENTIFY_COMMAND 0xEC
 
 #define SECTOR_SIZE 512

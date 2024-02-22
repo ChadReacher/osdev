@@ -26,7 +26,7 @@ void heap_init() {
 	DEBUG("Virtual heap max address - %p\r\n", heap_max);
 
 
-	heap_blocks = HEAP_INITIAL_SIZE / BLOCK_SIZE;
+	heap_blocks = HEAP_INITIAL_SIZE / PMM_BLOCK_SIZE;
 	DEBUG("Heap consists of 0x%x heap blocks(4KB)\r\n", heap_blocks);
 	void *heap_ptr = allocate_blocks(heap_blocks);
 	DEBUG("Allocated %d heap blocks at physical address %p\r\n", heap_blocks, heap_ptr);
@@ -41,7 +41,7 @@ void heap_init() {
 	for (u32 i = 0; i < heap_blocks; ++i) {
 		map_page((void *)heap_phys_addr, (void *)heap_virt_addr, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 		heap_virt_addr += PAGE_SIZE;
-		heap_phys_addr += BLOCK_SIZE;
+		heap_phys_addr += PMM_BLOCK_SIZE;
 	}
 	DEBUG("heap virt addr - 0x%x\r\n", heap_virt_addr - PAGE_SIZE);
 	DEBUG("%s", "Finished heap\r\n");
