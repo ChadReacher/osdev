@@ -145,6 +145,7 @@ u8 keyboard_get_scancode() {
 }
 
 static void keyboard_handler() {
+	DEBUG("INSIDE KEYBOARD HANDLER -- BEGIN\r\n");
 	u8 status;
 
 	status = port_inb(KEYBOARD_STATUS_PORT);
@@ -153,6 +154,7 @@ static void keyboard_handler() {
 
 		if (buffer_len == RING_BUFFER_SIZE) {
 			DEBUG("%s", "Ring buffer is full.\r\n");
+			DEBUG("INSIDE KEYBOARD HANDLER -- END\r\n");
 			return;
 		}
 
@@ -163,6 +165,7 @@ static void keyboard_handler() {
 			write_idx = 0;
 		}
 	}
+	DEBUG("INSIDE KEYBOARD HANDLER -- END\r\n");
 }
 
 void keyboard_init() {

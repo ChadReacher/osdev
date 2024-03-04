@@ -413,7 +413,17 @@ i32 syscall_fork() {
 		return EAGAIN;
 	}
 	child_process->parent = current_process;
-	child_process->cwd = strdup(current_process->cwd);
+
+	child_process->root = current_process->root;
+	if (current_process->root) {
+		++current_process->root->i_count;
+	}
+	child_process->pwd = current_process->pwd;
+	if (current_process->pwd) {
+		++current_process->pwd->i_count;
+	}
+	//child_process->cwd = strdup(current_process->cwd);
+
 	child_process->brk = current_process->brk;
 	child_process->timeslice = current_process->timeslice;
 	memcpy(child_process->fds, current_process->fds, FDS_NUM * sizeof(file));	
@@ -504,7 +514,12 @@ i32 syscall_exit(i32 exit_code) {
 		}
 	}
 	free(current_process->fds);
-	free(current_process->cwd);
+	
+	iput(current_process->root);
+	current_process->root = NULL;
+	iput(current_process->pwd);
+	current_process->pwd = NULL;
+	//free(current_process->cwd);
 
 	current_process->exit_code = exit_code;
 
@@ -645,6 +660,7 @@ i32 syscall_nanosleep(struct timespec *req, struct timespec *rem) {
 	return 0;
 }
 
+/*
 i32 syscall_getcwd(i8 *buf, u32 size) {
 	if (!size) {
 		return -1;
@@ -658,6 +674,7 @@ i32 syscall_getcwd(i8 *buf, u32 size) {
 	memcpy(buf, current_process->cwd, len + 1);
 	return 0;
 }
+*/
 
 i32 syscall_fstat(i32 fd, struct stat *statbuf) {
 	if (current_process->fds[fd].vfs_node == (void *)-1) {
@@ -699,6 +716,7 @@ i32 syscall_fstat(i32 fd, struct stat *statbuf) {
 	return 0;
 }
 
+/*
 // Caller should free the memory
 static i8 *make_absolute_path(i8 *rel_path) {
        i8 *cwd = current_process->cwd;
@@ -738,6 +756,7 @@ i32 syscall_chdir(i8 *path) {
 	current_process->cwd = abs_path;
 	return 0;
 }
+*/
 
 
 i32 syscall_sigaction(i32 sig, sigaction_t *act, sigaction_t *oact, u32 *sigreturn) {
@@ -971,7 +990,7 @@ syscall_fn syscall_handlers[] = {
 	syscall_waitpid,
 	syscall_unlink,
 	syscall_exec,
-	syscall_chdir,
+	NULL, //syscall_chdir,
 	syscall_time,
 	syscall_lseek,
 	syscall_getpid,
@@ -1000,7 +1019,7 @@ syscall_fn syscall_handlers[] = {
 	syscall_sigreturn,
 	syscall_nanosleep,
 	syscall_yield,
-	syscall_getcwd,
+	NULL,//syscall_getcwd,
 	syscall_sleep,
 };
 

@@ -11,10 +11,12 @@ u32 startup_time;
 u32 ticks = 0;
 
 static void timer_handler(registers_state *regs) {
+	DEBUG("INSIDE TIMER HANDLER -- BEGIN\r\n");
 	(void)regs;
 	++ticks;
 
 	if (current_process == NULL) {
+		DEBUG("INSIDE TIMER HANDLER -- END\r\n");
 		return;
 	}
 	// TODO: Think about it...
@@ -27,7 +29,12 @@ static void timer_handler(registers_state *regs) {
 		return;
 	}
 	current_process->timeslice = 20;
+	DEBUG("INSIDE TIMER HANDLER -- END\r\n");
 	schedule();
+}
+
+u32 get_current_time() {
+	return startup_time + ticks / TIMER_FREQ;
 }
 
 void timer_init(u32 freq) {

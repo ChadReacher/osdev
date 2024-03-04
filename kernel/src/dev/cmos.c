@@ -139,8 +139,8 @@ void cmos_rtc_init() {
 										   // any pending IRQ8 interrupts
 
 	// Register a handler for CMOS RTC
-	register_interrupt_handler(IRQ8, cmos_rtc_handler);
-	DEBUG("%s", "CMOS RTC has been initialized\r\n");
+	//register_interrupt_handler(IRQ8, cmos_rtc_handler);
+	//DEBUG("%s", "CMOS RTC has been initialized\r\n");
 	cmos_rtc_t time = cmos_read_rtc();
 	u16 year = time.year - 70;
 	startup_time = ((year+1)/4)*DAY + year*YEAR;

@@ -1,5 +1,5 @@
-global enter_usermode
-enter_usermode:
+global enter_usermode_asm
+enter_usermode_asm:
 	mov ebx, [esp + 4] ; user stack
 	mov eax, 0x23
 	mov ds, ax

@@ -727,7 +727,7 @@ void inode_free(u32 inode) {
 	// Which group it belongs to
 	u32 group_idx = inode / ext2fs->inodes_per_group;
 	u32 inode_block = ext2fs->bgd_table[group_idx].inode_bitmap; 
-	read_disk_block(inode_block, (i8 *)buf); 
+	read_disk_block(inode_block, (i8 *)buf);
 	// Which sub_bitmap it belongs to 
 	u32 sub_bitmap_idx = (inode - ext2fs->inodes_per_group * group_idx) / 32; 
 	// Index in sub_bitmap

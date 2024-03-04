@@ -6,6 +6,7 @@
 #include <isr.h>
 #include <vfs.h>
 #include <signal.h>
+#include "ext2.h" 
 
 #define ALIGN_UP(val, a) (((val) + ((a) - 1)) & ~((a) - 1))
 #define ALIGN_DOWN(val, a) ((val) & ~((a) - 1))
@@ -37,7 +38,8 @@ typedef struct _process {
 	void *kernel_stack_bottom;
 	void *kernel_stack_top;
 	file *fds;
-	i8 *cwd;
+	struct ext2_inode *root;
+	struct ext2_inode *pwd;
 	u32 brk;
 	sigset_t sigpending;
 	sigset_t sigmask;

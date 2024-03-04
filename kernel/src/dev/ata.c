@@ -289,8 +289,9 @@ void ata_init() {
 		for (u32 i = 1; i < 5; ++i, ++p) {
 			hd_disks[i + 5 * drive].start_sect = p->start_sect;
 			hd_disks[i + 5 * drive].nr_sects = p->nr_sects;
-			DEBUG("Drive #%d, partition #%d: start_sect - %d, nr_sects - %d\r\n", 
-					drive, i, p->start_sect, p->nr_sects);
+			DEBUG("DRIVE #%d partition #%d: "
+				  "start_sect - %d, nr_sects - %d\r\n",
+				  drive, i, p->start_sect, p->nr_sects);
 		}
 		free(boot_sect);
 	}

@@ -19,7 +19,7 @@ extern queue_t *procs;
 extern process_t *current_process;
 extern process_t *init_process;
 extern process_t *idle_process;
-extern void enter_usermode(u32 useresp);
+extern void enter_usermode_asm(u32 useresp);
 
 u32 next_pid = 0;
 
@@ -30,6 +30,18 @@ void cpu_idle() {
 		__asm__ __volatile__ ("sti");
 		__asm__ __volatile__ ("hlt");
 	}
+}
+
+void enter_usermode() {
+	current_process = queue_dequeue(ready_queue);
+	// Enter usermode
+	tss_set_stack((u32)current_process->kernel_stack_top);
+	__asm__ __volatile__ ("movl %%eax, %%cr3" 
+            : 
+            : "a"((u32)current_process->directory));
+
+	__asm__ __volatile__ ("sti");
+	enter_usermode_asm(current_process->regs->useresp);
 }
 
 void userinit() {
@@ -67,13 +79,12 @@ void userinit() {
 	}
 	init_process->parent = NULL;
 	init_process->directory = paging_copy_page_dir(false);
-	init_process->cwd = strdup("/");
+	//init_process->cwd = strdup("/"); FIX: TODO:
 	for (i32 i = 0; i < NSIG; ++i) {
 		memset(init_process->signals, 0, sizeof(sigaction_t));
 		init_process->signals[i].sa_handler = SIG_DFL;
 	}
 
-	current_process = queue_dequeue(ready_queue);
 	void *kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(init_process->directory));
 	elf_load(data);
@@ -134,15 +145,6 @@ void userinit() {
 
 	// Get back to the kernel page directory
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
-
-	// Enter usermode
-	tss_set_stack((u32)current_process->kernel_stack_top);
-	__asm__ __volatile__ ("movl %%eax, %%cr3" 
-            : 
-            : "a"((u32)current_process->directory));
-
-	__asm__ __volatile__ ("sti");
-	enter_usermode(current_process->regs->useresp);
 }
 
 process_t *proc_alloc() {

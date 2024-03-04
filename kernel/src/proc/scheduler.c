@@ -242,3 +242,4 @@ u32 send_signal(process_t *proc, i32 sig) {
 	sigaddset(&proc->sigpending, sig);
 	return 0;
 }
+

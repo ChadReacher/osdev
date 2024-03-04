@@ -2,114 +2,28 @@
 #define EXT2_H
 
 #include "types.h"
-#include "vfs.h"
 
-#define EXT2_SUPERMAGIC 0xEF53
+#define ROOT_DEV 0x306
 
-typedef struct {
-	u32 total_inodes;
-	u32 total_blocks;
-	u32 reserved_blocks_number;
-	u32 total_free_blocks;
-	u32 total_free_inodes;
-	u32 first_data_block;
-	u32 log_block_size;
-	u32 log_fragment_size;
-	u32 blocks_per_group;
-	u32 fragments_per_group;
-	u32 inodes_in_block_group;
-	u32 last_mount_time;
-	u32 last_written_time;
-	u16 mount_times;
-	u16 max_mount_times;
-	u16 ext2_super_magic;
-	u16 file_system_state;
-	u16 errors;
-	u16 minor_version;
-	u32 last_check;
-	u32 check_interval;
-	u32 creator_os;
-	u32 major_version;
-	u16 default_uid_reserved_blocks;
-	u16 default_gid_reserved_blocks;
 
-	// Extended Superblock Fields(if major version >= 1)
-	u32 first_inode;
-	u16 inode_size;
-	u16 block_group_part_of;
-	u32 feature_compatible;
-	u32 feature_incompatible;
-	u32 feature_ro_compatible;
-	u8 uuid[16];
-	i8 volume_name[16];
-	i8 last_mounted_path_volume[64];
-	u32 compression_algorithm_bitmap;
-	u8 blocks_to_preallocate_for_files;
-	u8 blocks_to_preallocate_for_dirs;
-	u16 _padding;
-
-	// Journaling Support
-	u8 journal_id[16];
-	u32 journal_inode;
-	u32 journal_device;
-	u32 last_orphan;
-
-	// Directory Indexing Support
-	u32 hash_seed[4];
-	u8 def_hash_version;
-	u16 _padding_a;
-	u8 _padding_b;
-
-	// Other options
-	u32 defaul_mount_options;
-	u32 first_meta_bg;
-	u8 _unused[760];
-
-} __attribute__((packed)) ext2_super_block;
-
-typedef struct {
-	u32 block_bitmap;
-	u32 inode_bitmap;
-	u32 inode_table;
-	u16 free_blocks_count;
-	u16 free_inodes_count;
-	u16 used_dirs_count;
-	u16 _padding;
-	u8 reserved[12];
-} __attribute__((packed)) ext2_block_group_descriptor;
-
-typedef struct {
-	u16 mode;
-	u16 uid;
-	u32 size;			// size of file in bytes
-	u32 atime;
-	u32 ctime;
-	u32 mtime;
-	u32 dtime;
-	u16 gid;
-	u16 links_count;
-	u32 blocks;
-	u32 flags;
-	u32 osd1;
-	u32 block[15];
-	u32 generation;
-	u32 file_acl;
-	u32 dir_acl;
-	u32 faddr;
-	u8 osd2[12];
-} __attribute__((packed)) ext2_inode_table;
+#define EXT2_SUPER_MAGIC 0xEF53
+#define NR_INODE 32
 
 // File Format
 #define EXT2_S_IFSOCK 0xC000
-#define EXT2_S_IFLNK 0xA000
-#define EXT2_S_IFREG 0x8000
-#define EXT2_S_IFBLK 0x6000
-#define EXT2_S_IFDIR 0x4000
-#define EXT2_S_IFCHR 0x2000
-#define EXT2_S_IFIFO 0x1000
+#define EXT2_S_IFLNK  0xA000
+#define EXT2_S_IFREG  0x8000
+#define EXT2_S_IFBLK  0x6000
+#define EXT2_S_IFDIR  0x4000
+#define EXT2_S_IFCHR  0x2000
+#define EXT2_S_IFIFO  0x1000
+
+#define EXT2_S_ISREG(m) (((m) & EXT2_S_IFREG) == EXT2_S_IFREG)
+#define EXT2_S_ISDIR(m) (((m) & EXT2_S_IFDIR) == EXT2_S_IFDIR)
+#define EXT2_S_ISCHR(m) (((m) & EXT2_S_IFREG) == EXT2_S_IFREG)
+#define EXT2_S_ISBLK(m) (((m) & EXT2_S_IFBLK) == EXT2_S_IFBLK)
 
 // Process execution user/group override
-
 #define EXT2_S_ISUID 0x0800
 #define EXT2_S_ISGID 0x0400
 #define EXT2_S_ISVTX 0x0200
@@ -126,57 +40,135 @@ typedef struct {
 #define EXT2_S_IXOTH 0x0001
 
 
-#define POINTERS_PER_BLOCK 256
+#define EXT2_POINTERS_PER_BLOCK 256
 
-typedef struct {
+struct ext2_super_block {
+	u32 s_inodes_count;
+	u32 s_blocks_count;
+	u32 s_r_blocks_count;
+	u32 s_free_blocks_count;
+	u32 s_free_inodes_count;
+	u32 s_first_data_block;
+	u32 s_log_block_size;
+	u32 s_log_frag_size;
+	u32 s_blocks_per_group;
+	u32 s_frags_per_group;
+	u32 s_inodes_per_group;
+	u32 s_mtime;
+	u32 s_wtime;
+	u16 s_mnt_count;
+	u16 s_max_mnt_count;
+	u16 s_magic;
+	u16 s_state;
+	u16 s_errors;
+	u16 s_minor_rev_level;
+	u32 s_lastcheck;
+	u32 s_checkinterval;
+	u32 s_creator_os;
+	u32 s_rev_level;
+	u16 s_def_resuid;
+	u16 s_def_resgid;
+
+	// Extended Superblock Fields(if major version >= 1)
+	u32 s_first_ino;
+	u16 s_inode_size;
+	u16 s_block_group_nr;
+	u32 s_feature_compat;
+	u32 s_feature_incompat;
+	u32 s_feature_ro_compat;
+	u8  s_uuid[16];
+	i8  s_volume_name[16];
+	i8  s_last_mounted[64];
+	u32 s_algo_bitmap;
+	u8  s_prealloc_blocks;
+	u8  s_prealloc_dir_blocks;
+	u16 s_padding1;
+
+	// Journaling Support
+	u8  s_journal_uuid[16];
+	u32 s_journal_inum;
+	u32 s_journal_dev;
+	u32 s_last_orphan;
+
+	// Directory Indexing Support
+	u32 s_hash_seed[4];
+	u8  s_def_hash_version;
+	u16 s_padding_a;
+	u8  s_padding_b;
+
+	// Other options
+	u32 s_defaul_mount_options;
+	u32 s_first_meta_bg;
+	u8  s_unused[760];
+
+	// In-memory fields
+	u16 s_dev;
+	u32 s_block_size;
+	u32 s_total_groups;
+} __attribute__((packed));
+
+struct ext2_blk_grp_desc {
+	u32 bg_block_bitmap;
+	u32 bg_inode_bitmap;
+	u32 bg_inode_table;
+	u16 bg_free_blocks_count;
+	u16 bg_free_inodes_count;
+	u16 bg_used_dirs_count;
+	u16 bg_padding;
+	u8  bg_reserved[12];
+} __attribute__((packed));
+
+struct ext2_inode {
+	u16 i_mode;
+	u16 i_uid;
+	u32 i_size;
+	u32 i_atime;
+	u32 i_ctime;
+	u32 i_mtime;
+	u32 i_dtime;
+	u16 i_gid;
+	u16 i_links_count;
+	u32 i_blocks;
+	u32 i_flags;
+	u32 i_osd1;
+	u32 i_block[15];
+	u32 i_generation;
+	u32 i_file_acl;
+	u32 i_dir_acl;
+	u32 i_faddr;
+	u8  osd2[12];
+
+	// In-memory fields
+	u16 i_dev;
+	u32 i_num;
+	u32 i_count;
+	i8  i_dirt;
+} __attribute__((packed));
+
+#define EXT2_MAX_NAME_LEN 255
+struct ext2_dir {
 	u32 inode;
 	u16 rec_len;
-	u8 name_len;
-	u8 file_type;
-	u8 name[];
-} __attribute__((packed)) ext2_dir;
+	u16 name_len;
+	u8  name[EXT2_MAX_NAME_LEN];
+} __attribute__((packed));
 
-typedef struct {
-	vfs_node_t *disk_device;
-	ext2_super_block *superblock;
-	ext2_block_group_descriptor *bgd_table;
-	u32 block_size;
-	u32 blocks_per_group;
-	u32 inodes_per_group;
-	u32 total_groups;
-	u32 block_group_descs;
-} ext2_fs;
+extern struct ext2_super_block super_block;
 
-void ext2_init(i8 *device_path, i8 *mountpoint);
-u32 ext2_read(vfs_node_t *node, u32 offset, u32 size, i8 *buffer);
-u32 ext2_write(vfs_node_t *node, u32 offset, u32 size, i8 *buffer);
-u32 ext2_open(vfs_node_t *node, u32 flags);
-u32 ext2_close(vfs_node_t *node);
-void ext2_create(vfs_node_t *node, i8 *name, u16 permission);
-i32 ext2_unlink(vfs_node_t *node, i8 *name);
-dirent *ext2_readdir(vfs_node_t *node, u32 index);
-vfs_node_t *ext2_finddir(vfs_node_t *node, i8 *name);
+void mount_root(void);
+struct ext2_inode *iget(u16 dev, u32 nr);
+void iput(struct ext2_inode *inode);
+struct ext2_inode *namei(const i8 *pathname);
 
-ext2_inode_table *ext2_get_inode_table(u32 inode_num);
-void ext2_set_inode_table(ext2_inode_table *inode, u32 inode_num);
+void free_block(u16 dev, u32 block);
+u32 alloc_block(u16 dev);
+void free_inode(struct ext2_inode *inode);
+struct ext2_inode *alloc_inode(u16 dev);
 
-vfs_node_t *ext2_make_vfs_node(ext2_inode_table *root_inode);
-u32 get_real_block(ext2_inode_table *inode, u32 block_num);
+void truncate(struct ext2_inode *inode);
 
-u32 ext2_read_inode_filedata(ext2_inode_table *inode, u32 offset, u32 size, i8 *buffer);
-void ext2_write_inode_filedata(ext2_inode_table *inode, u32 inode_idx, u32 offset, u32 size, i8 *buffer);
-
-void ext2_create_vfs_node_from_file(ext2_inode_table *inode, ext2_dir *found_dirent, vfs_node_t *vfs_node);
-
-void read_inode_disk_block(ext2_inode_table *inode, u32 block, i8 *buf);
-void write_inode_disk_block(ext2_inode_table *inode, u32 block, i8 *buf);
-
-u32 inode_alloc();
-u32 block_alloc();
-void inode_free(u32 inode);
-void block_free(u32 block);
-
-bool ext2_create_dir_entry(vfs_node_t *parent, i8 *name, u32 inode_idx);
-void set_real_block(ext2_inode_table *inode, u32 inode_idx, u32 inode_block, u32 disk_block);
+void read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group);
+void write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group);
+struct ext2_inode *get_empty_inode();
 
 #endif

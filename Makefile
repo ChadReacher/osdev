@@ -29,13 +29,19 @@ build/kernel.bin: libk
 
 user: libc
 	$(MAKE) -C userland
-	mkdir -p userland/hdd/bin
-	mv -f userland/bin/* userland/hdd/bin
-	echo "hi" > userland/hdd/file
-	echo "del" > userland/hdd/del
+	#mkdir -p userland/hdd/bin
+	#mv -f userland/bin/* userland/hdd/bin
+	mkdir -p userland/hdd/usr
+	./generate.sh
+	echo "hi" > userland/hdd/usr/file
+	echo "del" > userland/hdd/usr/del
 	dd if=/dev/zero of=build/disk.img bs=1024 count=4096
-	mkfs.ext2 -b 1024 -g 8192 -i 1024 -r 0 -d userland/hdd/ build/disk.img
-	./disk_part.sh
+	sudo losetup -fP build/disk.img
+	losetup
+	sudo ./disk_part.sh
+	sudo mkfs.ext2 -b 1024 -g 1024 -r 0 -d userland/hdd/ /dev/loop0p1 
+	sudo dumpe2fs /dev/loop0p1
+	sudo losetup -d /dev/loop0
 
 libk:
 	mkdir -p build/libk
