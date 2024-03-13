@@ -4,33 +4,34 @@
 #include <debug.h>
 #include <panic.h>
 #include <process.h>
+#include <string.h>
 
 extern process_t *current_process;
-
 struct ext2_super_block super_block;
-
-static void dump_super_block();
+static void dump_super_block_info();
 
 static struct ext2_super_block *do_mount(u16 dev) {
-	i8 *buf;
+	struct buffer *buf;
 	struct ext2_super_block *p;
 	p = &super_block;
 	
-	rw_block(READ, dev, 1, &buf);
+	buf = read_blk(dev, 1);
 	if (!buf) {
-		DEBUG("Failed to read 1 block on device %d\r\n");
+		DEBUG("Failed to read block #1 on device %d\r\n");
 		return NULL;
 	}
-	*p = *((struct ext2_super_block *) buf);
+	*p = *((struct ext2_super_block *) buf->b_data);
 	if (p->s_magic != EXT2_SUPER_MAGIC) {
-		DEBUG("It is not an ext2 file system\r\n");
+		DEBUG("It is not an EXT2 file system\r\n");
+		free(buf->b_data);
 		free(buf);
 		return NULL;
 	}
 	p->s_dev = dev;
 	p->s_block_size = 1024 << p->s_log_block_size;
 	p->s_total_groups = p->s_blocks_count / p->s_blocks_per_group;
-	dump_super_block();
+	dump_super_block_info();
+	free(buf->b_data);
 	free(buf);
 	return p;
 }
@@ -45,16 +46,13 @@ void mount_root(void) {
 	if (!(inode = iget(p->s_dev, 2))) {
 		PANIC("Could not get the root inode");
 	}
-	/* TODO: Wait until process support is available
 	current_process->root = inode;
 	current_process->pwd = inode;
+	current_process->str_pwd = strdup("/");
 	inode->i_count = 2;
-	*/
-
-	struct ext2_inode *f = namei("/usr/file");
 }
 
-static void dump_super_block() {
+static void dump_super_block_info() {
 	DEBUG("s_blocks_count      = %d\r\n", super_block.s_blocks_count);
 	DEBUG("s_total_groups      = %d\r\n", super_block.s_total_groups);
 	DEBUG("s_inodes_count      = %d\r\n", super_block.s_inodes_count);

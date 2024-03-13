@@ -64,6 +64,16 @@
 #define __NR_yield			38
 #define __NR_getcwd			39
 #define __NR_sleep			40
+#define __NR_umask          41
+#define __NR_link           42
+#define __NR_rename         43
+#define __NR_readdir        44
+#define __NR_stat			45
+#define __NR_access			46
+#define __NR_dup2			47
+#define __NR_fcntl			48
+#define __NR_rmdir			49
+#define __NR_mkdir          50
 
 #define syscall0(type, name) \
 type name(void) { \
@@ -143,7 +153,7 @@ i32 execl(const i8 *path, const i8 *arg, ...);
 i32 execlp(const i8 *file, const i8 *arg, ...);
 i32 execle(const i8 *path, const i8 *arg, ...);
 
-void test(const i8 *);
+void test(i32);
 u32 read(i32, const void *, u32);
 u32 write(i32, const void *, u32);
 i32 close(i32);
@@ -162,7 +172,6 @@ i32 chdir(const i8 *);
 #define SEEK_SET   0
 #define SEEK_CUR   1
 #define SEEK_END   2
-i32 access(const i8 *pathname, i32 mode);
 
 i8 *getenv(const i8 *);
 u32 alarm(u32 secs);
@@ -174,5 +183,11 @@ u8 getegid();
 i32 getpgrp();
 i32 setsid();
 i32 setpgid(i32 pid, i32 pgid);
+i32 link(i8 *path1, i8 *path2);
+i32 rename(i8 *old, i8 *new);
+i32 access(i8 *path, i32 amode);
+i32 dup2(u32 oldfd, u32 newfd);
+i32 fcntl(i32 fd, i32 cmd, i32 arg);
+i32 mkdir(i8 *path, i32 mode);
 
 #endif

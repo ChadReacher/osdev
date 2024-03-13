@@ -5,6 +5,7 @@
 #include "unistd.h"
 #include "stdio.h"
 #include "string.h"
+#include "errno.h"
 
 DIR *opendir(const i8 *name) {
 	i32 fd;
@@ -13,6 +14,7 @@ DIR *opendir(const i8 *name) {
 
 	fd = open(name, O_RDONLY, 0);
 	if (fd < 0) {
+		printf("opendir: bad open fd: %d\n", fd);
 		return NULL;
 	}
 
@@ -30,6 +32,7 @@ DIR *opendir(const i8 *name) {
 
 	dirp = malloc(sizeof(DIR));
 	if (dirp == NULL) {
+		printf("dirp = NULL\n");
 		close(fd);
 		return NULL;
 	}
@@ -37,6 +40,17 @@ DIR *opendir(const i8 *name) {
 	dirp->fd = fd;
 	memset(&dirp->dent, 0, sizeof(dirp->dent));
 	return dirp;
+}
+
+
+struct dirent *readdir(DIR *dirp) {
+	struct dirent *ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(__NR_readdir), "b"(dirp));
+
+	return ret;
 }
 
 i32 closedir(DIR *dirp) {
@@ -49,10 +63,3 @@ i32 closedir(DIR *dirp) {
 	return ret;
 }
 
-struct dirent *readdir(DIR *dirp) {
-	i32 ret = read(dirp->fd, &dirp->dent, sizeof(struct dirent));
-	if (!ret) {
-		return NULL;
-	}
-	return &dirp->dent;
-}

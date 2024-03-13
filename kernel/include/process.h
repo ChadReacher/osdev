@@ -4,7 +4,6 @@
 #include <types.h>
 #include <paging.h>
 #include <isr.h>
-#include <vfs.h>
 #include <signal.h>
 #include "ext2.h" 
 
@@ -26,6 +25,8 @@ typedef struct {
 	u32 eip;
 } context_t;
 
+#define NR_OPEN 20
+#define NR_FILE 32
 typedef struct _process {
 	u32 pid;
 	i32 timeslice;
@@ -37,10 +38,13 @@ typedef struct _process {
 	context_t *context;
 	void *kernel_stack_bottom;
 	void *kernel_stack_top;
-	file *fds;
+	u32 close_on_exec;
+	struct file *fds[NR_OPEN];
 	struct ext2_inode *root;
 	struct ext2_inode *pwd;
+	char *str_pwd;
 	u32 brk;
+	u32 umask;
 	sigset_t sigpending;
 	sigset_t sigmask;
 	sigaction_t signals[NSIG];
@@ -55,7 +59,9 @@ typedef struct _process {
 } process_t;
 
 void userinit();
+void enter_usermode();
 process_t *proc_alloc();
-i32 proc_get_fd(process_t *proc);
+i32 get_new_fd();
+struct file *get_empty_file();
 
 #endif

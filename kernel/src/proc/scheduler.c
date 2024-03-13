@@ -7,7 +7,9 @@
 #include <string.h>
 #include <heap.h>
 #include <syscall.h>
-
+#include <process.h>
+#include <panic.h>
+#include <debug.h> 
 
 extern u32 ticks;
 extern void switch_to(context_t **old_context, context_t *new_context);
@@ -21,10 +23,45 @@ process_t *idle_process = NULL;
 
 void task_switch(process_t *next_proc);
 
+static void cpu_idle() {
+    while (1) {
+		__asm__ __volatile__ ("cli");
+		DEBUG("kernel idle - %d\n", idle_process->pid);
+		__asm__ __volatile__ ("sti");
+		__asm__ __volatile__ ("hlt");
+	}
+}
+
+static void create_idle_process() {
+	idle_process = proc_alloc();
+	if (!idle_process) {
+		PANIC("Failed to create 'idle' process\n");
+	}
+	queue_dequeue(ready_queue);
+	idle_process->regs->eflags = 0x202;
+	idle_process->state = RUNNING;
+	idle_process->parent = NULL;
+	idle_process->directory = virtual_to_physical((void *)0xFFFFF000);
+	idle_process->regs->cs = 0x8;
+	idle_process->regs->ds = 0x8;
+	idle_process->regs->es = 0x8;
+	idle_process->regs->fs = 0x8;
+	idle_process->regs->gs = 0x8;
+	idle_process->regs->useresp = 0x0;
+	idle_process->regs->ss = 0x0;
+	idle_process->regs->eip = (u32)cpu_idle;
+}
+
 void scheduler_init() {
 	ready_queue = queue_new();
 	stopped_queue = queue_new();
 	procs = queue_new();
+
+	create_idle_process();
+	current_process = init_process = proc_alloc();
+	if (!init_process) {
+		PANIC("Failed to create 'init' process\n");
+	}
 }
 
 process_t *get_proc_by_id(u32 pid) {
@@ -42,7 +79,7 @@ process_t *get_proc_by_id(u32 pid) {
 void schedule() {
 	process_t *next_proc;
 
-	DEBUG("%s", "Queue of ready processes:\r\n");
+	DEBUG("Queue of ready processes:\r\n");
 	queue_node_t *node = ready_queue->head;
 	for (u32 i = 0; i < ready_queue->len; ++i) {
 		process_t *p = (process_t *)node->value;

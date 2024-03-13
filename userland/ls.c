@@ -21,7 +21,8 @@ i32 main(i32 argc, i8 *argv[]) {
 		return -1;
 	}
 
-	while ((entry = readdir(dirp)) != NULL) {
+	printf("start reading\n");
+	while ((entry = readdir(dirp)) != 0) {
 		printf("%s\n", entry->name);
 	}
 

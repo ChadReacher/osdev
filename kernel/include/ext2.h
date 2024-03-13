@@ -5,7 +5,16 @@
 
 #define ROOT_DEV 0x306
 
+#define EXT2_DIR_PAD					4
+#define EXT2_DIR_ROUND					(EXT2_DIR_PAD - 1)
+#define EXT2_DIR_REC_LEN(namelen)		(((namelen) + 8 + EXT2_DIR_ROUND) & \
+										~EXT2_DIR_ROUND)
 
+#define MAY_EXEC  1
+#define MAY_WRITE 2
+#define MAY_READ  4
+
+#define EXT2_NAME_LEN 255
 #define EXT2_SUPER_MAGIC 0xEF53
 #define NR_INODE 32
 
@@ -145,13 +154,20 @@ struct ext2_inode {
 	i8  i_dirt;
 } __attribute__((packed));
 
-#define EXT2_MAX_NAME_LEN 255
 struct ext2_dir {
 	u32 inode;
 	u16 rec_len;
 	u16 name_len;
-	u8  name[EXT2_MAX_NAME_LEN];
+	i8  name[EXT2_NAME_LEN];
 } __attribute__((packed));
+
+struct file {
+	u16 f_mode;
+	u16 f_flags;
+	u16 f_count;
+	struct ext2_inode *f_inode;
+	i32 f_pos;
+};
 
 extern struct ext2_super_block super_block;
 
@@ -159,13 +175,23 @@ void mount_root(void);
 struct ext2_inode *iget(u16 dev, u32 nr);
 void iput(struct ext2_inode *inode);
 struct ext2_inode *namei(const i8 *pathname);
+i32 open_namei(i8 *pathname, i32 oflags, i32 mode,
+		struct ext2_inode **res_inode);
+i32 ext2_create(struct ext2_inode *dir, const i8 *name, i32 mode,
+		struct ext2_inode **result);
+i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_base,
+		struct ext2_inode *new_dir, const i8 *new_base);
+i32 ext2_bmap(struct ext2_inode *inode, u32 offset);
+i32 ext2_create_block(struct ext2_inode *inode, u32 offset);
+i32 ext2_file_read(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
+i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
 
 void free_block(u16 dev, u32 block);
 u32 alloc_block(u16 dev);
 void free_inode(struct ext2_inode *inode);
 struct ext2_inode *alloc_inode(u16 dev);
 
-void truncate(struct ext2_inode *inode);
+void ext2_truncate(struct ext2_inode *inode);
 
 void read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group);
 void write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group);

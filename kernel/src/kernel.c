@@ -23,12 +23,13 @@
 #include <elf.h>
 
 void _start() {
+	__asm__ __volatile__ ("cli");
 	serial_init();
 
 	gdt_init();
 	isr_init();
 	tss_init(5, 0x10, 0);
-	irq_init();
+	//irq_init(); FOR NOW, when testing filesystem
 	syscall_init();
 	timer_init(TIMER_FREQ);
 	keyboard_init();
@@ -39,16 +40,11 @@ void _start() {
 	heap_init();
 	pci_init();
 	ata_init();
-	kprintf("================================================\n");
-	kprintf("                Welcome to the OS.\n");
-	kprintf("================================================\n");
-	//scheduler_init();
-	//userinit();
+	scheduler_init();
 	mount_root();
-	//enter_usermode();
-
-	for (;;);
+	userinit();
+	enter_usermode();
 
 	PANIC("End of kernel\r\n");
+	for (;;);
 }
-

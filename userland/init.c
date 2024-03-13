@@ -166,6 +166,7 @@ int main() {
 
 	}
 	*/
+	
 	i32 pid = fork();
 	if (pid == 0) {
 		i8 *m[] = {"/bin/sh", 0};

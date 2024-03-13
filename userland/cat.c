@@ -31,7 +31,9 @@ i32 main(i32 argc, i8 *argv[]) {
 		}
 
 		if (read(fd, buf, BUF_SZ) > 0) {
-			printf("%s", buf);
+			for (int i = 0; i < 1024; ++i) {
+				printf("%c", buf[i]);
+			}
 		} else {
 			printf("could not read: %s\n", argv[i]);
 		}

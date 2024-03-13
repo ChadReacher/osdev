@@ -17,7 +17,9 @@
 #include <queue.h>
 #include <tss.h>
 #include <timer.h>
+#include <blk_dev.h>
 #include <errno.h>
+#include <ext2.h>
 
 
 extern u32 startup_time;
@@ -27,60 +29,59 @@ extern process_t *init_process;
 extern process_t *current_process;
 extern void irq_ret();
 
-i32 syscall_test(u8 *str) {
-	kprintf("Hello from syscall_test(), %s\n", str);
-	return 0;
-}
 
 i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
-	vfs_node_t *vfs_node;
+	i32 fd, res;
+	struct file *f;
+	struct ext2_inode *inode;
 
-	vfs_node = vfs_get_node(filename);
-	if (!vfs_node) {
-		if (oflags & O_CREAT) {
-			vfs_create(filename, mode);
-			vfs_node = vfs_get_node(filename);
-		} else {
-			return -1;
-		}
-	} else if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
-		//DEBUG("Cannot open a directory - %s\r\n", filename);
-		//return -1;
-	} else if((vfs_node->flags & O_TRUNC) == O_TRUNC) {
-		vfs_trunc(vfs_node);
+	mode &= 0777 & ~current_process->umask;
+	fd = get_new_fd();
+	if (fd > NR_OPEN) {
+		DEBUG("We have run out of file descriptors\r\n");
+		return -EMFILE;
 	}
-
-	i32 fd = proc_get_fd(current_process);
-	if (fd == -1) {
-		PANIC("%s", "We have run out of file descriptors\r\n");
+	current_process->close_on_exec &= ~(1 << fd);
+	f = get_empty_file();
+	if (!f) {
+		return -ENFILE;
 	}
-	current_process->fds[fd] = (file) {
-		.vfs_node = vfs_node,
-		.offset = 0,
-		.flags = oflags,
-		.used = true,
-	};
-	vfs_open(vfs_node, oflags);
+	current_process->fds[fd] = f;
+	++f->f_count;
+	if ((res = open_namei(filename, oflags, mode, &inode)) < 0) {
+		current_process->fds[fd] = NULL;
+		f->f_count = 0;
+		return res;
+	}
+	f->f_mode = mode;
+	f->f_flags = oflags;
+	f->f_count = 1;
+	f->f_inode = inode;
+	f->f_pos = 0;
 	return fd;
 }
 
 i32 syscall_close(i32 fd) {
-	if (fd < 3 || fd >= FDS_NUM) {
-		DEBUG("Invalid file descriptor - %d\r\n", fd);
-		return -1;
+	if (fd > NR_OPEN) {
+		return -EBADF;
 	}
-	file *f = &current_process->fds[fd];
-	if (!f->used || !f->vfs_node) {
-		DEBUG("Bad descriptor - %d\r\n", fd);
-		return -1;
+	current_process->close_on_exec &= ~(1 << fd);
+	struct file *f = current_process->fds[fd];
+	if (!f) {
+		return -EBADF;
 	}
-	vfs_close(f->vfs_node);
-	free(f->vfs_node);
-	memset(f, 0, sizeof(file));
+	current_process->fds[fd] = NULL;
+	if (f->f_count == 0) {
+		return 0;
+	}
+	if (--f->f_count) {
+		return 0;
+	}
+	iput(f->f_inode);
 	return 0;
 }
 
-i32 syscall_read(i32 fd, i8 *buf, u32 count) {
+i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 	if (fd == FD_STDIN) {
 		u8 c = keyboard_getchar();
 		if (c) {
@@ -90,37 +91,31 @@ i32 syscall_read(i32 fd, i8 *buf, u32 count) {
 		return 0;
 	}
 
-	if (fd < 3 || fd >= FDS_NUM) {
-		DEBUG("Invalid file descriptor - %d\r\n", fd);
+	struct file *f;
+	struct ext2_inode *inode;
+
+	if (count == 0) {
 		return 0;
+	}
+	if (fd > NR_OPEN || !(f = current_process->fds[fd])) {
+		return -EBADF;
 	}
 
-	file *f = &current_process->fds[fd];
-	if (!f->used || !f->vfs_node) {
-		DEBUG("Bad descriptor - %d\r\n", fd);
-		return 0;
+	inode = f->f_inode;
+	if (EXT2_S_ISCHR(inode->i_mode)) {
 	}
-	if (f->flags & O_WRONLY) {
-		DEBUG("%s", "Cannot read file with O_WRONLY flag\r\n");
-		return 0;
+	if (EXT2_S_ISBLK(inode->i_mode)) {
 	}
-	u32 have_read;
-	if ((f->vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
-		u32 idx = f->offset / sizeof(dirent);
-		dirent *dent = vfs_readdir(f->vfs_node, idx);
-		if (dent == NULL) {
+	if (EXT2_S_ISDIR(inode->i_mode) || EXT2_S_ISREG(inode->i_mode)) {
+		if (count + f->f_pos > inode->i_size) {
+			count = inode->i_size - f->f_pos;
+		}
+		if (count <= 0) {
 			return 0;
 		}
-		memcpy((void *)buf, (void *)dent, sizeof(dirent));
-		free(dent);
-		f->offset += sizeof(dirent);
-		have_read = sizeof(dirent);
-	} else {
-		have_read = vfs_read(f->vfs_node, f->offset, count, buf);
-		f->offset += have_read;
+		return ext2_file_read(inode, f, buf, count);
 	}
-
-	return have_read;
+	return -EINVAL;
 }
 
 i32 syscall_write(i32 fd, i8 *buf, u32 count) {
@@ -131,58 +126,114 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 		}
 		return i;
 	}
+	struct file *f;
+	struct ext2_inode *inode;
 
-	if (fd < 3 || fd >= FDS_NUM) {
-		DEBUG("Invalid file descriptor - %d\r\n", fd);
+	if (count == 0) {
 		return 0;
 	}
+	if (fd > NR_OPEN || !(f = current_process->fds[fd])) {
+		return -EBADF;
+	}
 
-	file *f = &current_process->fds[fd];
-
-	if (!f->used || !f->vfs_node) {
-		DEBUG("Bad descriptor - %d\r\n", fd);
-		return 0;
+	inode = f->f_inode;
+	if (EXT2_S_ISCHR(inode->i_mode)) {
 	}
-	if (!(f->flags & (O_WRONLY | O_RDWR))) {
-		DEBUG("%s", "File is not opened for writing.\r\n");
-		return 0;
+	if (EXT2_S_ISBLK(inode->i_mode)) {
 	}
-	if ((f->flags & O_APPEND) == O_APPEND) {
-		f->offset = f->vfs_node->length;
+	if (EXT2_S_ISREG(inode->i_mode)) {
+		return ext2_file_write(inode, f, buf, count);
 	}
-	u32 have_written = vfs_write(f->vfs_node, f->offset, count, buf);
-	f->offset += have_written;
-	return have_written;
+	return -EINVAL;
 }
 
+#define IS_SEEKABLE(x) ((x)>=1 && (x)<=3)
 i32 syscall_lseek(i32 fd, i32 offset, i32 whence) {
-	if (fd < 3 || fd >= FDS_NUM) {
-		DEBUG("Invalid file descriptor - %d\r\n", fd);
-		return 0;
+	struct file *file;
+	i32 tmp;
+
+	if (fd > NR_OPEN || !(file = current_process->fds[fd]) ||
+			!(file->f_inode) ||
+			!IS_SEEKABLE(MAJOR(file->f_inode->i_dev))) {
+		return -EBADF;
 	}
 
-	file *f = &current_process->fds[fd];
-
-	if (!f->used || !f->vfs_node) {
-		DEBUG("Bad descriptor - %d\r\n", fd);
-		return 0;
+	switch (whence) {
+		case SEEK_SET:
+			if (offset < 0) {
+				return -EINVAL;
+			}
+			file->f_pos = offset;
+			break;
+		case SEEK_CUR:
+			if (file->f_pos + offset < 0) {
+				return -EINVAL;
+			}
+			file->f_pos += offset;
+			break;
+		case SEEK_END:
+			if ((tmp = file->f_inode->i_size + offset) < 0) {
+				return -EINVAL;
+			}
+			file->f_pos = tmp;
+			break;
+		default:
+			return -EINVAL;
 	}
-	if (whence == SEEK_SET) {
-		f->offset = offset;
-	} else if (whence == SEEK_CUR) {
-		f->offset += offset;
-	} else if (whence == SEEK_END) {
-		f->offset = f->vfs_node->length + offset;
-	} else {
-		DEBUG("Invalid whence argument - %d\r\n", whence);
-		return -1;
-	}
-
-	return f->offset;
+	return file->f_pos;
 }
 
 i32 syscall_unlink(i8 *filename) {
-	return vfs_unlink(filename);
+	const i8 *basename;
+	struct buffer *buf;
+	i32 err;
+	struct ext2_inode *dir, *inode;
+	struct ext2_dir *de;
+
+	err = dir_namei(filename, &basename, &dir);
+	if (err) {
+		return -ENOENT;
+	}
+	if (*basename == '\0') {
+		iput(dir);
+		return -ENOENT;
+	}
+	if (!check_permission(dir, MAY_WRITE)) {
+		iput(dir);
+		return -EPERM;
+	}
+	buf = ext2_find_entry(dir, basename, &de, NULL);
+	if (!buf) {
+		iput(dir);
+		return -ENOENT;
+	}
+	inode = iget(dir->i_dev, de->inode);
+	if (!inode) {
+		iput(dir);
+		free(buf->b_data);
+		free(buf);
+		return -ENOENT;
+	}
+	if (!EXT2_S_ISREG(inode->i_mode)) {
+		iput(dir);
+		iput(inode);
+		free(buf->b_data);
+		free(buf);
+		return -EPERM;
+	}
+	if (!inode->i_links_count) {
+		inode->i_links_count = 1;
+	}
+	de->inode = 0;
+	write_blk(buf);
+	--inode->i_links_count;
+	inode->i_dirt = 1;
+	inode->i_ctime = get_current_time();
+	iput(inode);
+	iput(dir);
+	free(buf->b_data);
+	free(buf);
+	return 0;
 }
 
 i32 syscall_yield() {
@@ -216,8 +267,10 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		envp[i] = strdup(u_envp[i]);
 	}
 
-	vfs_node_t *vfs_node = vfs_get_node(pathname);
-	if (!vfs_node) {
+	//vfs_node_t *vfs_node = vfs_get_node(pathname);
+	struct ext2_inode *inode = namei(pathname);
+	//if (!vfs_node) {
+	if (!inode) {
 		for (i32 i = 0; i < argc; ++i) {
 			free(argv[i]);
 		}
@@ -227,7 +280,8 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		free(argv);
 		free(envp);
 		return ENOENT;
-	} else if ((vfs_node->flags & FS_FILE) != FS_FILE) {
+	//} else if ((vfs_node->flags & FS_FILE) != FS_FILE) {
+	}/* else if (!EXT2_S_ISREG(inode->i_mode)) {
 		for (i32 i = 0; i < argc; ++i) {
 			free(argv[i]);
 		}
@@ -237,7 +291,8 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		free(argv);
 		free(envp);
 		return EACCES;
-	} else if ((vfs_node->permission_mask & 0x40) != 0x40 && (vfs_node->permission_mask & 0x08) != 0x08 && (vfs_node->permission_mask & 0x01) != 0x01) {
+	//} else if ((vfs_node->permission_mask & 0x40) != 0x40 && (vfs_node->permission_mask & 0x08) != 0x08 && (vfs_node->permission_mask & 0x01) != 0x01) {
+	} else if ((inode->i_mode & 0x40) != 0x40 && (inode->i_mode & 0x08) != 0x08 && (inode->i_mode & 0x01) != 0x01) {
 		for (i32 i = 0; i < argc; ++i) {
 			free(argv[i]);
 		}
@@ -247,12 +302,16 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		free(argv);
 		free(envp);
 		return ENOEXEC;
-	}
+	}*/
 
 
-	u32 *data = (u32 *)malloc(vfs_node->length);
-	memset((i8 *)data, 0, vfs_node->length);
-	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
+	//u32 *data = (u32 *)malloc(vfs_node->length);
+	//memset((i8 *)data, 0, vfs_node->length);
+	//vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
+	u32 *data = malloc(inode->i_size);
+	memset((i8 *)data, 0, inode->i_size);
+	struct file fp = { inode->i_mode, 0, 1, inode, 0 };
+	ext2_file_read(inode, &fp, (i8 *)data, inode->i_size);
 
 	void *prev_page_dir = current_process->directory;
 	void *new_page_dir_phys = paging_copy_page_dir(false);
@@ -364,6 +423,12 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 			current_process->signals[i].sa_handler = SIG_DFL;
 		}
 	}
+	for (i32 i = 0; i < NR_OPEN; ++i) {
+		if ((current_process->close_on_exec >> i) & 1) {
+			syscall_close(i);
+		}
+	}
+	current_process->close_on_exec = 0;
 
 	// Free the user code pages in the page directory
 	void *page_dir_phys = (void *)prev_page_dir;
@@ -421,15 +486,15 @@ i32 syscall_fork() {
 	child_process->pwd = current_process->pwd;
 	if (current_process->pwd) {
 		++current_process->pwd->i_count;
+		child_process->str_pwd = strdup(current_process->str_pwd);
 	}
-	//child_process->cwd = strdup(current_process->cwd);
 
 	child_process->brk = current_process->brk;
 	child_process->timeslice = current_process->timeslice;
-	memcpy(child_process->fds, current_process->fds, FDS_NUM * sizeof(file));	
+	memcpy(child_process->fds, current_process->fds, NR_OPEN * sizeof(struct file *));	
 	sigemptyset(&child_process->sigpending);
 	memcpy(&child_process->sigmask, &current_process->sigmask, sizeof(sigset_t));
-	memcpy(&child_process->signals, &current_process->signals, sizeof(current_process->signals));
+	memcpy(&child_process->signals, &current_process->signals, NSIG * sizeof(sigaction_t));
 	child_process->uid = current_process->uid;
 	child_process->euid = current_process->euid;
 	child_process->gid = current_process->gid;
@@ -505,21 +570,22 @@ i32 syscall_exit(i32 exit_code) {
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
 	
 	// Close open files
-	for (u32 i = 3; i < FDS_NUM; ++i) {
-		file *f = &current_process->fds[i];
-		if (f && f->vfs_node && f->vfs_node != (void *)-1) {
-			vfs_close(f->vfs_node);
-			free(f->vfs_node);
-			memset(f, 0, sizeof(file));
-		}
+	for (u32 i = 3; i < NR_OPEN; ++i) {
+		struct file *f = current_process->fds[i];
+		(void)f;
+		//if (f && f->vfs_node && f->vfs_node != (void *)-1) {
+		//	vfs_close(f->vfs_node);
+		//	free(f->vfs_node);
+		//	memset(f, 0, sizeof(file));
+		//}
 	}
-	free(current_process->fds);
+	//free(current_process->fds);
 	
 	iput(current_process->root);
 	current_process->root = NULL;
 	iput(current_process->pwd);
 	current_process->pwd = NULL;
-	//free(current_process->cwd);
+	free(current_process->str_pwd);
 
 	current_process->exit_code = exit_code;
 
@@ -629,17 +695,31 @@ i32 syscall_getpid() {
 	return current_process->pid;
 }
 
-i32 syscall_dup(i32 oldfd) {
-	if (oldfd > FDS_NUM || current_process->fds[oldfd].used) {
-		return -1;
+static i32 dup_fd(u32 fd, u32 arg) {
+	if (fd > NR_OPEN || !current_process->fds[fd]) {
+		return -EBADF;
 	}
+	if (arg >= NR_OPEN) {
+		return -EINVAL;
+	}
+	while (arg < NR_OPEN) {
+		if (current_process->fds[arg]) {
+			++arg;
+		} else {
+			break;
+		}
+	}
+	++(current_process->fds[arg] = current_process->fds[fd])->f_count;
+	return arg;
+}
 
-	i32 newfd = proc_get_fd(current_process);
-	if (newfd < 0) {
-		return -1;
-	}
-	current_process->fds[newfd] = current_process->fds[oldfd];
-	return newfd;
+i32 syscall_dup2(u32 oldfd, u32 newfd) {
+	syscall_close(newfd);
+	return dup_fd(oldfd, newfd);
+}
+
+i32 syscall_dup(u32 oldfd) {
+	return dup_fd(oldfd, 0);
 }
 
 i32 syscall_sbrk(i32 incr) {
@@ -660,103 +740,84 @@ i32 syscall_nanosleep(struct timespec *req, struct timespec *rem) {
 	return 0;
 }
 
-/*
-i32 syscall_getcwd(i8 *buf, u32 size) {
-	if (!size) {
-		return -1;
+i32 syscall_getcwd(i8 *buf, i32 size) {
+	if (size <= 0) {
+		return -EINVAL;
 	}
-
-	u32 len = strlen(current_process->cwd);
-	if (len + 1 > size) {
-		return -1;
+	u32 len = strlen(current_process->str_pwd);
+	if (size > 0 && size < len + 1) {
+		return -ERANGE;
 	}
-
-	memcpy(buf, current_process->cwd, len + 1);
+	memcpy(buf, current_process->str_pwd, len + 1);
 	return 0;
 }
-*/
+
+i32 syscall_stat(i8 *path, struct stat *statbuf) {
+	struct ext2_inode *inode;
+
+	if (!(inode = namei(path))) {
+		return -ENOENT;
+	}
+	statbuf->st_dev = inode->i_dev;
+	statbuf->st_ino = inode->i_num;
+	statbuf->st_mode = inode->i_mode;
+	statbuf->st_nlink = inode->i_links_count;
+	statbuf->st_uid = inode->i_uid;
+	statbuf->st_gid = inode->i_gid;
+	statbuf->st_rdev = 0;
+	statbuf->st_size = inode->i_size;
+	statbuf->st_atime = inode->i_atime;
+	statbuf->st_mtime = inode->i_mtime;
+	statbuf->st_ctime = inode->i_ctime;
+	statbuf->st_blksize = 1024;
+	statbuf->st_blocks = inode->i_blocks;
+	return 0;
+}
 
 i32 syscall_fstat(i32 fd, struct stat *statbuf) {
-	if (current_process->fds[fd].vfs_node == (void *)-1) {
-		return -1;
-	}
+	struct file *f;
+	struct ext2_inode *inode;
 
-	vfs_node_t *vfs_node = current_process->fds[fd].vfs_node;
-	statbuf->st_dev = 0;
-	statbuf->st_ino = vfs_node->inode;
-	statbuf->st_mode = vfs_node->permission_mask;
-	if ((vfs_node->flags & FS_FILE) == FS_FILE) {
-		statbuf->st_mode |= S_IFREG;
+	if (fd >= NR_OPEN || !(f = current_process->fds[fd]) ||
+			!(inode = f->f_inode)) {
+		return -ENOENT;
 	}
-	if ((vfs_node->flags & FS_DIRECTORY) == FS_DIRECTORY) {
-		statbuf->st_mode |= S_IFDIR;
-	}
-	if ((vfs_node->flags & FS_CHARDEVICE) == FS_CHARDEVICE) {
-		statbuf->st_mode |= S_IFCHR;
-	}
-	if ((vfs_node->flags & FS_BLOCKDEVICE) == FS_BLOCKDEVICE) {
-		statbuf->st_mode |= S_IFBLK;
-	}
-	if ((vfs_node->flags & FS_PIPE) == FS_PIPE) {
-		statbuf->st_mode |= S_IFIFO;
-	}
-	if ((vfs_node->flags & FS_SYMLINK) == FS_SYMLINK) {
-		statbuf->st_mode |= S_IFLNK;
-	}
-	statbuf->st_nlink = 0;
-	statbuf->st_uid = vfs_node->uid;
-	statbuf->st_gid = vfs_node->gid;
+	statbuf->st_dev = inode->i_dev;
+	statbuf->st_ino = inode->i_num;
+	statbuf->st_mode = inode->i_mode;
+	statbuf->st_nlink = inode->i_links_count;
+	statbuf->st_uid = inode->i_uid;
+	statbuf->st_gid = inode->i_gid;
 	statbuf->st_rdev = 0;
-	statbuf->st_size = vfs_node->length;
-	statbuf->st_atime = vfs_node->atime;
-	statbuf->st_mtime = vfs_node->mtime;
-	statbuf->st_ctime = vfs_node->ctime;
-	statbuf->st_blksize = 0;
-	statbuf->st_blocks = 0;
+	statbuf->st_size = inode->i_size;
+	statbuf->st_atime = inode->i_atime;
+	statbuf->st_mtime = inode->i_mtime;
+	statbuf->st_ctime = inode->i_ctime;
+	statbuf->st_blksize = 1024;
+	statbuf->st_blocks = inode->i_blocks;
 	return 0;
-}
-
-/*
-// Caller should free the memory
-static i8 *make_absolute_path(i8 *rel_path) {
-       i8 *cwd = current_process->cwd;
-       i8 *abs_path = malloc(strlen(cwd) + 1 + strlen(rel_path) + 1);
-       memset(abs_path, 0, strlen(cwd) + 1 + strlen(rel_path) + 1);
-
-       memcpy(abs_path, cwd, strlen(cwd));
-
-       if (strlen(cwd) != 1) {
-               abs_path[strlen(abs_path)] = '/';
-       }
-       strcat(abs_path, rel_path);
-
-       i8 *canonilized_path = canonilize_path(abs_path);
-       if (abs_path) {
-               free(abs_path);
-       }
-
-       return canonilized_path;
 }
 
 i32 syscall_chdir(i8 *path) {
-	i8 *abs_path;
-	if (path[0] == '/') {
-		abs_path = strdup(path);
-	} else {
-		abs_path = make_absolute_path(path);
-	}
+	struct ext2_inode *inode;
 
-	vfs_node_t *vfs_node = vfs_get_node(abs_path);
-	if (!vfs_node || (vfs_node->flags & FS_DIRECTORY) != FS_DIRECTORY) {
-		free(abs_path);
-		return -1;
+	if (!(inode = namei(path))) {
+		return -ENOENT;
 	}
-
-	free(current_process->cwd);
-	current_process->cwd = abs_path;
+	if (!EXT2_S_ISDIR(inode->i_mode)) {
+		iput(inode);
+		return -ENOTDIR;
+	}
+	if (!check_permission(inode, MAY_EXEC)) {
+		iput(inode);
+		return -EACCES;
+	}
+	free(current_process->str_pwd);
+	iput(current_process->pwd);
+	current_process->pwd = inode;
+	current_process->str_pwd = strdup(path);
 	return 0;
 }
-*/
 
 
 i32 syscall_sigaction(i32 sig, sigaction_t *act, sigaction_t *oact, u32 *sigreturn) {
@@ -858,7 +919,7 @@ i32 syscall_sleep(u32 secs) {
 
 i32 syscall_sigreturn() {
 	*current_process->regs = current_process->signal_old_regs;
-	memcpy(&current_process->sigmask, &current_process->old_sigmask,  sizeof(sigset_t));
+	memcpy(&current_process->sigmask, &current_process->old_sigmask,sizeof(sigset_t));
 	return 0;
 }
 
@@ -950,7 +1011,7 @@ i32 syscall_setpgid(u32 pid, i32 pgid) {
 
 i32 syscall_uname(utsname *name) {
 	static utsname thisname = {
-		"forest.0", "nodename", "release ", "version ", "machine "
+		"sierra.0", "nodename", "release ", "version ", "i386    "
 	};
 	if (!name) {
 		return -1;
@@ -979,7 +1040,402 @@ i32 syscall_times(tms *buffer) {
 	return ticks;
 }
 
-syscall_fn syscall_handlers[] = {
+u32 syscall_umask(u32 cmask) {
+	u32 old = current_process->umask;
+	current_process->umask = cmask & 0777;
+	return old;
+}
+
+i32 syscall_link(i8 *path1, i8 *path2) {
+	i32 err;
+	i8 *basename;
+	struct buffer *buf;
+	struct ext2_inode *oldinode, *dir;
+	struct ext2_dir *de;
+
+	oldinode = namei(path1);
+	if (!oldinode) {
+		return -ENOENT;
+	}
+	if (!EXT2_S_ISREG(oldinode->i_mode)) {
+		iput(oldinode);
+		return -EPERM;
+	}
+	err = dir_namei(path1, &basename, &dir);
+	if (err) {
+		iput(oldinode);
+		return -ENOENT;
+	}
+	if (*basename == '\0') {
+		iput(dir);
+		iput(oldinode);
+		return -EPERM;
+	}
+	if (dir->i_dev != oldinode->i_dev) {
+		iput(dir);
+		iput(oldinode);
+		return -EXDEV;
+	}
+	if (!check_permission(dir, MAY_WRITE)) {
+		iput(dir);
+		iput(oldinode);
+		return -EACCES;
+	}
+	buf = ext2_find_entry(dir, basename, &de, NULL);
+	if (buf) {
+		free(buf->b_data);
+		free(buf);
+		iput(dir);
+		iput(oldinode);
+		return -EEXIST;
+	}
+	err = ext2_add_entry(dir, basename, &buf, &de);
+	if (err) {
+		iput(dir);
+		iput(oldinode);
+		return -err;
+	}
+	de->inode = oldinode->i_num;
+	free(buf->b_data);
+	free(buf);
+	iput(dir);
+	++oldinode->i_links_count;
+	oldinode->i_ctime = get_current_time();
+	oldinode->i_dirt = 1;
+	iput(oldinode);
+	return 0;
+}
+
+i32 syscall_rename(i8 *oldname, i8 *newname) {
+	struct ext2_inode *old_dir, *new_dir;
+	const i8 *old_base, *new_base;
+	i32 error;
+
+	error = dir_namei(oldname, &old_base, &old_dir);
+	if (error) {
+		return error;
+	}
+	if (!check_permission(old_dir, MAY_WRITE | MAY_EXEC)) {
+		iput(old_dir);
+		return -EACCES;
+	}
+	if (*old_base == '\0' || (old_base[0] == '.' && strlen(old_base) == 1) ||
+			(old_base[1] == '.' && strlen(old_base) == 2)) {
+		iput(old_dir);
+		return -EPERM;
+	}
+	error = dir_namei(newname, &new_base, &new_dir);
+	if (error) {
+		return error;
+	}
+	if (!check_permission(new_dir, MAY_WRITE | MAY_EXEC)) {
+		iput(new_dir);
+		iput(old_dir);
+		return -EACCES;
+	}
+	if (*new_base == '\0' || (new_base[0] == '.' && strlen(new_base) == 1) ||
+			(new_base[1] == '.' && strlen(new_base) == 2)) {
+		iput(new_dir);
+		iput(old_dir);
+		return -EPERM;
+	}
+	if (old_dir->i_dev != new_dir->i_dev) {
+		iput(new_dir);
+		iput(old_dir);
+		return -EROFS;
+	}
+	return ext2_rename(old_dir, old_base, new_dir, new_base);
+}
+
+struct dirent *syscall_readdir(DIR *dirp) {
+	i32 error;
+	struct file *file;
+	struct ext2_inode *inode;
+
+	if (dirp->fd >= NR_OPEN ||
+			!(file = current_process->fds[dirp->fd]) ||
+			!(inode = file->f_inode)) {
+		return -EBADF;
+	}
+	i32 i = ext2_readdir(inode, file, &dirp->dent);
+	if (i) {
+		return &dirp->dent;
+	} else {
+		return NULL;
+	}
+}
+
+i32 syscall_test(i32 n) {
+	i8 *buf = malloc(8192 * 5);
+	DEBUG("START syscall_test()\r\n");
+	kprintf("Got n - %d\r\n", n);
+	for (i32 i = 0; i < 10000; ++i) {
+		i32 fd = syscall_open("/usr/file", O_RDONLY, 0);
+		syscall_read(fd, buf, 8192 * 5);
+		syscall_close(fd);
+	}
+	DEBUG("END syscall_test()\r\n");
+	return 0;
+}
+
+i32 syscall_access(i8 *path, i32 amode) {
+	struct ext2_inode *inode;
+	i32 res, i_mode;
+
+	amode &= 0007;
+	if (!(inode = namei(path))) {
+		return -EACCES;
+	}
+	i_mode = res = inode->i_mode & 0777;
+	if (current_process->uid == inode->i_uid) {
+		res >>= 6;
+	} else if (current_process->gid == inode->i_gid) {
+		res >>= 6;
+	}
+	if ((res & 0007 & amode) == i_mode) {
+		return 0;
+	}
+	if (!current_process->uid &&
+			(!(amode & 1) || (i_mode & 0111))) {
+		return 0;
+	}
+	return -EACCES;
+}
+
+i32 syscall_chmod(i8 *path, i32 mode) {
+	struct ext2_inode *inode;
+
+	if (!(inode = namei(path))) {
+		return -ENOENT;
+	}
+	if ((current_process->euid != inode->i_uid) && current_process->uid != 0) {
+		iput(inode);
+		return -EACCES;
+	}
+	inode->i_mode = (mode & 07777) | (inode->i_mode & ~07777);
+	inode->i_ctime = get_current_time();
+	inode->i_dirt = 1;
+	iput(inode);
+	return 0;
+}
+
+i32 syscall_chown(i8 *path, i32 owner, i32 group) {
+	struct ext2_inode *inode;
+
+	if (!(inode = namei(path))) {
+		return -ENOENT;
+	}
+	if (current_process->euid != inode->i_uid && current_process->uid != 0) {
+		iput(inode);
+		return -EACCES;
+	}
+	inode->i_uid = owner;
+	inode->i_gid = group;
+	inode->i_dirt = 1;
+	iput(inode);
+	return 0;
+}
+
+i32 syscall_utime(i8 *path, struct utimbuf *times) {
+	struct ext2_inode *inode;
+	u32 actime, modtime;
+
+	if (!(inode = namei(path))) {
+		return -ENOENT;
+	}
+	if (times) {
+		actime = times->actime;
+		modtime = times->modtime;
+	} else {
+		actime = modtime = get_current_time();
+	}
+	inode->i_ctime = actime;
+	inode->i_mtime = modtime;
+	inode->i_dirt = 1;
+	iput(inode);
+	return 0;
+}
+
+i32 syscall_fcntl(i32 fd, i32 cmd, i32 arg) {
+	struct file *fp;
+
+	if (fd > NR_OPEN || !(fp = current_process->fds[fd])) {
+		return -EBADF;
+	}
+	switch (cmd) {
+		case F_DUPFD:
+			return dup_fd(fd, arg);
+		case F_GETFD:
+			return (current_process->close_on_exec >> fd) & 1;
+		case F_SETFD:
+			if (arg & 1) {
+				current_process->close_on_exec |= (1 << fd);
+			} else {
+				current_process->close_on_exec &= ~(1 << fd);
+			}
+			return 0;
+		case F_GETFL:
+			return fp->f_flags;
+		case F_SETFL:
+			fp->f_flags &= ~(O_APPEND | O_NONBLOCK);
+			fp->f_flags |= arg & (O_APPEND | O_NONBLOCK);
+			return 0;
+		case F_GETLK:
+		case F_SETLK:
+		case F_SETLKW:
+			return -1;
+		default:
+			return -1;
+	}
+	return 0;
+}
+
+// TODO: Make more in-depth check
+static i32 is_empty_dir(struct ext2_inode *inode) {
+	return inode->i_size == 24;
+}
+
+i32 syscall_rmdir(i8 *path) {
+	i32 retval;
+	struct buffer *buf;
+	const i8 *basename;
+	struct ext2_inode *dir, *inode;
+	struct ext2_dir *de;
+
+	if (retval = dir_namei(path, &basename, &dir)) {
+		return -ENOENT;
+	}
+	if (*basename == '\0') {
+		iput(dir);
+		return -ENOENT;
+	}
+	if (!check_permission(dir, MAY_WRITE)) {
+		iput(dir);
+		return -EACCES;
+	}
+	inode = NULL;
+	buf = ext2_find_entry(dir, basename, &de, NULL);
+	retval = -ENOENT;
+	if (!buf) {
+		goto end;
+	}
+	retval = -EPERM;
+	if (!(inode = iget(dir->i_dev, de->inode))) {
+		goto end;
+	}
+	if (inode->i_dev != dir->i_dev) {
+		goto end;
+	}
+	if (inode == dir) {
+		goto end;
+	}
+	if (!EXT2_S_ISDIR(inode->i_mode)) {
+		retval = -ENOTDIR;
+		goto end;
+	}
+	if (!is_empty_dir(inode)) {
+		retval = -ENOTEMPTY;
+		goto end;
+	}
+	if (inode->i_count > 1) {
+		retval = -EBUSY;
+		goto end;
+	}
+	if (inode->i_links_count != 2) {
+		DEBUG("inode has links_count > 2, %d\r\n", inode->i_links_count);
+	}
+	de->inode = 0;
+	write_blk(buf);
+	inode->i_links_count = 0;
+	inode->i_dirt = 1;
+	--dir->i_links_count;
+	dir->i_ctime = dir->i_mtime = get_current_time();
+	dir->i_dirt = 1;
+	retval = 0;
+end:
+	iput(dir);
+	iput(inode);
+	if (buf) {
+		free(buf->b_data);
+	}
+	free(buf);
+	return retval;
+}
+
+i32 syscall_mkdir(i8 *path, i32 mode) {
+	i32 err;
+	struct buffer *buf, *dir_block;
+	const i8 *basename;
+	struct ext2_inode *dir, *inode;
+	struct ext2_dir *de;
+
+	if ((err = dir_namei(path, &basename, &dir))) {
+		return -ENOENT;
+	}
+	if (*basename == '\0') {
+		iput(dir);
+		return -ENOENT;
+	}
+	buf = ext2_find_entry(dir, basename, &de, NULL);
+	if (buf) {
+		free(buf->b_data);
+		free(buf);
+		iput(dir);
+		return -EEXIST;
+	}
+	inode = alloc_inode(dir->i_dev);
+	if (!inode) {
+		iput(dir);
+		return -ENOSPC;
+	}
+	inode->i_size = 24;
+	inode->i_dirt = 1;
+	inode->i_mtime = inode->i_atime = get_current_time();
+	if (!(inode->i_block[0] = alloc_block(inode->i_dev))) {
+		iput(dir);
+		--inode->i_links_count;
+		iput(inode);
+		return -ENOSPC;
+	}
+	if (!(dir_block = read_blk(inode->i_dev, inode->i_block[0]))) {
+		iput(dir);
+		--inode->i_links_count;
+		iput(inode);
+		return -ERROR;
+	}
+	de = (struct ext2_dir *)(dir_block->b_data);
+	de->inode = inode->i_num;
+	de->name_len = 1;
+	memcpy(de->name, ".", 1);
+	++de;
+	de->inode = dir->i_num;
+	de->name_len = 2;
+	memcpy(de->name, "..", 2);
+	inode->i_links_count = 2;
+	write_blk(dir_block);
+	free(dir_block->b_data);
+	free(dir_block);
+	inode->i_mode = EXT2_S_IFDIR | (mode & 0777 & ~current_process->umask);
+	inode->i_dirt = 1;
+	err = ext2_add_entry(dir, basename, buf, &de);
+	if (err) {
+		iput(dir);
+		inode->i_links_count = 0;
+		iput(inode);
+		return -ENOSPC;
+	}
+	de->inode = inode->i_num;
+	write_blk(buf);
+	++dir->i_links_count;
+	dir->i_dirt = 1;
+	free(buf->b_data);
+	free(buf);
+	iput(dir);
+	iput(inode);
+	return 0;
+}
+
+syscall_fn syscall_handlers[NR_SYSCALLS] = {
 	syscall_test,
 	syscall_exit,
 	syscall_fork,
@@ -990,7 +1446,7 @@ syscall_fn syscall_handlers[] = {
 	syscall_waitpid,
 	syscall_unlink,
 	syscall_exec,
-	NULL, //syscall_chdir,
+	syscall_chdir,
 	syscall_time,
 	syscall_lseek,
 	syscall_getpid,
@@ -1019,17 +1475,26 @@ syscall_fn syscall_handlers[] = {
 	syscall_sigreturn,
 	syscall_nanosleep,
 	syscall_yield,
-	NULL,//syscall_getcwd,
+	syscall_getcwd,
 	syscall_sleep,
+	syscall_umask,
+	syscall_link,
+	syscall_rename,
+	syscall_readdir,
+	syscall_stat,
+	syscall_access,
+	syscall_dup2,
+	syscall_fcntl,
+	syscall_rmdir,
+	syscall_mkdir,
 };
 
 i32 syscall_handler(registers_state *regs) {
-	if (regs->eax > NR_SYSTEM_CALLS) {
+	if (regs->eax > NR_SYSCALLS) {
 		DEBUG("Received unimplemented syscall: %d\n", regs->eax);
 		return -1;
 	}
 	syscall_fn sys = syscall_handlers[regs->eax];
-
 	return sys(regs->ebx, regs->ecx, regs->edx, regs->esi);
 }
 

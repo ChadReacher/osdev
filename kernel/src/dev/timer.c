@@ -19,13 +19,14 @@ static void timer_handler(registers_state *regs) {
 		DEBUG("INSIDE TIMER HANDLER -- END\r\n");
 		return;
 	}
-	// TODO: Think about it...
+	// TODO: Think about stime and utime
 	if (regs->cs == 0x18 || regs->cs == 0x20) {
 		++current_process->stime;
 	} else {
 		++current_process->utime;
 	}
 	if ((--current_process->timeslice) > 0) {
+		DEBUG("INSIDE TIMER HANDLER -- END\r\n");
 		return;
 	}
 	current_process->timeslice = 20;

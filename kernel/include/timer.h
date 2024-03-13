@@ -10,5 +10,6 @@
 #define TIMER_FREQ 100
 
 void timer_init(u32 freq);
+u32 get_current_time();
 
 #endif

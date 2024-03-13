@@ -178,7 +178,6 @@ void free(void *ptr) {
 		prev_block->next = curr_block->next;
 		curr_block = prev_block;
 	}
-
 }
 
 void *realloc(void *ptr, u32 size) {
@@ -223,3 +222,4 @@ void *realloc(void *ptr, u32 size) {
 
 	return block + 1;
 }
+

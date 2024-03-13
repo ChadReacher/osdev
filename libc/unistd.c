@@ -11,6 +11,12 @@ extern i8 **environ;
 
 syscall0(pid_t, fork)
 
+syscall1(u32, umask, u32, mode)
+
+syscall2(i32, link, i8 *, path1, i8 *, path2)
+
+syscall2(i32, rename, i8 *, old, i8 *, new)
+
 syscall3(i32, execve, const i8 *, pathname, i8 **, argv, i8 **, envp)
 
 i32 execv(const i8 *pathname, i8 **argv) {
@@ -18,7 +24,7 @@ i32 execv(const i8 *pathname, i8 **argv) {
 }
 
 #define PATH_MAX 4096 // TODO: move it to 'limits.h'
-i32 find_file_in_path(const i8 *file, i8 *buf, u32 sz) {
+i32 find_file_in_path(const i8 *file, i8 *buf) {
     u32 n;
     i8 *endp, *envpath;
 
@@ -57,7 +63,7 @@ i32 execvp(const i8 *file, i8 **argv) {
 		execve(file, argv, environ);
 	}
 	i8 absolute_path[PATH_MAX] = { 0 };
-	if (find_file_in_path(file, absolute_path, PATH_MAX) == 0) {
+	if (find_file_in_path(file, absolute_path) == 0) {
 		return execve(absolute_path, argv, environ);
 	}
 	return -1;
@@ -121,8 +127,8 @@ i32 execle(const i8 *path, const i8 *arg, ...) {
 }
 
 
-void test(const i8 *s) {
-	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(__NR_test), "b"(s));
+void test(i32 n) {
+	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(__NR_test), "b"(n));
 }
 
 u32 read(i32 fd, const void *buf, u32 count) {
@@ -246,21 +252,33 @@ u32 sleep(u32 secs) {
 
 
 i8 *getcwd(i8 *buf, u32 size) {
-	i8 *ret;
+	i32 ret;
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
 			: "a"(__NR_getcwd), "b"(buf), "c"(size));
 
-	return ret;
+	if (ret) {
+		return buf;
+	}
+	return NULL;
 }
 
 i32 stat(const i8 *pathname, struct stat *statbuf) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(__NR_stat), "b"(pathname), "c"(statbuf));
+
+	return ret;
+	/*
 	i32 fd;
 	if ((fd = open(pathname, O_RDONLY, 0)) < 0) {
 		return -1;
 	}
 	return fstat(fd, statbuf);
+	*/
 }
 
 i32 fstat(i32 fd, struct stat *statbuf) {
@@ -283,53 +301,14 @@ i32 chdir(const i8 *path) {
 	return ret;
 }
 
-i32 access(const i8 *pathname, i32 mode) {
-    struct stat st;
+i32 access(i8 *pathname, i32 mode) {
+	i32 ret;
 
-    if (stat(pathname, &st) != 0) {
-        return -1;
-    }
-    i32 res = 0;
-    if ((mode & F_OK) == F_OK) {
-        res = 0;
-    }
-    if ((mode & R_OK) == R_OK)  {
-        if ((st.st_mode & S_IRWXU) == S_IRWXU
-                || (st.st_mode & S_IRUSR) == S_IRUSR
-                || (st.st_mode & S_IRWXG) == S_IRWXG
-                || (st.st_mode & S_IRGRP) == S_IRGRP
-                || (st.st_mode & S_IRWXO) == S_IRWXO
-                || (st.st_mode & S_IROTH) == S_IROTH) {
-            res = 0;
-        } else { 
-            return -1;
-        }
-    }    
-    if ((mode & W_OK) == W_OK)  {
-        if ((st.st_mode & S_IRWXU) == S_IRWXU
-                || (st.st_mode & S_IWUSR) == S_IWUSR
-                || (st.st_mode & S_IRWXG) == S_IRWXG
-                || (st.st_mode & S_IWGRP) == S_IWGRP
-                || (st.st_mode & S_IRWXO) == S_IRWXO
-                || (st.st_mode & S_IWOTH) == S_IWOTH) {
-            res = 0;
-        } else { 
-            return -1;
-        }
-    }
-    if ((mode & X_OK) == X_OK)  {
-        if ((st.st_mode & S_IRWXU) == S_IRWXU
-                || (st.st_mode & S_IXUSR) == S_IXUSR
-                || (st.st_mode & S_IRWXG) == S_IRWXG
-                || (st.st_mode & S_IXGRP) == S_IXGRP
-                || (st.st_mode & S_IRWXO) == S_IRWXO
-                || (st.st_mode & S_IXOTH) == S_IXOTH) {
-            res = 0;
-        } else { 
-            return -1;
-        }
-    }
-    return res;
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(__NR_access), "b"(pathname), "c"(mode));
+
+	return ret;
 }
 
 i8 *getenv(const i8 *name) {

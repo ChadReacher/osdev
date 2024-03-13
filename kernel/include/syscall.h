@@ -4,16 +4,40 @@
 #include "types.h"
 #include "isr.h"
 
-#define NR_SYSTEM_CALLS 41
+#define NR_SYSCALLS 51
 
-#define S_IFMT 0170000
+#define S_IFMT   0170000
 #define S_IFSOCK 014000
-#define S_IFLNK 0120000
-#define S_IFREG 0100000
-#define S_IFBLK 0060000
-#define S_IFDIR 0040000
-#define S_IFCHR 0020000
-#define S_IFIFO 0010000
+#define S_IFLNK  0120000
+#define S_IFREG  0100000
+#define S_IFBLK  0060000
+#define S_IFDIR  0040000
+#define S_IFCHR  0020000
+#define S_IFIFO  0010000
+
+#define F_DUPFD 0
+#define F_GETFD 1
+#define F_SETFD 2
+#define F_GETFL 3
+#define F_SETFL 4
+#define F_GETLK 5
+#define F_SETLK 6
+#define F_SETLKW 7
+
+struct dirent {
+	i8 name[256]; 
+	u32 inode;
+};
+
+typedef struct DIR {
+	i32 fd;
+	struct dirent dent;
+} DIR;
+
+struct utimbuf {
+	u32 actime;
+	u32 modtime;
+};
 
 struct timespec {
 	i32 tv_sec;

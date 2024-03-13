@@ -236,7 +236,7 @@ jump_to_kernel:
 	jmp 0x10000						; Jump to memory where we have loaded the kernel
 
 drive_num: db 0
-kernel_size_in_sectors: db 200
+kernel_size_in_sectors: db 220
 
 bits 16
 enable_a20:

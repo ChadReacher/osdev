@@ -12,6 +12,7 @@
 #include <elf.h>
 #include <queue.h>
 #include <signal.h>
+#include <ext2.h>
 
 extern void irq_ret();
 extern queue_t *ready_queue;
@@ -21,20 +22,12 @@ extern process_t *init_process;
 extern process_t *idle_process;
 extern void enter_usermode_asm(u32 useresp);
 
+struct file file_table[NR_FILE];
 u32 next_pid = 0;
-
-void cpu_idle() {
-    while (1) {
-		__asm__ __volatile__ ("cli");
-        kprintf("kernel idle - %d\n", idle_process->pid);
-		__asm__ __volatile__ ("sti");
-		__asm__ __volatile__ ("hlt");
-	}
-}
 
 void enter_usermode() {
 	current_process = queue_dequeue(ready_queue);
-	// Enter usermode
+	
 	tss_set_stack((u32)current_process->kernel_stack_top);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" 
             : 
@@ -44,42 +37,21 @@ void enter_usermode() {
 	enter_usermode_asm(current_process->regs->useresp);
 }
 
+
 void userinit() {
 	__asm__ __volatile__ ("cli");
-	process_t *idle = proc_alloc();
-	if (!idle) {
-		kernel_panic("Failed to create 'idle' process\n");
-	}
-	queue_dequeue(ready_queue);
-	idle->regs->eflags = 0x202;
-	idle->state = RUNNING;
-	idle->parent = NULL;
-	idle->directory = virtual_to_physical((void *)0xFFFFF000);
-	idle->regs->cs = 0x8;
-	idle->regs->ds = 0x8;
-	idle->regs->es = 0x8;
-	idle->regs->fs = 0x8;
-	idle->regs->gs = 0x8;
-	idle->regs->useresp = 0x0;
-	idle->regs->ss = 0x0;
-    idle->regs->eip = (u32)cpu_idle;
-    idle_process = idle;
 
-	vfs_node_t *vfs_node = vfs_get_node("/bin/init");
-	if (!vfs_node) {
-		PANIC("Failed to start 'init' process\r\n");
+	struct ext2_inode *inode = namei("/bin/init");
+	if (!inode) {
+		PANIC("exec init: could not find /bin/init file\r\n");
 	}
-	u32 *data = malloc(vfs_node->length);
-	memset((i8 *)data, 0, vfs_node->length);
-	vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
+	u32 *data = malloc(inode->i_size);
+	memset((i8 *)data, 0, inode->i_size);
+	struct file fp = { inode->i_mode, 0, 1, inode, 0 };
+	ext2_file_read(inode, &fp, (i8 *)data, inode->i_size);
 
-	init_process = proc_alloc();
-	if (!init_process) {
-		kernel_panic("Failed to create 'init' process\n");
-	}
 	init_process->parent = NULL;
 	init_process->directory = paging_copy_page_dir(false);
-	//init_process->cwd = strdup("/"); FIX: TODO:
 	for (i32 i = 0; i < NSIG; ++i) {
 		memset(init_process->signals, 0, sizeof(sigaction_t));
 		init_process->signals[i].sa_handler = SIG_DFL;
@@ -94,7 +66,7 @@ void userinit() {
 	i32 envc = 1;
 	i8 **argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
 	i8 **envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
-    envp[0] = strdup("PATH=/bin");
+	envp[0] = strdup("PATH=/bin");
 	argv[argc] = NULL;
 	envp[envc] = NULL;
 	
@@ -148,6 +120,7 @@ void userinit() {
 }
 
 process_t *proc_alloc() {
+	//DEBUG("malloc(sizeof(process_t)) - %d\r\n", sizeof(process_t));
 	process_t *process = malloc(sizeof(process_t));
 	if (!process) {
 		return NULL;
@@ -157,11 +130,12 @@ process_t *proc_alloc() {
 	process->pid = next_pid++;
 	process->timeslice = 20;
 	process->state = RUNNING;
-	process->fds = malloc(FDS_NUM * sizeof(file));
-	if (!process->fds) {
-		return NULL;
-	}
-	memset(process->fds, 0, FDS_NUM * sizeof(file));
+	//process->fds = malloc(FDS_NUM * sizeof(file));
+	//if (!process->fds) {
+	//	return NULL;
+	//}
+	//memset(process->fds, 0, FDS_NUM * sizeof(file));
+	//DEBUG("malloc(4096 * 2) - %d\r\n", 4096 * 2);
 	process->kernel_stack_bottom = malloc(4096 * 2);
 	if (!process->kernel_stack_bottom) {
 		return NULL;
@@ -208,6 +182,7 @@ process_t *proc_alloc() {
 	return process;
 }
 
+// TODO: Work on it or delete it
 process_t *copy_process() {
 	process_t *p = malloc(sizeof(process_t));
 	if (!p) {
@@ -224,12 +199,22 @@ process_t *copy_process() {
 	return p;
 }
 
-i32 proc_get_fd(process_t *proc) {
-	for (u32 i = 3; i < FDS_NUM; ++i) {
-		if (!proc->fds[i].used) {
-			proc->fds[i].used = true;
-			return i;
+i32 get_new_fd() {
+	i32 fd;
+	for (fd = 3; fd < NR_OPEN; ++fd) {
+		if (!current_process->fds[fd]) {
+			break;
 		}
 	}
-	return -1;
+	return fd;
 }
+
+struct file *get_empty_file() {
+	for (i32 i = 0; i < NR_FILE; ++i) {
+		if (!file_table[i].f_count) {
+			return &file_table[i];
+		}
+	}
+	return NULL;
+}
+

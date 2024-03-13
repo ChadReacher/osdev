@@ -29,12 +29,15 @@ build/kernel.bin: libk
 
 user: libc
 	$(MAKE) -C userland
-	#mkdir -p userland/hdd/bin
-	#mv -f userland/bin/* userland/hdd/bin
+	mkdir -p userland/hdd/bin
+	mv -f userland/bin/* userland/hdd/bin
 	mkdir -p userland/hdd/usr
-	./generate.sh
-	echo "hi" > userland/hdd/usr/file
+	man bash > userland/hdd/usr/file
 	echo "del" > userland/hdd/usr/del
+	echo "bye" > userland/hdd/usr/bye
+	mkdir -p userland/hdd/usr/etc
+	echo "x" > userland/hdd/usr/etc/x
+	./generate.sh
 	dd if=/dev/zero of=build/disk.img bs=1024 count=4096
 	sudo losetup -fP build/disk.img
 	losetup
