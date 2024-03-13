@@ -54,11 +54,13 @@ struct dirent *readdir(DIR *dirp) {
 }
 
 i32 closedir(DIR *dirp) {
+	i32 ret;
+
 	if (dirp == NULL || dirp->fd < 0) {
 		return -1;
 	}
 
-	i32 ret = close(dirp->fd);
+	ret = close(dirp->fd);
 	free(dirp);
 	return ret;
 }

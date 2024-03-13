@@ -1,6 +1,6 @@
 #include <generic_tree.h>
 #include <heap.h>
-#include <debug.h>
+#include <panic.h>
 
 tree_t *generic_tree_create() {
 	tree_t *tree = malloc(sizeof(tree_t));
@@ -10,22 +10,24 @@ tree_t *generic_tree_create() {
 }
 
 static void generic_tree_destroy_node(tree_node_t *node) {
+	list_node_t *child;
 	list_t *children = node->children;
 	if (!children) {
 		free(node);
 		return;
 	}
 
-	for (list_node_t *child = children->head; child != NULL; child = child->next) {
+	for (child = children->head; child != NULL; child = child->next) {
 		generic_tree_destroy_node(child->val);
 	}
 }
 
 tree_node_t *generic_tree_insert_at(tree_t *tree, tree_node_t *parent, void *value) {
+	tree_node_t *new_tree_node;
 	if (!tree || !parent) {
 		return NULL;
 	}
-	tree_node_t *new_tree_node = malloc(sizeof(tree_node_t));
+	new_tree_node = malloc(sizeof(tree_node_t));
 	new_tree_node->val = value;
 	new_tree_node->children = list_create();
 	new_tree_node->parent = parent;
@@ -36,16 +38,18 @@ tree_node_t *generic_tree_insert_at(tree_t *tree, tree_node_t *parent, void *val
 }
 
 static void generic_tree_print_node(tree_node_t *node) {
+	list_t *children;
+	list_node_t *child;
 	if (!node) {
 		return;
 	}
-	DEBUG("Tree node(%p), value = %d\r\n", node, node->val);
+	debug("Tree node(%p), value = %d\r\n", node, node->val);
 	if (node->children->sz == 0) {
 		return;
 	}
-	list_t *children = node->children;
-	for (list_node_t *child = children->head; child != NULL; child = child->next) {
-		DEBUG("Children(of %d): \r\n", node->val);
+	children = node->children;
+	for (child = children->head; child != NULL; child = child->next) {
+		debug("Children(of %d): \r\n", node->val);
 		generic_tree_print_node(child->val);
 	}
 }
@@ -55,7 +59,7 @@ void generic_tree_print(tree_t *tree) {
 		return;
 	}
 	generic_tree_print_node(tree->root);
-	DEBUG("%s", "\r\n");
+	debug("%s", "\r\n");
 }
 
 void generic_tree_destroy(tree_t *tree) {

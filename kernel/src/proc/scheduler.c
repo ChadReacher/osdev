@@ -1,7 +1,6 @@
 #include <scheduler.h>
 #include <tss.h>
 #include <queue.h>
-#include <debug.h>
 #include <syscall.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,8 +8,8 @@
 #include <syscall.h>
 #include <process.h>
 #include <panic.h>
-#include <debug.h> 
 
+i32 syscall_exit(i32);
 extern u32 ticks;
 extern void switch_to(context_t **old_context, context_t *new_context);
 
@@ -26,7 +25,7 @@ void task_switch(process_t *next_proc);
 static void cpu_idle() {
     while (1) {
 		__asm__ __volatile__ ("cli");
-		DEBUG("kernel idle - %d\n", idle_process->pid);
+		debug("kernel idle - %d\n", idle_process->pid);
 		__asm__ __volatile__ ("sti");
 		__asm__ __volatile__ ("hlt");
 	}
@@ -35,7 +34,7 @@ static void cpu_idle() {
 static void create_idle_process() {
 	idle_process = proc_alloc();
 	if (!idle_process) {
-		PANIC("Failed to create 'idle' process\n");
+		panic("Failed to create 'idle' process\n");
 	}
 	queue_dequeue(ready_queue);
 	idle_process->regs->eflags = 0x202;
@@ -60,13 +59,14 @@ void scheduler_init() {
 	create_idle_process();
 	current_process = init_process = proc_alloc();
 	if (!init_process) {
-		PANIC("Failed to create 'init' process\n");
+		panic("Failed to create 'init' process\n");
 	}
 }
 
 process_t *get_proc_by_id(u32 pid) {
 	queue_node_t *node = procs->head;
-	for (u32 i = 0; i < procs->len; ++i) {
+	u32 i;
+	for (i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
 		if (p->pid == pid) {
 			return p;
@@ -77,11 +77,12 @@ process_t *get_proc_by_id(u32 pid) {
 }
 
 void schedule() {
+	u32 i;
 	process_t *next_proc;
 
-	DEBUG("Queue of ready processes:\r\n");
+	debug("Queue of ready processes:\r\n");
 	queue_node_t *node = ready_queue->head;
-	for (u32 i = 0; i < ready_queue->len; ++i) {
+	for (i = 0; i < ready_queue->len; ++i) {
 		process_t *p = (process_t *)node->value;
 		char *state;
 		switch (p->state) {
@@ -98,15 +99,15 @@ void schedule() {
 				state = "STOPPED";
 				break;
 		}
-		DEBUG("Process(%p) with PID %d, next: %p, state: %s\r\n",
+		debug("Process(%p) with PID %d, next: %p, state: %s\r\n",
 				p, p->pid, node->next, state);
 		node = node->next;
 	}
 
 
-	DEBUG("Queue of all processes(%d):\r\n", procs->len);
+	debug("Queue of all processes(%d):\r\n", procs->len);
 	node = procs->head;
-	for (u32 i = 0; i < procs->len; ++i) {
+	for (i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
 		char *state;
 		switch (p->state) {
@@ -123,15 +124,15 @@ void schedule() {
 				state = "STOPPED";
 				break;
 		}
-		DEBUG("Process(%p) with PID %d, next: %p, state: %s\r\n",
+		debug("Process(%p) with PID %d, next: %p, state: %s\r\n",
 				p, p->pid, node->next, state);
 		node = node->next;
 	}
 
-	// Stub implementation
-	// TODO: Use separate data structure or organize it effectively
+	/* Stub implementation */
+	/* TODO: Use separate data structure or organize it effectively */
 	node = procs->head;
-	for (u32 i = 0; i < procs->len; ++i) {
+	for (i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
 		if (p->alarm && (u32)p->alarm < ticks) {
 			send_signal(p, SIGALRM);
@@ -169,7 +170,7 @@ void task_switch(process_t *next_proc) {
 	switch_to(&prev_proc->context, current_process->context);
 }
 
-// Find first non-blocked signal
+/*Find first non-blocked signal */
 static i32 sigget(sigset_t *sigpend, const sigset_t *sigmask) {
 	i32 sig;
 
@@ -210,7 +211,7 @@ i32 handle_signal() {
 			return 0;
 		} else {
 			syscall_exit(sig);
-			// TODO: Abnormal termination of the process
+			/* TODO: Abnormal termination of the process */
 		}
 	} else if (action->sa_handler == SIG_IGN) {
 		return 0;
@@ -229,7 +230,9 @@ i32 handle_signal() {
 }
 
 u32 send_signal(process_t *proc, i32 sig) {
-	// Handle generating signal
+	u32 i;
+
+	/* Handle generating signal */
 	if (sig == SIGSTOP || sig == SIGTSTP || sig == SIGTTIN || sig == SIGTTOU) {
 		sigdelset(&proc->sigpending, SIGCONT);
 	} else if (sig == SIGCONT) {
@@ -238,9 +241,9 @@ u32 send_signal(process_t *proc, i32 sig) {
 		sigdelset(&proc->sigpending, SIGTTIN);
 		sigdelset(&proc->sigpending, SIGTTOU);
 
-		//TODO: Implement it properly or easier and simpler
+		/*TODO: Implement it properly or easier and simpler */
 		queue_node_t *node = stopped_queue->head;
-		for (u32 i = 0; i < stopped_queue->len; ++i) {
+		for (i = 0; i < stopped_queue->len; ++i) {
 			process_t *p = (process_t *)node->value;
 			if (p->pid == proc->pid) {
 				if (node->prev == NULL) {
@@ -261,17 +264,17 @@ u32 send_signal(process_t *proc, i32 sig) {
 		queue_enqueue(ready_queue, proc);
 	}
 
-	// Send the signal
+	/* Send the signal */
 	
-	// Check if the signal is blocked
-	// TODO: Don't understand
+	/* Check if the signal is blocked */
+	/* TODO: Don't understand */
 	if (!sigismember(&proc->sigmask, sig)) {
 		if (proc->signals[sig].sa_handler == SIG_IGN && sig != SIGCHLD) {
 			return 0;
 		}
 	}
 
-	// Invalid state
+	/* Invalid state */
 	if (proc->state == ZOMBIE) {
 		return -1;
 	}

@@ -2,21 +2,22 @@
 #include <paging.h>
 #include <string.h>
 
-static const u32 background_color = 0x00263238; // Grey color
-static const u32 foreground_color = 0x00FFFFFF; // White color
+static const u32 background_color = 0x00263238; /* Grey color */
+static const u32 foreground_color = 0x00FFFFFF; /* White color */
 
 static u16 cursor_x = 0, cursor_y = 0;
 
 void screen_init() {
+	u32 fb_size_in_bytes, fb_size_in_pages, i, fb_start;
 	cursor_x = 0;
 	cursor_y = 0;
 	map_page((void *)0xA000, (void *)0xFE000000, PAGING_FLAG_PRESENT);
 
-	// Identity map framebuffer
-	u32 fb_size_in_bytes = SCREEN_SIZE * 4;
-	u32 fb_size_in_pages = fb_size_in_bytes / PAGE_SIZE;
+	/* Identity map framebuffer */
+	fb_size_in_bytes = SCREEN_SIZE * 4;
+	fb_size_in_pages = fb_size_in_bytes / PAGE_SIZE;
 	if (fb_size_in_pages % PAGE_SIZE > 0) ++fb_size_in_pages;
-	for (u32 i = 0, fb_start = 0xFD000000; i < fb_size_in_pages; ++i, fb_start += PAGE_SIZE) {
+	for (i = 0, fb_start = 0xFD000000; i < fb_size_in_pages; ++i, fb_start += PAGE_SIZE) {
 		map_page((void *)fb_start, (void *)fb_start, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 	}
 
@@ -24,8 +25,9 @@ void screen_init() {
 }
 
 void screen_clear() {
+	u32 i;
 	u32 *framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
-	for (u32 i = 0; i < SCREEN_SIZE; ++i) {
+	for (i = 0; i < SCREEN_SIZE; ++i) {
 		framebuffer[i] = background_color;
 	}
 	move_cursor();
@@ -34,6 +36,8 @@ void screen_clear() {
 void screen_print_char(i8 ch) {
 	u32 *framebuffer;
 	u8 *char_glyph;
+	u8 line;
+	i8 bit;
 
 	framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	framebuffer += cursor_y * PIXEL_HEIGHT * SCREEN_WIDTH + cursor_x * PIXEL_WIDTH;
@@ -73,8 +77,8 @@ void screen_print_char(i8 ch) {
 
 	char_glyph = (u8 *)(FONT_ADDRESS + ((ch * PIXEL_HEIGHT) - PIXEL_HEIGHT));
 
-	for (u8 line = 0; line < PIXEL_HEIGHT; ++line) {
-		for (i8 bit = PIXEL_WIDTH - 1; bit >= 0; --bit) {
+	for (line = 0; line < PIXEL_HEIGHT; ++line) {
+		for (bit = PIXEL_WIDTH - 1; bit >= 0; --bit) {
 			*framebuffer = (char_glyph[line] & (1 << bit)) ? foreground_color : background_color;
 			++framebuffer;
 		}
@@ -103,17 +107,18 @@ void screen_print_string(i8 *string) {
 void screen_scroll_up() {
 	u32 *framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 
-	// PIXEL_HEIGHT - don't copy the last row of chars; 
-	// SCREEN_HEIGHT % PIXEL_HEIGHT - we have an extra 8 rows, but we can't put there any character, so we need to take into account it
-	for (u16 line = 0; line < SCREEN_HEIGHT - (PIXEL_HEIGHT + SCREEN_HEIGHT % PIXEL_HEIGHT); ++line) { 
-		for (u16 bit = 0; bit < SCREEN_WIDTH; ++bit) {
+	/* PIXEL_HEIGHT - don't copy the last row of chars;  */
+	/* SCREEN_HEIGHT % PIXEL_HEIGHT - we have an extra 8 rows, but we can't put there any character, so we need to take into account it */
+	u16 line, bit;
+	for (line = 0; line < SCREEN_HEIGHT - (PIXEL_HEIGHT + SCREEN_HEIGHT % PIXEL_HEIGHT); ++line) { 
+		for (bit = 0; bit < SCREEN_WIDTH; ++bit) {
 			*framebuffer = *(framebuffer + PIXEL_HEIGHT * SCREEN_WIDTH);
 			++framebuffer;
 		}
 	}
 
-	for (u16 line = 0; line < PIXEL_HEIGHT; ++line) {
-		for (u16 bit = 0; bit < SCREEN_WIDTH; ++bit) {
+	for (line = 0; line < PIXEL_HEIGHT; ++line) {
+		for (bit = 0; bit < SCREEN_WIDTH; ++bit) {
 			*framebuffer++ = background_color; 
 		}
 	}
@@ -123,6 +128,8 @@ void move_cursor() {
 	u8 ch;
 	u32 *framebuffer;
 	u8 *char_glyph;
+	i8 bit;
+	u8 line;
 
 	ch = '|';
 
@@ -131,8 +138,8 @@ void move_cursor() {
 
 	char_glyph = (u8 *)(FONT_ADDRESS + ((ch * PIXEL_HEIGHT) - PIXEL_HEIGHT));
 
-	i8 bit = PIXEL_WIDTH - 1;
-	for (u8 line = 0; line < PIXEL_HEIGHT; ++line) {
+	bit = PIXEL_WIDTH - 1;
+	for (line = 0; line < PIXEL_HEIGHT; ++line) {
 		*framebuffer = (char_glyph[line] & (1 << bit)) ? foreground_color : background_color;
 		framebuffer += SCREEN_WIDTH;
 	}
@@ -142,6 +149,8 @@ void remove_cursor() {
 	u8 ch;
 	u32 *framebuffer;
 	u8 *char_glyph;
+	i8 bit;
+	u8 line;
 
 	ch = ' ';
 
@@ -150,8 +159,8 @@ void remove_cursor() {
 
 	char_glyph = (u8 *)(FONT_ADDRESS + ((ch * PIXEL_HEIGHT) - PIXEL_HEIGHT));
 
-	i8 bit = PIXEL_WIDTH - 1;
-	for (u8 line = 0; line < PIXEL_HEIGHT; ++line) {
+	bit = PIXEL_WIDTH - 1;
+	for (line = 0; line < PIXEL_HEIGHT; ++line) {
 		*framebuffer = (char_glyph[line] & (1 << bit)) ? foreground_color : background_color;
 		framebuffer += SCREEN_WIDTH;
 	}
@@ -160,13 +169,15 @@ void remove_cursor() {
 void remove_char() {
 	u32 *framebuffer;
 	u8 *char_glyph;
+	u8 line;
+	i8 bit;
 
 	framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	framebuffer += cursor_y * PIXEL_HEIGHT * SCREEN_WIDTH + cursor_x * PIXEL_WIDTH;
 
 	char_glyph = (u8 *)(FONT_ADDRESS + ((' ' * PIXEL_HEIGHT) - PIXEL_HEIGHT));
-	for (u8 line = 0; line < PIXEL_HEIGHT; ++line) {
-		for (i8 bit = PIXEL_WIDTH - 1; bit >= 0; --bit) {
+	for (line = 0; line < PIXEL_HEIGHT; ++line) {
+		for (bit = PIXEL_WIDTH - 1; bit >= 0; --bit) {
 			*framebuffer = (char_glyph[line] & (1 << bit)) ? foreground_color : background_color;
 			++framebuffer;
 		}

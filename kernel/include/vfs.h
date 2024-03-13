@@ -31,13 +31,13 @@ typedef i32 (*unlink_callback)(struct vfs_node *node, i8 *name);
 typedef void (*trunc_callback)(struct vfs_node *node);
 
 typedef struct vfs_node {
-	i8 name[256];				// The filename
-	u32 permission_mask;		// The permissions mask
-	u32 flags;					// include node type(file, directory, char device, block device, pipe, symlink, mountpoint)
-	u32 uid;					// The owning user
-	u32 gid;					// The group id
-	u32 inode;					// This is a device-specific - provides a way for filesystem to identify files
-	u32 length;					// Size of file, in bytes
+	i8 name[256];
+	u32 permission_mask;
+	u32 flags;
+	u32 uid;
+	u32 gid;
+	u32 inode;
+	u32 length;
 	u32 atime;
     u32 mtime;
 	u32 ctime;
@@ -50,9 +50,9 @@ typedef struct vfs_node {
 	mkdir_callback mkdir;
 	unlink_callback unlink;
 	trunc_callback trunc;
-	readdir_callback readdir;	// Return n'th child of a directory 
-	finddir_callback finddir;   // Try to find a child in a directory
-	void *device;				// Possible char or block device
+	readdir_callback readdir;
+	finddir_callback finddir;
+	void *device;
 } vfs_node_t;
 
 #define FDS_NUM 32

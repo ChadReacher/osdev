@@ -21,7 +21,6 @@ i32 ext2_file_read(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count
 		block = ext2_bmap(inode, fp->f_pos);
 		if (block) {
 			lbuf = read_blk(inode->i_dev, block);
-			//rw_block(READ, inode->i_dev, block, &lbuf);
 			if (!lbuf) {
 				break;
 			}
@@ -46,7 +45,8 @@ i32 ext2_file_read(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count
 
 i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count) {
 	struct buffer *lbuf;
-	u32 pos, block, inblock, chars;
+	i32 pos;
+	u32 block, inblock, chars;
 	u32 left = count;
 	(void)inode;
 	(void) fp;
@@ -63,7 +63,6 @@ i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 coun
 			break;
 		}
 		lbuf = read_blk(inode->i_dev, block);
-		//rw_block(READ, inode->i_dev, block, &lbuf);
 		if (!lbuf) {
 			break;
 		}
@@ -79,7 +78,6 @@ i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 coun
 		i8 *p = lbuf->b_data + inblock;
 		memcpy(p, buf, chars);
 		write_blk(lbuf);
-		//rw_block(WRITE, inode->i_dev, block, &lbuf);
 		free(lbuf);
 
 		buf += chars;

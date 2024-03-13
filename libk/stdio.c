@@ -5,12 +5,13 @@
 #include "serial.h"
 
 void kprintf(i8 *fmt, ...) {
+	i8 internal_buf[2048];
+	va_list args;
+
 	if (!fmt) {
 		return;
 	}
-	va_list args;
 	va_start(args, fmt);
-	i8 internal_buf[2048];
 	memset(internal_buf, 0, sizeof internal_buf);
 	kvsprintf(internal_buf, fmt, args);	
 	screen_print_string(internal_buf);

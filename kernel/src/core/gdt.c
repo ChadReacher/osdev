@@ -7,19 +7,19 @@ void gdt_init() {
 	gdtr.size = sizeof(gdt) - 1;
 	gdtr.offset = (u32)gdt;
 
-	// Set up the NULL descriptor
+	/* NULL descriptor */
 	gdt_set_entry(0, 0, 0, 0, 0);
 	
-	// Kernel code descriptor
+	/* Kernel code descriptor */
 	gdt_set_entry(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
 	
-	// Kernel data descriptor
+	/* Kernel data descriptor */
 	gdt_set_entry(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
 
-	// User code descriptor
+	/* User code descriptor */
 	gdt_set_entry(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);
 
-	// User data descriptor
+	/* User data descriptor */
 	gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
 
 	gdt_flush((u32)(&gdtr));

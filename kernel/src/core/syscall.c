@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <panic.h>
 #include <vfs.h>
-#include <debug.h>
 #include <fcntl.h>
 #include <string.h>
 #include <keyboard.h>
@@ -38,7 +37,7 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 	mode &= 0777 & ~current_process->umask;
 	fd = get_new_fd();
 	if (fd > NR_OPEN) {
-		DEBUG("We have run out of file descriptors\r\n");
+		debug("We have run out of file descriptors\r\n");
 		return -EMFILE;
 	}
 	current_process->close_on_exec &= ~(1 << fd);
@@ -62,11 +61,12 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 }
 
 i32 syscall_close(i32 fd) {
+	struct file *f;
 	if (fd > NR_OPEN) {
 		return -EBADF;
 	}
 	current_process->close_on_exec &= ~(1 << fd);
-	struct file *f = current_process->fds[fd];
+	f = current_process->fds[fd];
 	if (!f) {
 		return -EBADF;
 	}
@@ -82,6 +82,9 @@ i32 syscall_close(i32 fd) {
 }
 
 i32 syscall_read(i32 fd, i8 *buf, i32 count) {
+	struct file *f;
+	struct ext2_inode *inode;
+
 	if (fd == FD_STDIN) {
 		u8 c = keyboard_getchar();
 		if (c) {
@@ -91,8 +94,6 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 		return 0;
 	}
 
-	struct file *f;
-	struct ext2_inode *inode;
 
 	if (count == 0) {
 		return 0;
@@ -119,6 +120,9 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 }
 
 i32 syscall_write(i32 fd, i8 *buf, u32 count) {
+	struct file *f;
+	struct ext2_inode *inode;
+
 	if (fd == FD_STDOUT || fd == FD_STDERR) {
 		u32 i;
 		for (i = 0; i < count; ++i) {
@@ -126,8 +130,6 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 		}
 		return i;
 	}
-	struct file *f;
-	struct ext2_inode *inode;
 
 	if (count == 0) {
 		return 0;
@@ -242,45 +244,61 @@ i32 syscall_yield() {
 }
 
 i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
+	i32 i;
+	u32 j;
+	u32 *data;
+	i8 **arg_p, **env_p;
+	i8 **argv, **envp;
 	i32 argc = 0, envc = 0;
+	struct ext2_inode *inode;
+	struct file fp;
+	void *prev_page_dir, *new_page_dir_phys;
+	void *old_kernel_stack, *kernel_stack;
+	i8 *usp;
+	u32 env_ptr, arg_ptr, *sp;
+	void *page_dir_phys;
+	page_directory_t *page_dir;
+	page_directory_entry pde;
+	page_table_t *table;
+	page_table_entry pte;
+	void *table_phys;
+	void *page_frame;
+
 	if (u_argv) {
-		for (i8 **arg_p = u_argv; *arg_p; ++arg_p) {
+		for (arg_p = u_argv; *arg_p; ++arg_p) {
 			++argc;
 		}
 	}
 	if (u_envp) {
-		for (i8 **env_p = u_envp; *env_p; ++env_p) {
+		for (env_p = u_envp; *env_p; ++env_p) {
 			++envc;
 		}
 	}
 
-	i8 **argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
-	i8 **envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
+	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
+	envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
 
 	argv[argc] = NULL;
 	envp[envc] = NULL;
 
-	for (i32 i = 0; i < argc; ++i) {
+	for (i = 0; i < argc; ++i) {
 		argv[i] = strdup(u_argv[i]);
 	}
-	for (i32 i = 0; i < envc; ++i) {
+	for (i = 0; i < envc; ++i) {
 		envp[i] = strdup(u_envp[i]);
 	}
 
-	//vfs_node_t *vfs_node = vfs_get_node(pathname);
-	struct ext2_inode *inode = namei(pathname);
-	//if (!vfs_node) {
+	inode = namei(pathname);
 	if (!inode) {
-		for (i32 i = 0; i < argc; ++i) {
+		for (i = 0; i < argc; ++i) {
 			free(argv[i]);
 		}
-		for (i32 i = 0; i < envc; ++i) {
+		for (i = 0; i < envc; ++i) {
 			free(envp[i]);
 		}
 		free(argv);
 		free(envp);
 		return ENOENT;
-	//} else if ((vfs_node->flags & FS_FILE) != FS_FILE) {
 	}/* else if (!EXT2_S_ISREG(inode->i_mode)) {
 		for (i32 i = 0; i < argc; ++i) {
 			free(argv[i]);
@@ -291,7 +309,6 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		free(argv);
 		free(envp);
 		return EACCES;
-	//} else if ((vfs_node->permission_mask & 0x40) != 0x40 && (vfs_node->permission_mask & 0x08) != 0x08 && (vfs_node->permission_mask & 0x01) != 0x01) {
 	} else if ((inode->i_mode & 0x40) != 0x40 && (inode->i_mode & 0x08) != 0x08 && (inode->i_mode & 0x01) != 0x01) {
 		for (i32 i = 0; i < argc; ++i) {
 			free(argv[i]);
@@ -305,25 +322,26 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	}*/
 
 
-	//u32 *data = (u32 *)malloc(vfs_node->length);
-	//memset((i8 *)data, 0, vfs_node->length);
-	//vfs_read(vfs_node, 0, vfs_node->length, (i8 *)data);
-	u32 *data = malloc(inode->i_size);
+	data = malloc(inode->i_size);
 	memset((i8 *)data, 0, inode->i_size);
-	struct file fp = { inode->i_mode, 0, 1, inode, 0 };
+	fp.f_mode = inode->i_mode;
+	fp.f_flags = 0;
+	fp.f_count = 1;
+	fp.f_inode = inode;
+	fp.f_pos = 0;
 	ext2_file_read(inode, &fp, (i8 *)data, inode->i_size);
 
-	void *prev_page_dir = current_process->directory;
-	void *new_page_dir_phys = paging_copy_page_dir(false);
+	prev_page_dir = current_process->directory;
+	new_page_dir_phys = paging_copy_page_dir(0);
 	current_process->directory = new_page_dir_phys;
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"((u32)new_page_dir_phys));
 
 	if (elf_load(data) == NULL) {
-		// TODO: free 'new_page_dir_phys' ?
-		for (i32 i = 0; i < argc; ++i) {
+		/* TODO: free 'new_page_dir_phys' ? */
+		for (i = 0; i < argc; ++i) {
 			free(argv[i]);
 		}
-		for (i32 i = 0; i < envc; ++i) {
+		for (i = 0; i < envc; ++i) {
 			free(envp[i]);
 		}
 		free(argv);
@@ -335,43 +353,43 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	}
 	free(data);
 
-	void *old_kernel_stack = current_process->kernel_stack_bottom;
-	void *kernel_stack = malloc(4096 * 2);
+	old_kernel_stack = current_process->kernel_stack_bottom;
+	kernel_stack = malloc(4096 * 2);
 	memset(kernel_stack, 0, 4096 * 2);
 	current_process->kernel_stack_bottom = kernel_stack;
 	free(old_kernel_stack);
 
-	// Handle user stack:
+	/* Handle user stack: */
 	memset((void *)0xBFFFF000, 0, 4092);
-	i8 *usp = (i8 *)0xBFFFFFFB;
-	// push envp strings
-	for (i32 i = envc - 1; i >= 0; --i) {
+	usp = (i8 *)0xBFFFFFFB;
+	/* push envp strings */
+	for (i = envc - 1; i >= 0; --i) {
 		usp -= strlen(envp[i]) + 1;
 		strcpy((i8 *)usp, envp[i]);
 		free(envp[i]);
 		envp[i] = (i8 *)usp;
 	}
-	// push argv strings
-	for (i32 i = argc - 1; i >= 0; --i) {
+	/* push argv strings */
+	for (i = argc - 1; i >= 0; --i) {
 		usp -= strlen(argv[i]) + 1;
 		strcpy((i8 *)usp, argv[i]);
 		free(argv[i]);
 		argv[i] = (i8 *)usp;
 	}
 
-	// Push envp pointers to envp strings
+	/* Push envp pointers to envp strings */
 	usp -= (envc + 1) * 4;
 	memcpy((void *)usp, (void *)envp, (envc + 1) * 4);
 
-	// Save env ptr
-	u32 env_ptr = (u32)usp;
+	/* Save env ptr */
+	env_ptr = (u32)usp;
 
-	// Push argv pointers argv strings
+	/* Push argv pointers argv strings */
 	usp -= (argc + 1) * 4;
 	memcpy((void *)usp, (void *)argv, (argc + 1) * 4);
 
-	// Save arg ptr
-	u32 arg_ptr = (u32)usp;
+	/* Save arg ptr */
+	arg_ptr = (u32)usp;
 
 	usp -= 4;
 	*((u32*)usp) = env_ptr;
@@ -385,69 +403,69 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	free(argv);
 	free(envp);
 
-	u32 *sp = (u32 *)ALIGN_DOWN((u32)current_process->kernel_stack_bottom + 4096 * 2 - 1, 4);
-	// Setup kernel stack as we have returned from interrupt routine
-	*sp-- = 0x23;			// user DS
-	*sp-- = (u32)usp;		// user stack
-	*sp-- = 0x200;			// EFLAGS
-	*sp-- = 0x1B;			// user CS
-	*sp-- = 0x0;			// user eip
-	*sp-- = 0x0;			// err code
-	*sp-- = 0x0;			// int num
-	*sp-- = 0x0;			// eax
-	*sp-- = 0x0; 			// ecx
-	*sp-- = 0x0; 			// edx
-	*sp-- = 0x0; 			// ebx
-	*sp-- = 0x0; 			// esp
-	*sp-- = 0x0;			// ebp
-	*sp-- = 0x0; 			// esi
-	*sp-- = 0x0; 			// edi
-	*sp-- = 0x23;			// ds
-	*sp-- = 0x23; 			// es
-	*sp-- = 0x23; 			// fs
-	*sp-- = 0x23; 			// gs
+	sp = (u32 *)ALIGN_DOWN((u32)current_process->kernel_stack_bottom + 4096 * 2 - 1, 4);
+	/* Setup kernel stack as we have returned from interrupt routine */
+	*sp-- = 0x23;			/* user DS */
+	*sp-- = (u32)usp;		/* user stack */
+	*sp-- = 0x200;			/* EFLAGS */
+	*sp-- = 0x1B;			/* user CS */
+	*sp-- = 0x0;			/* user eip */
+	*sp-- = 0x0;			/* err code */
+	*sp-- = 0x0;			/* int num */
+	*sp-- = 0x0;			/* eax */
+	*sp-- = 0x0; 			/* ecx */
+	*sp-- = 0x0; 			/* edx */
+	*sp-- = 0x0; 			/* ebx */
+	*sp-- = 0x0; 			/* esp */
+	*sp-- = 0x0;			/* ebp */
+	*sp-- = 0x0; 			/* esi */
+	*sp-- = 0x0; 			/* edi */
+	*sp-- = 0x23;			/* ds */
+	*sp-- = 0x23; 			/* es */
+	*sp-- = 0x23; 			/* fs */
+	*sp-- = 0x23; 			/* gs */
 	*current_process->regs = *((registers_state *)(sp + 1));
-	*sp-- = (u32)irq_ret;	// irq_ret eip (to return back to the end of the interrupt routine)
-	*sp-- = 0x0;			// ebp
-	*sp-- = 0x0; 			// ebx
-	*sp-- = 0x0; 			// esi
-	*sp-- = 0x0; 			// edi
+	*sp-- = (u32)irq_ret;	/* irq_ret eip (to return back to the end of the interrupt routine) */
+	*sp-- = 0x0;			/* ebp */
+	*sp-- = 0x0; 			/* ebx */
+	*sp-- = 0x0; 			/* esi */
+	*sp-- = 0x0; 			/* edi */
 	++sp;
 
 	current_process->kernel_stack_top = (void *)sp;
 	current_process->context = (context_t *)sp;
 	current_process->timeslice = 10;
-	for (i32 i = 0; i < NSIG; ++i) {
+	for (i = 0; i < NSIG; ++i) {
 		sighandler_t hand = current_process->signals[i].sa_handler;
 		if (hand != SIG_DFL && hand != SIG_IGN && hand != SIG_ERR) {
 			current_process->signals[i].sa_handler = SIG_DFL;
 		}
 	}
-	for (i32 i = 0; i < NR_OPEN; ++i) {
+	for (i = 0; i < NR_OPEN; ++i) {
 		if ((current_process->close_on_exec >> i) & 1) {
 			syscall_close(i);
 		}
 	}
 	current_process->close_on_exec = 0;
 
-	// Free the user code pages in the page directory
-	void *page_dir_phys = (void *)prev_page_dir;
+	/* Free the user code pages in the page directory */
+	page_dir_phys = (void *)prev_page_dir;
 	map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-	page_directory_t *page_dir = (page_directory_t *)0xE0000000;
-	for (u32 i = 0; i < 768; ++i) {
+	page_dir = (page_directory_t *)0xE0000000;
+	for (i = 0; i < 768; ++i) {
 		if (!page_dir->entries[i]) {
 			continue;
 		}
-		page_directory_entry pde = page_dir->entries[i];
-		void *table_phys = (void *)GET_FRAME(pde);
+		pde = page_dir->entries[i];
+		table_phys = (void *)GET_FRAME(pde);
 		map_page(table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-		page_table_t *table = (page_table_t *)0xEA000000;
-		for (u32 j = 0; j < 1024; ++j) {
+		table = (page_table_t *)0xEA000000;
+		for (j = 0; j < 1024; ++j) {
 			if (!table->entries[j]) {
 				continue;
 			}
-			page_table_entry pte = table->entries[j];
-			void *page_frame = (void *)GET_FRAME(pte);
+			pte = table->entries[j];
+			page_frame = (void *)GET_FRAME(pte);
 			free_blocks(page_frame, 1);
 		}
 		memset(table, 0, 4096);
@@ -458,7 +476,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	unmap_page((void *)0xE0000000);
 	free_blocks(page_dir_phys, 1);
 	
-	// Flush TLB
+	/* Flush TLB */
 	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
 
@@ -467,13 +485,13 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 }
 
 i32 syscall_fork() {
-	// TODO: Create a separate function to copy process
+	/* TODO: Create a separate function to copy process */
 	process_t *child_process = proc_alloc();
 	if (!child_process) {
 		return EAGAIN;
 	}
 
-	child_process->directory = paging_copy_page_dir(true);
+	child_process->directory = paging_copy_page_dir(1);
 	if (!child_process->directory) {
 		return EAGAIN;
 	}
@@ -521,40 +539,51 @@ i32 syscall_kill(i32 pid, i32 sig) {
 	if (pid > 0) {
 		return send_signal(proc, sig);
 	} else if (pid == 0) {
-		// TODO: Process group id of sender + permission to send a signal
+		/* TODO: Process group id of sender + permission to send a signal */
 		return -1;
 	} else if (pid == -1) {
 		return 0;
 	} else if (pid < 0) {
-		// TODO: Process group id == abs(pid) + have permission to send a signal
+		/* TODO: Process group id == abs(pid) + have permission to send a signal */
 		return -1;
 	}
 	return 0;
 }
 
 i32 syscall_exit(i32 exit_code) {
+	u32 i, j;
+	void *page_dir_phys;
+	page_directory_t *page_dir;
+	queue_node_t *node;
+
 	if (current_process->pid == 1) {
-		PANIC("Can't exit the INIT process\r\n");
+		panic("Can't exit the INIT process\r\n");
 	}
 
-	// Free the user code pages in the page directory
-	void *page_dir_phys = (void *)current_process->directory;
+	/* Free the user code pages in the page directory */
+	page_dir_phys = (void *)current_process->directory;
 	map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-	page_directory_t *page_dir = (page_directory_t *)0xE0000000;
-	for (u32 i = 0; i < 768; ++i) {
+	page_dir = (page_directory_t *)0xE0000000;
+	for (i = 0; i < 768; ++i) {
+		page_directory_entry pde;
+		void *table_phys;
+		page_table_t *table;
+
 		if (!page_dir->entries[i]) {
 			continue;
 		}
-		page_directory_entry pde = page_dir->entries[i];
-		void *table_phys = (void *)GET_FRAME(pde);
+		pde = page_dir->entries[i];
+		table_phys = (void *)GET_FRAME(pde);
 		map_page(table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-		page_table_t *table = (page_table_t *)0xEA000000;
-		for (u32 j = 0; j < 1024; ++j) {
+		table = (page_table_t *)0xEA000000;
+		for (j = 0; j < 1024; ++j) {
+			page_table_entry pte;
+			void *page_frame;
 			if (!table->entries[j]) {
 				continue;
 			}
-			page_table_entry pte = table->entries[j];
-			void *page_frame = (void *)GET_FRAME(pte);
+			pte = table->entries[j];
+			page_frame = (void *)GET_FRAME(pte);
 			free_blocks(page_frame, 1);
 		}
 		memset(table, 0, 4096);
@@ -565,21 +594,23 @@ i32 syscall_exit(i32 exit_code) {
 	unmap_page((void *)0xE0000000);
 	free_blocks(page_dir_phys, 1);
 	
-	// Flush TLB
+	/* Flush TLB */
 	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
 	
-	// Close open files
-	for (u32 i = 3; i < NR_OPEN; ++i) {
+	/* Close open files */
+	for (i = 3; i < NR_OPEN; ++i) {
 		struct file *f = current_process->fds[i];
 		(void)f;
-		//if (f && f->vfs_node && f->vfs_node != (void *)-1) {
-		//	vfs_close(f->vfs_node);
-		//	free(f->vfs_node);
-		//	memset(f, 0, sizeof(file));
-		//}
+		/*
+		if (f && f->vfs_node && f->vfs_node != (void *)-1) {
+			vfs_close(f->vfs_node);
+			free(f->vfs_node);
+			memset(f, 0, sizeof(file));
+		}
+		*/
 	}
-	//free(current_process->fds);
+	/*free(current_process->fds); */
 	
 	iput(current_process->root);
 	current_process->root = NULL;
@@ -589,9 +620,9 @@ i32 syscall_exit(i32 exit_code) {
 
 	current_process->exit_code = exit_code;
 
-	// Pass current_process's children to INIT process
-	queue_node_t *node = procs->head;
-	for (u32 i = 0; i < procs->len; ++i) {
+	/* Pass current_process's children to INIT process */
+	node = procs->head;
+	for (i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
 		if (p->parent == current_process) {
 			p->parent = init_process;
@@ -604,7 +635,7 @@ i32 syscall_exit(i32 exit_code) {
 	current_process->state = ZOMBIE;
 	schedule();
 
-	PANIC("Zombie returned from scheduler\r\n");
+	panic("Zombie returned from scheduler\r\n");
 	return 0;
 }
 
@@ -612,22 +643,29 @@ i32 syscall_waitpid(i32 pid, i32 *stat_loc, i32 options) {
 	(void)options;
 
 	if (pid < -1) {
-		// Wait for any child process whose process group ID
-		// is equal to the absolute value of 'pid'
+		/* 
+		 * Wait for any child process whose process group ID
+		 * is equal to the absolute value of 'pid'
+		 */
 		return 0;
 	} else if (pid == -1) {
-		// Wait for any child process
+		/* Wait for any child process */
 		for (;;) {
-			bool havekids = false;
+			bool havekids = 0;
 			queue_node_t *node = procs->head;
 			u32 len = procs->len;
-			for (u32 i = 0; i < len; ++i) {
+			u32 i;
+			for (i = 0; i < len; ++i) {
+				u32 chd_pid;
+				u32 j;
+				queue_node_t *node2;
 				process_t *p = (process_t *)node->value;
+
 				if (p->parent != current_process) {
 					node = node->next;
 					continue;
 				}
-				havekids = true;
+				havekids = 1;
 
 				if (p->state !=	ZOMBIE && p->state != STOPPED) {
 					if (node->next == NULL) {
@@ -636,14 +674,16 @@ i32 syscall_waitpid(i32 pid, i32 *stat_loc, i32 options) {
 					node = node->next;
 					continue;
 				}
-				u32 chd_pid = p->pid;
+				chd_pid = p->pid;
 				if (stat_loc) {
 					*stat_loc = p->exit_code & 0xFF;
 				}
-				// TODO: remove from procs list, get rid of it
-				// and implement in a normal way
-				queue_node_t *node2 = procs->head;
-				for (u32 j = 0; j < procs->len; ++j) {
+				/* 
+				 * TODO: remove from procs list, get rid of it
+				 * and implement in a normal way
+				 */
+				node2 = procs->head;
+				for (j = 0; j < procs->len; ++j) {
 					process_t *proc = (process_t *)node2->value;
 					if (proc->pid == chd_pid) {
 						if (node2->prev == NULL) {
@@ -680,12 +720,14 @@ i32 syscall_waitpid(i32 pid, i32 *stat_loc, i32 options) {
 			schedule();
 		}
 	} else if (pid == 0) {
-		// Wait for any child process whose process group ID
-		// is equal to that of the calling process at the time
-		// of the call to 'waitpid()'
+		/*
+		 * Wait for any child process whose process group ID is equal
+		 * to that of the calling process
+		 * at the time of the call to 'waitpid()'
+		 */
 		return 0;
 	} else if (pid > 0) {
-		// Wait for the child whose process ID is equal to the value of 'pid'
+		/* Wait for the child whose process ID is equal to the value of 'pid' */
 		return 0;
 	}
 	return -1;
@@ -736,15 +778,17 @@ i32 syscall_sbrk(i32 incr) {
 i32 syscall_nanosleep(struct timespec *req, struct timespec *rem) {
 	(void)req;
 	(void)rem;
-	kernel_panic("syscall_nanosleep(): UNIMPLEMENTED\n");
+	panic("syscall_nanosleep(): UNIMPLEMENTED\n");
 	return 0;
 }
 
-i32 syscall_getcwd(i8 *buf, i32 size) {
+i32 syscall_getcwd(i8 *buf, u32 size) {
+	u32 len;
+
 	if (size <= 0) {
 		return -EINVAL;
 	}
-	u32 len = strlen(current_process->str_pwd);
+	len = strlen(current_process->str_pwd);
 	if (size > 0 && size < len + 1) {
 		return -ERANGE;
 	}
@@ -913,7 +957,7 @@ i32 syscall_alarm(u32 secs) {
 
 i32 syscall_sleep(u32 secs) {
 	(void)secs;
-	kernel_panic("syscall_sleep(): UNIMPLEMENTED\n");
+	panic("syscall_sleep(): UNIMPLEMENTED\n");
 	return 0;
 }
 
@@ -986,14 +1030,16 @@ i32 syscall_setsid() {
 }
 
 i32 syscall_setpgid(u32 pid, i32 pgid) {
+	u32 i;
+	queue_node_t *node;
 	if (!pid) {
 		pid = current_process->pid;
 	}
 	if (!pgid) {
 		pgid = pid;
 	}
-	queue_node_t *node = procs->head;
-	for (u32 i = 0; i < procs->len; ++i) {
+	node = procs->head;
+	for (i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
 		if (p->pid == pid) {
 			if (p->leader) {
@@ -1048,7 +1094,7 @@ u32 syscall_umask(u32 cmask) {
 
 i32 syscall_link(i8 *path1, i8 *path2) {
 	i32 err;
-	i8 *basename;
+	const i8 *basename;
 	struct buffer *buf;
 	struct ext2_inode *oldinode, *dir;
 	struct ext2_dir *de;
@@ -1061,7 +1107,7 @@ i32 syscall_link(i8 *path1, i8 *path2) {
 		iput(oldinode);
 		return -EPERM;
 	}
-	err = dir_namei(path1, &basename, &dir);
+	err = dir_namei(path2, &basename, &dir);
 	if (err) {
 		iput(oldinode);
 		return -ENOENT;
@@ -1148,16 +1194,16 @@ i32 syscall_rename(i8 *oldname, i8 *newname) {
 }
 
 struct dirent *syscall_readdir(DIR *dirp) {
-	i32 error;
 	struct file *file;
 	struct ext2_inode *inode;
+	i32 i;
 
 	if (dirp->fd >= NR_OPEN ||
 			!(file = current_process->fds[dirp->fd]) ||
 			!(inode = file->f_inode)) {
-		return -EBADF;
+		return NULL;
 	}
-	i32 i = ext2_readdir(inode, file, &dirp->dent);
+	i = ext2_readdir(inode, file, &dirp->dent);
 	if (i) {
 		return &dirp->dent;
 	} else {
@@ -1166,15 +1212,17 @@ struct dirent *syscall_readdir(DIR *dirp) {
 }
 
 i32 syscall_test(i32 n) {
+	i32 i;
 	i8 *buf = malloc(8192 * 5);
-	DEBUG("START syscall_test()\r\n");
+
+	debug("START syscall_test()\r\n");
 	kprintf("Got n - %d\r\n", n);
-	for (i32 i = 0; i < 10000; ++i) {
+	for (i = 0; i < 10000; ++i) {
 		i32 fd = syscall_open("/usr/file", O_RDONLY, 0);
 		syscall_read(fd, buf, 8192 * 5);
 		syscall_close(fd);
 	}
-	DEBUG("END syscall_test()\r\n");
+	debug("END syscall_test()\r\n");
 	return 0;
 }
 
@@ -1290,7 +1338,7 @@ i32 syscall_fcntl(i32 fd, i32 cmd, i32 arg) {
 	return 0;
 }
 
-// TODO: Make more in-depth check
+/* TODO: Make more in-depth check */
 static i32 is_empty_dir(struct ext2_inode *inode) {
 	return inode->i_size == 24;
 }
@@ -1302,7 +1350,7 @@ i32 syscall_rmdir(i8 *path) {
 	struct ext2_inode *dir, *inode;
 	struct ext2_dir *de;
 
-	if (retval = dir_namei(path, &basename, &dir)) {
+	if ((retval = dir_namei(path, &basename, &dir))) {
 		return -ENOENT;
 	}
 	if (*basename == '\0') {
@@ -1342,7 +1390,7 @@ i32 syscall_rmdir(i8 *path) {
 		goto end;
 	}
 	if (inode->i_links_count != 2) {
-		DEBUG("inode has links_count > 2, %d\r\n", inode->i_links_count);
+		debug("inode has links_count > 2, %d\r\n", inode->i_links_count);
 	}
 	de->inode = 0;
 	write_blk(buf);
@@ -1417,7 +1465,7 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
 	free(dir_block);
 	inode->i_mode = EXT2_S_IFDIR | (mode & 0777 & ~current_process->umask);
 	inode->i_dirt = 1;
-	err = ext2_add_entry(dir, basename, buf, &de);
+	err = ext2_add_entry(dir, basename, &buf, &de);
 	if (err) {
 		iput(dir);
 		inode->i_links_count = 0;
@@ -1433,71 +1481,4 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
 	iput(dir);
 	iput(inode);
 	return 0;
-}
-
-syscall_fn syscall_handlers[NR_SYSCALLS] = {
-	syscall_test,
-	syscall_exit,
-	syscall_fork,
-	syscall_read,
-	syscall_write,
-	syscall_open,
-	syscall_close,
-	syscall_waitpid,
-	syscall_unlink,
-	syscall_exec,
-	syscall_chdir,
-	syscall_time,
-	syscall_lseek,
-	syscall_getpid,
-	syscall_setuid,
-	syscall_getuid,
-	syscall_alarm,
-	syscall_fstat,
-	syscall_pause,
-	syscall_kill,
-	syscall_dup,
-	syscall_times,
-	syscall_sbrk,
-	syscall_setgid,
-	syscall_getgid,
-	syscall_geteuid,
-	syscall_getegid,
-	syscall_setpgid,
-	syscall_uname,
-	syscall_getppid,
-	syscall_getpgrp,
-	syscall_setsid,
-	syscall_sigaction,
-	syscall_sigpending,
-	syscall_sigsuspend,
-	syscall_sigprocmask,
-	syscall_sigreturn,
-	syscall_nanosleep,
-	syscall_yield,
-	syscall_getcwd,
-	syscall_sleep,
-	syscall_umask,
-	syscall_link,
-	syscall_rename,
-	syscall_readdir,
-	syscall_stat,
-	syscall_access,
-	syscall_dup2,
-	syscall_fcntl,
-	syscall_rmdir,
-	syscall_mkdir,
-};
-
-i32 syscall_handler(registers_state *regs) {
-	if (regs->eax > NR_SYSCALLS) {
-		DEBUG("Received unimplemented syscall: %d\n", regs->eax);
-		return -1;
-	}
-	syscall_fn sys = syscall_handlers[regs->eax];
-	return sys(regs->ebx, regs->ecx, regs->edx, regs->esi);
-}
-
-void syscall_init() {
-	idt_set(SYSCALL, (u32)isr0x80, 0xEE);
 }

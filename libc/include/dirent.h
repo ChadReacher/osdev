@@ -3,7 +3,6 @@
 
 #include <sys/types.h>
 
-// Stat mode constants
 #define S_IFMT      0170000
 #define S_IFSOCK    014000
 #define S_IFLNK     0120000

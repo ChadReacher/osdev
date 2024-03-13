@@ -3,11 +3,9 @@
 
 #include "types.h"
 
-// Ports
 #define PCI_CONFIG_ADDRESS 0xCF8
 #define PCI_CONFIG_DATA    0xCFC
 
-// Offset
 #define PCI_VENDOR_ID 0x00
 #define PCI_DEVICE_ID 0x02
 #define PCI_COMMAND 0x04
@@ -29,7 +27,6 @@
 #define PCI_INTERRUPT_LINE 0x3C
 #define PCI_SECONDARY_BUS 0x09
 
-// Device type
 #define PCI_HEADER_TYPE_DEVICE 0
 #define PCI_HEADER_TYPE_BRIDGE 1
 #define PCI_HEADER_TYPE_CARDBUS 2
@@ -51,7 +48,7 @@ typedef union pci_device {
 		u32 bus_num			: 8;
 		u32 reserved		: 7;
 		u32	enable_bit		: 1;
-	};
+	} s;
 } pci_device_t;
 
 void pci_init();

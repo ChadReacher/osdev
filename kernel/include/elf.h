@@ -5,7 +5,6 @@
 
 #define ELF_MAGIC_NUMBER 0x7F
 
-// Object file type
 #define ET_NONE 0x00
 #define ET_EXEC 0x02
 
@@ -32,11 +31,9 @@ typedef struct elf_header {
 	u16 strtab_idx;
 } __attribute__((packed)) elf_header_t;
 
-// Type of segment
 #define PT_NULL 0x0
 #define PT_LOAD 0x1
 
-// Segment-dependent flags
 #define PF_X 0x1
 #define PF_W 0x2
 #define PF_R 0x3

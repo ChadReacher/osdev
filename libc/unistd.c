@@ -11,7 +11,15 @@ extern i8 **environ;
 
 syscall0(pid_t, fork)
 
-syscall1(u32, umask, u32, mode)
+u32 umask(u32 mode) {
+	u32 ret;
+
+	__asm__ volatile ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(__NR_umask), "b"(mode));
+
+	return ret;
+}
 
 syscall2(i32, link, i8 *, path1, i8 *, path2)
 
@@ -23,7 +31,7 @@ i32 execv(const i8 *pathname, i8 **argv) {
 	return execve(pathname, argv, environ);
 }
 
-#define PATH_MAX 4096 // TODO: move it to 'limits.h'
+#define PATH_MAX 4096 /* TODO: move it to 'limits.h' */
 i32 find_file_in_path(const i8 *file, i8 *buf) {
     u32 n;
     i8 *endp, *envpath;
@@ -42,7 +50,7 @@ i32 find_file_in_path(const i8 *file, i8 *buf) {
         memcpy(buf, envpath, n);
         buf[n++] = '/';
         strcpy(buf + n, file);
-		// TODO: change to 'stat'
+		/* TODO: change to 'stat' */
         if (access(buf, F_OK) == 0) {
 			return 0;
         }
@@ -55,6 +63,8 @@ i32 find_file_in_path(const i8 *file, i8 *buf) {
 }
 
 i32 execvp(const i8 *file, i8 **argv) {
+	i8 absolute_path[PATH_MAX] = { 0 };
+
 	if (!file || !argv || !environ) {
 		errno = -ENOENT;
 		return -1;
@@ -62,7 +72,6 @@ i32 execvp(const i8 *file, i8 **argv) {
 	if (file[0] == '/') {
 		execve(file, argv, environ);
 	}
-	i8 absolute_path[PATH_MAX] = { 0 };
 	if (find_file_in_path(file, absolute_path) == 0) {
 		return execve(absolute_path, argv, environ);
 	}
@@ -70,7 +79,7 @@ i32 execvp(const i8 *file, i8 **argv) {
 }
 
 
-#define ARG_MAX 1024 // TODO: move to 'limits.h'
+#define ARG_MAX 1024 /* TODO: move to 'limits.h' */
 i32 execl(const i8 *path, const i8 *arg, ...) {
 	va_list args;
 	i32 argc;
@@ -111,6 +120,7 @@ i32 execle(const i8 *path, const i8 *arg, ...) {
 	va_list args;
 	i32 argc;
 	i8 *argv[ARG_MAX];
+	i8 **envp;
 
 	va_start(args, arg);
 	for (argc = 0; argc < ARG_MAX; ++argc) {
@@ -120,7 +130,7 @@ i32 execle(const i8 *path, const i8 *arg, ...) {
 		}
 		arg = va_arg(args, i8 *);
 	}
-	i8 **envp = va_arg(args, i8 **);
+	envp = va_arg(args, i8 **);
 	va_end(args);
 	
 	return execve(path, argv, envp);
@@ -128,7 +138,9 @@ i32 execle(const i8 *path, const i8 *arg, ...) {
 
 
 void test(i32 n) {
-	__asm__ __volatile__ ("int $0x80" : /* no output */ : "a"(__NR_test), "b"(n));
+	__asm__ __volatile__ ("int $0x80" 
+			: /* no output */ 
+			: "a"(__NR_test), "b"(n));
 }
 
 u32 read(i32 fd, const void *buf, u32 count) {
@@ -258,7 +270,7 @@ i8 *getcwd(i8 *buf, u32 size) {
 			: "=a"(ret) 
 			: "a"(__NR_getcwd), "b"(buf), "c"(size));
 
-	if (ret) {
+	if (!ret) {
 		return buf;
 	}
 	return NULL;
@@ -272,13 +284,6 @@ i32 stat(const i8 *pathname, struct stat *statbuf) {
 			: "a"(__NR_stat), "b"(pathname), "c"(statbuf));
 
 	return ret;
-	/*
-	i32 fd;
-	if ((fd = open(pathname, O_RDONLY, 0)) < 0) {
-		return -1;
-	}
-	return fstat(fd, statbuf);
-	*/
 }
 
 i32 fstat(i32 fd, struct stat *statbuf) {
@@ -312,13 +317,14 @@ i32 access(i8 *pathname, i32 mode) {
 }
 
 i8 *getenv(const i8 *name) {
+    u32 i = 0;
+    i8 *value = NULL;
     u32 name_len = strlen(name);
+
     if (name == NULL || name_len == 0 || strchr(name, '=') != NULL) {
         return NULL;
     }
 
-    u32 i = 0;
-    i8 *value = NULL;
     while (environ[i] != NULL) {
         if (strncmp(name, environ[i], name_len) == 0) {
             value = environ[i] + name_len + 1;

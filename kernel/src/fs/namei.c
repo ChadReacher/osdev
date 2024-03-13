@@ -1,7 +1,6 @@
 #include <ext2.h>
 #include <process.h>
 #include <string.h>
-#include <debug.h>
 #include <panic.h>
 #include <blk_dev.h>
 #include <heap.h>
@@ -41,10 +40,10 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 			inode->i_ctime = get_current_time();
 			inode->i_size += super_block.s_block_size;
 		}
-		DEBUG("Direct block\r\n");
+		debug("Direct block\r\n");
 		return inode->i_block[block];
 	} else if (block < 12 + EXT2_POINTERS_PER_BLOCK) {
-		DEBUG("Indirect block\r\n");
+		debug("Indirect block\r\n");
 		block -= 12;
 		if (!inode->i_block[12] && create) {
 			inode->i_block[block] = alloc_block(inode->i_dev);
@@ -54,7 +53,6 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 			inode->i_size += super_block.s_block_size;
 		}
 		buf = read_blk(inode->i_dev, inode->i_block[12]);
-		//rw_block(READ, inode->i_dev, inode->i_block[12], &buf);
 		u32 res_block = ((u32 *)buf->b_data)[block];
 		if (!res_block && create) {
 			((u32 *)buf->b_data)[block] = res_block = alloc_block(inode->i_dev);
@@ -68,7 +66,7 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 		return res_block;
 	} else if (block < 12 + EXT2_POINTERS_PER_BLOCK + EXT2_POINTERS_PER_BLOCK *
 			EXT2_POINTERS_PER_BLOCK) {
-		DEBUG("Doubly-indirect block\r\n");
+		debug("Doubly-indirect block\r\n");
 		block -= 12;
 		block -= EXT2_POINTERS_PER_BLOCK;
 		if (!inode->i_block[13] && create) {
@@ -79,7 +77,6 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 			inode->i_size += super_block.s_block_size;
 		}
 		buf = read_blk(inode->i_dev, inode->i_block[13]);
-		//rw_block(READ, inode->i_dev, inode->i_block[13], &buf);
 		u32 ind_block = ((u32 *)buf->b_data)[block / EXT2_POINTERS_PER_BLOCK];
 		if (!ind_block && create) {
 			((u32 *)buf->b_data)[block / EXT2_POINTERS_PER_BLOCK] =
@@ -92,7 +89,6 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 		free(buf->b_data);
 		free(buf);
 		buf = read_blk(inode->i_dev, ind_block);
-		//rw_block(READ, inode->i_dev, ind_block, &buf);
 		u32 res_block = ((u32 *)buf->b_data)[block % EXT2_POINTERS_PER_BLOCK];
 		if (!res_block && create) {
 			((u32 *)buf->b_data)[block] = res_block = alloc_block(inode->i_dev);
@@ -107,7 +103,7 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 	} else if (block < 12 + EXT2_POINTERS_PER_BLOCK + EXT2_POINTERS_PER_BLOCK *
 			EXT2_POINTERS_PER_BLOCK + EXT2_POINTERS_PER_BLOCK *
 			EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK) {
-		DEBUG("Triply-indirect block\r\n");
+		debug("Triply-indirect block\r\n");
 		block -= 12;
 		block -= EXT2_POINTERS_PER_BLOCK;
 		block -= EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK;
@@ -119,7 +115,6 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 			inode->i_size += super_block.s_block_size;
 		}
 		buf = read_blk(inode->i_dev, inode->i_block[14]);
-		//rw_block(READ, inode->i_dev, inode->i_block[14], &buf);
 		u32 dind_block = ((u32 *)buf->b_data)[block / (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)];
 		if (!dind_block && create) {
 			((u32 *)buf->b_data)[block / (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)] =
@@ -132,7 +127,6 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 		free(buf->b_data);
 		free(buf);
 		buf = read_blk(inode->i_dev, dind_block);
-		//rw_block(READ, inode->i_dev, dind_block, &buf);
 		u32 ind_block = ((u32 *)buf->b_data)[block % (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)];
 		if (!ind_block && create) {
 			((u32 *)buf->b_data)[block % (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)] =
@@ -146,7 +140,6 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 		free(buf->b_data);
 		free(buf);
 		buf = read_blk(inode->i_dev, ind_block2);
-		//rw_block(READ, inode->i_dev, ind_block2, &buf);
 		u32 res_block = ((u32 *)buf->b_data)[ind_block % EXT2_POINTERS_PER_BLOCK];
 		if (!res_block && create) {
 			((u32 *)buf->b_data)[ind_block % EXT2_POINTERS_PER_BLOCK] =
@@ -175,7 +168,8 @@ i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
 		struct buffer **res_buf, struct ext2_dir **result) {
 	struct buffer *buf;
 	struct ext2_dir *de, *de1;
-	u32 curr_off, block, inblock_offset, rec_len, len;
+	u32 block, rec_len, len;
+	i32 curr_off, inblock_offset;
 
 	*res_buf = NULL;
 	len = strlen(name);
@@ -192,12 +186,11 @@ i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
 	}
 	rec_len = EXT2_DIR_REC_LEN(len);
 	buf = read_blk(dir->i_dev, block);
-	//rw_block(READ, dir->i_dev, block, &buf);
 	if (!buf) {
 		return -ENOSPC;
 	}
 	while (1) {
-		if (inblock_offset >= super_block.s_block_size) {
+		if (inblock_offset >= (i32)super_block.s_block_size) {
 			free(buf->b_data);
 			free(buf);
 			inblock_offset = 0;
@@ -208,7 +201,6 @@ i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
 					return -ENOSPC;
 				}
 				buf = read_blk(dir->i_dev, block);
-				//rw_block(READ, dir->i_dev, block, &buf);
 				if (!buf) {
 					return -ENOSPC;
 				}
@@ -216,7 +208,6 @@ i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
 				de->inode = 0;
 				de->rec_len = super_block.s_block_size;
 				write_blk(buf);
-				//rw_block(WRITE, dir->i_dev, block, &buf);
 			} else {
 				block = ext2_bmap(dir, curr_off);
 				if (!block) {
@@ -224,7 +215,6 @@ i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
 					return -ENOSPC;
 				}
 				buf = read_blk(dir->i_dev, block);
-				//rw_block(READ, dir->i_dev, block, &buf);
 				if (!buf) {
 					return -ENOSPC;
 				}
@@ -250,7 +240,6 @@ i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
 			dir->i_mtime = dir->i_ctime = get_current_time();
 			dir->i_dirt = 1;
 			write_blk(buf);
-			//rw_block(WRITE, dir->i_dev, block, &buf);
 			*result = de;
 			*res_buf = buf;
 			return 0;
@@ -298,7 +287,8 @@ struct buffer *ext2_find_entry(struct ext2_inode *dir, const i8 *name,
 		struct ext2_dir **res_dir, struct ext2_dir **prev_dir) {
 	struct buffer *buf;
 	struct ext2_dir *de;
-	u32 curr_off, block, inblock_offset;
+	i32 curr_off, inblock_offset;
+	u32 block;
 
 	*res_dir = NULL;
 	if (!dir) {
@@ -312,7 +302,6 @@ struct buffer *ext2_find_entry(struct ext2_inode *dir, const i8 *name,
 		return NULL;
 	}
 	buf = read_blk(dir->i_dev, block);
-	//rw_block(READ, dir->i_dev, block, &buf);
 	if (!buf) {
 		return NULL;
 	}
@@ -320,7 +309,7 @@ struct buffer *ext2_find_entry(struct ext2_inode *dir, const i8 *name,
 		*prev_dir = NULL;
 	}
 	while (curr_off < dir->i_size) {
-		if (inblock_offset >= super_block.s_block_size) {
+		if (inblock_offset >= (i32)super_block.s_block_size) {
 			block = ext2_bmap(dir, curr_off);	
 			inblock_offset = 0;
 			free(buf->b_data);
@@ -330,7 +319,6 @@ struct buffer *ext2_find_entry(struct ext2_inode *dir, const i8 *name,
 				continue;
 			}
 			buf = read_blk(dir->i_dev, block);
-			//rw_block(READ, dir->i_dev, block, &buf);
 			if (!buf) {
 				curr_off += BLOCK_SIZE;
 				continue;
@@ -409,7 +397,6 @@ i32 dir_namei(const i8 *pathname, const i8 **name,
 	while ((tmp = strsep(&pathname_dup, "/")) != NULL) {
 		basename = tmp;
 		if (!pathname_dup || *pathname_dup == '\0') {
-			//free(saved_pathname);
 			break;
 		}
 		++inode->i_count;
@@ -433,7 +420,7 @@ struct ext2_inode *namei(const i8 *pathname) {
 	if (dir_namei(pathname, &basename, &dir)) {
 		return NULL;
 	}
-	++dir->i_count; // lookup eats one 'i_count'
+	++dir->i_count; /* lookup eats one 'i_count' */
 	if (ext2_lookup(dir, basename, &inode)) {
 		iput(dir);
 		return NULL;
@@ -460,7 +447,7 @@ i32 open_namei(i8 *pathname, i32 oflags, i32 mode, struct ext2_inode **res_inode
 		iput(dir);
 		return -EISDIR;
 	}
-	++dir->i_count; // lookup eats one 'i_count'
+	++dir->i_count; /* lookup eats one 'i_count' */
 	error = ext2_lookup(dir, basename, &inode);
 	if (error) {
 		if (!(oflags & O_CREAT)) {
@@ -495,12 +482,12 @@ i32 open_namei(i8 *pathname, i32 oflags, i32 mode, struct ext2_inode **res_inode
 }
 
 static i32 subdir(struct ext2_inode *new, struct ext2_inode *old) {
-	i32 inr, result;
+	u32 inr, result;
 
 	++new->i_count;
 	result = 0;
 	for (;;) {
-		if (new = old) {
+		if (new == old) {
 			result = 1;
 			break;
 		}
@@ -581,12 +568,11 @@ i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 		}
 		retval = -EIO;
 		dir_buf = read_blk(old_inode->i_dev, old_inode->i_block[0]);
-		//rw_block(READ, old_inode->i_dev, old_inode->i_block[0], &dir_buf);
 		if (!dir_buf) {
 			goto end_rename;
 		}
 		struct ext2_dir *fst_de = (struct ext2_dir *)dir_buf->b_data;
-		i32 parent_i_num = ((struct ext2_dir *)(dir_buf + (fst_de->rec_len)))->inode;
+		u32 parent_i_num = ((struct ext2_dir *)(dir_buf + (fst_de->rec_len)))->inode;
 		if (parent_i_num == old_dir->i_num) {
 			goto end_rename;
 		}

@@ -14,30 +14,14 @@ typedef struct ata_device {
 	u16 data_reg;
 	u16 error_reg;
 	u16 sector_count;
-	union {
-		u16 sector_num;
-		u16 lba_low;
-	};
-	union {
-		u16 cylinder_low;
-		u16 lba_mid;
-	};
-	union {
-		u16 cylinder_high;
-		u16 lba_high;
-	};
-	union {
-		u16 drive_reg;
-		u16 head_reg;
-	};
-	union {
-		u16 status_reg;
-		u16 command_reg;
-	};
-	union {
-		u16 alt_status_reg;
-		u16 control_reg;
-	};
+	u16 lba_low;
+	u16 lba_mid;
+	u16 lba_high;
+	u16 drive_reg;
+	u16 status_reg;
+	u16 command_reg;
+	u16 alt_status_reg;
+	u16 control_reg;
 	i32 slave;
 	u32 bar4;
 	u32 bmr_command;
@@ -65,7 +49,7 @@ struct partition {
 #define ATA_PCI_VENDOR_ID 0x8086
 #define ATA_PCI_DEVICE_ID 0x7010
 
-// For now supporting only 2 drives
+/* For now supporting only 2 drives */
 #define NR_HD 2
 #define IDENTIFY_COMMAND 0xEC
 

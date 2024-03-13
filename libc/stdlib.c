@@ -91,6 +91,7 @@ void split_block(heap_block *block, u32 size) {
  * real allocated space goes.
  */
 void *malloc(u32 size) {
+	heap_block *block, *best_block, *last;
 	u32 real_size;
 
 	if (size == 0) {
@@ -100,10 +101,8 @@ void *malloc(u32 size) {
 	real_size = sizeof(heap_block) + size;
 	real_size = ALIGN(real_size);
 
-	heap_block *block;
-
 	if (block_list) {
-		heap_block* best_block = best_fit(size);
+		best_block = best_fit(size);
 		if (best_block) {
 			best_block->free = false;
 			split_block(best_block, size);
@@ -113,7 +112,7 @@ void *malloc(u32 size) {
 			block->size = size;
 			block->next = NULL;
 			block->free = false;
-			heap_block *last = block_list;
+			last = block_list;
 			while (last->next) {
 				last = last->next;
 			}
@@ -128,26 +127,25 @@ void *malloc(u32 size) {
 	}
 
 	if (block) {
-		// block + 1 is the same as (u8*)block + 1 * sizeof(heap_block)
 		return block + 1; 
 	}
 	return NULL;
 }
 
 void free(void *ptr) {
+	heap_block *block, *prev_block, *curr_block, *next_block;
+
 	if (!ptr) {
 		return;
 	}
 
-	// Find heap block to free
-	heap_block *block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
+	block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
 
 	block->free = true;
 	
-	// Find heap block to free with its previous and next blocks
-	heap_block *prev_block = NULL;
-	heap_block *curr_block = block_list;
-	heap_block *next_block = block_list->next;
+	prev_block = NULL;
+	curr_block = block_list;
+	next_block = block_list->next;
 
 	while (curr_block && next_block) {
 		if (curr_block == block) {
@@ -159,12 +157,10 @@ void free(void *ptr) {
 	}
 
 	if (next_block && next_block->free) {
-		// Merge current block with next block
 		curr_block->size = curr_block->size + sizeof(heap_block) + next_block->size;
 		curr_block->next = next_block->next;
 	}
 	if (prev_block && prev_block->free) {
-		// Merge previous block with current one
 		prev_block->size = prev_block->size + sizeof(heap_block) + curr_block->size;
 		prev_block->next = curr_block->next;
 		curr_block = prev_block;
@@ -172,7 +168,9 @@ void free(void *ptr) {
 }
 
 void *realloc(void *ptr, u32 size) {
-	u32 real_size;
+	u32 old_size, real_size;
+	heap_block *old_block, *block, *new_block, *last;
+
 	if (!ptr) {
 		return malloc(size);
 	} else if (ptr && size == 0) {
@@ -180,24 +178,24 @@ void *realloc(void *ptr, u32 size) {
 		return NULL;
 	}
 
-	heap_block *old_block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
-	u32 old_size = old_block->size;
+	old_block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
+	old_size = old_block->size;
 	real_size = sizeof(heap_block) + size;
 	
-	heap_block *block = best_fit(size);
+	block = best_fit(size);
 	if (block) {
 		block->free = false;
 		split_block(block, size);
 		memcpy((void *)(block + 1), ptr, old_size);
 	} else {
-		heap_block *new_block = (heap_block*)sbrk(real_size);
+		new_block = (heap_block*)sbrk(real_size);
 		new_block->size = size;
 		new_block->next = NULL;
 		new_block->free = false;
 		
 		memcpy((void *)(new_block + 1), ptr, old_size);
 
-		heap_block *last = block_list;
+		last = block_list;
 		while (last->next) {
 			last = last->next;
 		}

@@ -8,7 +8,7 @@ i8 *itoa(i32 value, i8 *str, i32 base) {
 	bool negative;
 
 	idx = 0;
-	negative = false;
+	negative = 0;
 
 	if (value == 0) {
 		str[idx++] = '0';
@@ -16,7 +16,7 @@ i8 *itoa(i32 value, i8 *str, i32 base) {
 	}
 
 	if (value < 0 && base == 10) {
-		negative = true;
+		negative = 1;
 		value = -value;
 	}
 

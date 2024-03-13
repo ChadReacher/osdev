@@ -3,30 +3,29 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
-#include <debug.h>
 #include <panic.h>
 
 static i8 internal_buf[1024];
 
 i32 serial_init() {
-	port_outb(COM1 + 1, 0x00); // Disable all interrupts
-	port_outb(COM1 + 3, 0x80); // Enable DLAB(divisor latch access bit) for baud rate divisor
-	port_outb(COM1 + 0, 0x03); // Set divisor to 3 according to 38400 baud(low byte)
-	port_outb(COM1 + 0, 0x00); // Set high byte of divisor 3
-	port_outb(COM1 + 3, 0x03); // 8N1 Line Protocol: 8 bits, no parity, one stop bit; And clear DLAB
-	port_outb(COM1 + 2, 0xC7); // Enable FIFO, clear them, with 14 byte threshold
-	port_outb(COM1 + 4, 0x0B); // IRQs enabled, RTS/DSR set
-	port_outb(COM1 + 4, 0x1E); // Set in loopback mode, test the serial chip
-	port_outb(COM1 + 0, 0xAB); // Test the serial chip(send byte 0xAB and check if serial returns the same byte)
+	port_outb(COM1 + 1, 0x00); /* Disable all interrupts */
+	port_outb(COM1 + 3, 0x80); /* Enable DLAB(divisor latch access bit) for baud rate divisor */
+	port_outb(COM1 + 0, 0x03); /* Set divisor to 3 according to 38400 baud(low byte) */
+	port_outb(COM1 + 0, 0x00); /* Set high byte of divisor 3 */
+	port_outb(COM1 + 3, 0x03); /* 8N1 Line Protocol: 8 bits, no parity, one stop bit; And clear DLAB */
+	port_outb(COM1 + 2, 0xC7); /* Enable FIFO, clear them, with 14 byte threshold */
+	port_outb(COM1 + 4, 0x0B); /* IRQs enabled, RTS/DSR set */
+	port_outb(COM1 + 4, 0x1E); /* Set in loopback mode, test the serial chip */
+	port_outb(COM1 + 0, 0xAB); /* Test the serial chip(send byte 0xAB and check if serial returns the same byte) */
 
 	if (port_inb(COM1 + 0) != 0xAB) {
-		PANIC("Could not initiliaze serial port communication");
+		panic("Could not initiliaze serial port communication");
 		return 1;
 	}
 	
-	port_outb(COM1 + 4, 0x0F); // not-loopback with IRQs enabled and OUT1 and OUT2 bits enabled
+	port_outb(COM1 + 4, 0x0F); /* not-loopback with IRQs enabled and OUT1 and OUT2 bits enabled */
 
-	DEBUG("%s", "Serial port has been initialized\r\n");
+	debug("%s", "Serial port has been initialized\r\n");
 	return 0;
 }
 

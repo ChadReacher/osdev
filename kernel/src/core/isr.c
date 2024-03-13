@@ -3,12 +3,12 @@
 #include <stdio.h>
 #include <port.h>
 #include <pic.h>
-#include <debug.h>
 #include <panic.h>
 #include <syscall.h>
 #include <process.h>
 #include <signal.h>
 #include <scheduler.h>
+#include <sys.h> 
 
 extern process_t *current_process;
 
@@ -69,7 +69,7 @@ void breakpoint_handler(registers_state *regs) {
 
 void isr_init() {
 	pic_remap();
-	DEBUG("%s", "PIC has been remapped\r\n");
+	debug("PIC has been remapped");
 
 	idt_set(0, (u32)isr0, 0x8E);
 	idt_set(1, (u32)isr1, 0x8E);
@@ -124,13 +124,13 @@ void isr_init() {
 	register_interrupt_handler(3, breakpoint_handler);
 
 	init_idt();
-	DEBUG("%s", "IDT has been initialized\r\n");
-	DEBUG("%s", "ISRs have been initialized\r\n");
+	debug("%s", "IDT has been initialized\r\n");
+	debug("%s", "ISRs have been initialized\r\n");
 }
 
 void irq_init() {
 	__asm__ __volatile__ ("sti");
-	DEBUG("%s", "IRQs have been initialized\r\n");
+	debug("%s", "IRQs have been initialized\r\n");
 }
 
 void register_interrupt_handler(u8 n, isr_t handler) {
@@ -143,14 +143,24 @@ void check_signals(registers_state *regs) {
 	}
 }
 
+void syscall_init() {
+	idt_set(SYSCALL, (u32)isr0x80, 0xEE);
+}
+
+i32 syscall_handler(registers_state *regs) {
+	syscall_fn sys;
+	if (regs->eax > NR_SYSCALLS) {
+		debug("Received unimplemented syscall: %d\n", regs->eax);
+		return -1;
+	}
+	sys = syscall_handlers[regs->eax];
+	return sys(regs->ebx, regs->ecx, regs->edx, regs->esi);
+}
+
 void isr_handler(registers_state *regs) {
 	if (regs->int_number == SYSCALL) {
 		current_process->regs = regs;
 		regs->eax = syscall_handler(regs);
-
-		//*current_process->regs = *regs;
-		//syscall_handler(regs);
-		//memcpy(regs, current_process->regs, sizeof(registers_state));
 		check_signals(regs);
 		return;
 	} else if (interrupt_handlers[regs->int_number] != 0) {
@@ -160,27 +170,26 @@ void isr_handler(registers_state *regs) {
 		return;
 	}
 
-	PANIC("Received interrupt: %s(%d) with error code: %x\n\n"
-		  "   Instruction Pointer = 0x%x\n"
-		  "   Code Segment		  = 0x%x\n"
-		  "   CPU Flags			  = 0x%x\n"
-		  "   Stack Pointer       = 0x%x\n"
-		  "   Stack Segment       = 0x%x\n", 
-		  exception_messages[regs->int_number], regs->int_number, regs->err_code,
-		  regs->eip,
-		  regs->cs,
-		  regs->eflags,
-		  regs->esp,
-		  regs->ss
+	panic("Received interrupt: %s(%d) with error code: %x\n\n"
+		"   Instruction Pointer = 0x%x\n"
+		"   Code Segment		= 0x%x\n"
+		"   CPU Flags			= 0x%x\n"
+		"   Stack Pointer		= 0x%x\n"
+		"   Stack Segment		= 0x%x\n", 
+		exception_messages[regs->int_number], regs->int_number, regs->err_code,
+		regs->eip,
+		regs->cs,
+		regs->eflags,
+		regs->esp,
+		regs->ss
 	);
 }
 
 void irq_handler(registers_state *regs) {
-	// Sending EOI command code
 	if (regs->int_number >= 40) {
-		port_outb(0xA0, 0x20); // slave
+		port_outb(0xA0, 0x20);
 	}
-	port_outb(0x20, 0x20); // master
+	port_outb(0x20, 0x20);
 
 	if (interrupt_handlers[regs->int_number] != 0) {
 		isr_t handler = interrupt_handlers[regs->int_number];

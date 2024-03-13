@@ -1,6 +1,6 @@
 #include <paging.h>
 #include <string.h>
-#include <debug.h>
+#include <panic.h>
 #include <pmm.h>
 
 page_directory_t *cur_page_dir = (page_directory_t *)0xFFFFF000;
@@ -11,19 +11,19 @@ void pagefault_handler(registers_state *regs) {
 	__asm__ __volatile__ ("movl %%cr2, %0" : "=r"(bad_address));
 	err_code = regs->err_code;
 
-	DEBUG("Page Fault Exception. Bad Address: 0x%x. Error code: %d\r\n", bad_address, err_code);
+	debug("Page Fault Exception. Bad Address: 0x%x. Error code: %d\r\n", bad_address, err_code);
 
 	bool not_present = err_code & 0x1;
 	bool rw = err_code & 0x2;
 	bool us = err_code & 0x4;
 	
 	if (!not_present && rw && us) {
-		DEBUG("%s", "User heap\r\n");
-		// Fault due to user heap expansion
+		debug("%s", "User heap\r\n");
+		/* Fault due to user heap expansion */
 		void *new_heap_page = allocate_blocks(1);
 		map_page(new_heap_page, (void *)bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
 	} else {
-		DEBUG("%s", "Not user heap\r\n");
+		debug("%s", "Not user heap\r\n");
 		while (1) {
 			__asm__ __volatile__ ("cli");
 			__asm__ __volatile__ ("hlt");
@@ -31,12 +31,12 @@ void pagefault_handler(registers_state *regs) {
 	}
 }
 
-// Return a page for a given virtual address in the current page directory
+/* Return a page for a given virtual address in the current page directory */
 page_table_entry *get_page(virtual_address virt_addr) {
-	// Get page table in page directory
+	/* Get page table in page directory */
 	page_table_t *table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
 	
-	// Get page in table
+	/* Get page in table */
 	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX(virt_addr)];
 
 	return page;
@@ -48,7 +48,7 @@ void map_page(void *phys_addr, void *virt_addr, u32 flags) {
 
 	if ((*entry & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
 		page_table_t *table = (page_table_t *)allocate_blocks(1);
-		DEBUG("Created new table at %p\r\n", (void *)table);
+		debug("Created new table at %p\r\n", (void *)table);
 		if (!table) {
 			return;
 		}
@@ -79,7 +79,7 @@ void unmap_page(void *virt_addr) {
 	*page &= ~PAGING_FLAG_PRESENT;	
 	*page = ((*page & ~0xFFFFF000) | 0);
 
-	// Flush TLB
+	/* Flush TLB */
 	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
 }
@@ -87,11 +87,11 @@ void unmap_page(void *virt_addr) {
 void paging_init() {
 	register_interrupt_handler(14, pagefault_handler);
 
-	DEBUG("%s", "Paging has been initialized\r\n");
+	debug("%s", "Paging has been initialized\r\n");
 }
 
 void *virtual_to_physical(void *virt_addr) {
-	// Get page table in page directory
+	/* Get page table in page directory */
 	page_directory_entry *entry = &cur_page_dir->entries[PAGE_DIR_INDEX((u32)virt_addr)];
 	if (!*entry) {
 		return NULL;
@@ -102,7 +102,7 @@ void *virtual_to_physical(void *virt_addr) {
 		return NULL;
 	}
 	
-	// Get page in table
+	/* Get page in table */
 	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
 	if (!*page) {
 		return NULL;
@@ -124,7 +124,8 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 
 	page_directory_t *new_pd = (page_directory_t *)0xE0000000;
 	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
-	for (u32 i = 768; i < 1024; ++i) {
+	u32 i, j;
+	for (i = 768; i < 1024; ++i) {
 		new_pd->entries[i] = cur_pd->entries[i];
 	}
 	new_pd->entries[1023] = (u32)new_page_dir_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE;
@@ -134,8 +135,8 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 		return new_page_dir_phys;
 	}
 
-	// Deep copy user pages
-	for (u32 i = 0; i < 768; ++i) {
+	/* Deep copy user pages */
+	for (i = 0; i < 768; ++i) {
 		if (!cur_pd->entries[i]) {
 			continue;
 		}
@@ -145,13 +146,13 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 			return NULL;
 		}
 		page_table_t *new_table = (page_table_t *)0xEA000000;
-		map_page(new_table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE); // Temporary mapping
+		map_page(new_table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE); /* Temporary mapping */
 		memset((void *)0xEA000000, 0, 4096);
-		for (u32 j = 0; j < 1024; ++j) {
+		for (j = 0; j < 1024; ++j) {
 			if (!cur_table->entries[j]) {
 				continue;
 			}
-			// Copy the page frame's contents 
+			/* Copy the page frame's contents  */
 			page_table_entry cur_pte = cur_table->entries[j];
 			u32 cur_page_frame = (u32)GET_FRAME(cur_pte);
 			void *new_page_frame = allocate_blocks(1);
@@ -164,7 +165,7 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 			unmap_page((void *)0xEC000000);
 			unmap_page((void *)0xEB000000);
 
-			// Insert the corresponding page table entry
+			/* Insert the corresponding page table entry */
 			page_table_entry new_pte = 0;
 			if ((cur_pte & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT) {
 				new_pte |= PAGING_FLAG_PRESENT;
@@ -186,7 +187,7 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 		}
 		unmap_page((void *)0xEA000000);
 
-		// Insert the corresponding page directory entry
+		/* Insert the corresponding page directory entry */
 		page_directory_entry cur_pde = cur_pd->entries[i];
 		page_directory_entry new_pde = 0;
 		if ((cur_pde & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT) {

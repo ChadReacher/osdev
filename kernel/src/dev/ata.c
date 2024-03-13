@@ -3,7 +3,6 @@
 #include <port.h>
 #include <heap.h>
 #include <string.h>
-#include <debug.h>
 #include <paging.h>
 #include <blk_dev.h>
 #include <panic.h>
@@ -25,11 +24,13 @@ static void ata_io_wait(ata_device_t *dev) {
 }
 
 static void ata_software_reset(ata_device_t *dev) {
+	u8 control_reg_val;
+	u32 count;
+
 	port_outb(dev->control_reg, 1 << 2);
 	port_outb(dev->control_reg, 0);
 	ata_io_wait(dev);
-	u8 control_reg_val;
-	u32 count = 1000000;
+	count = 1000000;
 	do {
 		--count;
 		control_reg_val = port_inb(dev->control_reg);
@@ -40,6 +41,10 @@ static void ata_software_reset(ata_device_t *dev) {
 }
 
 static void ata_device_detect(ata_device_t *dev, u32 primary) {
+	u8 res, status_reg, drq_bit, err_bit;
+	u16 lba_low, lba_high;
+	u32 i;
+
 	ata_device_init(dev, primary);
 
 	ata_software_reset(dev);
@@ -52,27 +57,26 @@ static void ata_device_detect(ata_device_t *dev, u32 primary) {
 	port_outb(dev->lba_mid, 0);
 	port_outb(dev->lba_high, 0);
 	port_outb(dev->command_reg, IDENTIFY_COMMAND);
-	u8 res = port_inb(dev->status_reg);
+	res = port_inb(dev->status_reg);
 	if (res == 0) {
 		free(dev->mem_buffer);
 		free(dev->prdt);
 		dev = NULL;
-		DEBUG("Drive does not exist\r\n");
+		debug("Drive does not exist\r\n");
 		return;
 	}
 	
-	u16 lba_low = port_inb(dev->lba_low);	
-	u16 lba_high = port_inb(dev->lba_high);
+	lba_low = port_inb(dev->lba_low);	
+	lba_high = port_inb(dev->lba_high);
 
 	if (lba_low != 0 || lba_high != 0) {
 		free(dev->mem_buffer);
 		free(dev->prdt);
 		dev = NULL;
-		DEBUG("%s", "This device is not an ATA hard disk drive\r\n");
+		debug("%s", "This device is not an ATA hard disk drive\r\n");
 		return;
 	}
 
-	u8 status_reg, drq_bit, err_bit;
 	do {
 		status_reg = port_inb(dev->status_reg);
 		drq_bit = status_reg & 0x8;
@@ -83,11 +87,11 @@ static void ata_device_detect(ata_device_t *dev, u32 primary) {
 		free(dev->mem_buffer);
 		free(dev->prdt);
 		dev = NULL;
-		DEBUG("%s", "Error occurred while polling\r\n");
+		debug("%s", "Error occurred while polling\r\n");
 		return;
 	}
 
-	for (u32 i = 0; i < 256; ++i) {
+	for (i = 0; i < 256; ++i) {
 		port_inw(dev->data_reg);
 	}
 }
@@ -114,8 +118,8 @@ static void ata_device_init(ata_device_t *dev, u32 primary) {
 	dev->lba_mid = data_reg + 4;
 	dev->lba_high = data_reg + 5;
 	dev->drive_reg = data_reg + 6;
-	dev->command_reg = data_reg + 7;
-	dev->alt_status_reg = alt_status_reg;
+	dev->status_reg = dev->command_reg = data_reg + 7;
+	dev->control_reg = dev->alt_status_reg = alt_status_reg;
 
 	dev->bar4 = pci_read(ata_dev, PCI_BAR4);
 	if (dev->bar4 & 0x1) {
@@ -132,37 +136,37 @@ static void ata_device_init(ata_device_t *dev, u32 primary) {
 static void ata_write(ata_device_t *dev, u32 sector, u8 nsect, i8 *buf) {
 	memcpy(dev->mem_buffer, buf, SECTOR_SIZE * nsect);
 
-	// Reset command register 
+	/* Reset command register */
 	port_outb(dev->bmr_command, 0);
 
-	// Set the apropriate transfer size
+	/* Set the apropriate transfer size */
 	dev->prdt[0].transfer_size = SECTOR_SIZE * nsect;
 
-	// Send physical PRDT address to the BMR PRDT register
+	/* Send physical PRDT address to the BMR PRDT register */
 	port_outl(dev->bmr_prdt, (u32)dev->prdt_phys);
 
-	// Select the drive
+	/* Select the drive */
 	port_outb(dev->drive_reg, 0xE0 
 			| (dev->slave << 4)
 			| ((sector >> 24) & 0x0F));
 
-	// Set LBA and sector count
+	/* Set LBA and sector count */
 	port_outb(dev->sector_count, nsect);
 	port_outb(dev->lba_low, sector & 0xFF);
 	port_outb(dev->lba_mid, (sector & 0xFF00) >> 8);
 	port_outb(dev->lba_high, (sector & 0xFF0000) >> 16);
 
-	// Send the DMA transfer(28 bit LBA) command to the ATA controller
+	/* Send the DMA transfer(28 bit LBA) command to the ATA controller */
 	port_outb(dev->command_reg, 0xCA);
 
-	// Set the Start bit on Bus Master Command Register
+	/* Set the Start bit on Bus Master Command Register */
 	port_outb(dev->bmr_command, 0x1);
 
 	while (1) {
 		u8 controller_status = port_inb(dev->bmr_status); 
 		u8 drive_status = port_inb(dev->status_reg);
 		if (drive_status & 0x1) {
-			DEBUG("Error occured while writing to the disk\r\n");
+			debug("Error occured while writing to the disk\r\n");
 			ata_software_reset(dev);
 			return;
 		}
@@ -176,36 +180,38 @@ static void ata_write(ata_device_t *dev, u32 sector, u8 nsect, i8 *buf) {
 }
 
 static i8 *ata_read(ata_device_t *dev, u32 sector, u8 nsect) {
-	// Reset command register
+	i8 *buf;
+
+	/* Reset command register */
 	port_outb(dev->bmr_command, 0);
 
-	// Set the apropriate transfer size
+	/* Set the apropriate transfer size */
 	dev->prdt[0].transfer_size = SECTOR_SIZE * nsect;
 
-	// Send physical PRDT address to the BMR PRDT register
+	/* Send physical PRDT address to the BMR PRDT register */
 	port_outl(dev->bmr_prdt, (u32)dev->prdt_phys);
 
-	// Select the drive
+	/* Select the drive */
 	port_outb(dev->drive_reg, 0xE0 
 			| (dev->slave << 4)
 			| ((sector >> 24) & 0x0F));
 
-	// Set LBA and sector count
+	/* Set LBA and sector count */
 	port_outb(dev->sector_count, nsect);
 	port_outb(dev->lba_low, sector & 0xFF);
 	port_outb(dev->lba_mid, (sector & 0xFF00) >> 8);
 	port_outb(dev->lba_high, (sector & 0xFF0000) >> 16);
 
-	// Send the DMA transfer(28 bit LBA) command to the ATA controller
+	/* Send the DMA transfer(28 bit LBA) command to the ATA controller */
 	port_outb(dev->command_reg, 0xC8);
 
-	// Set the Start bit on Bus Master Command Register
+	/* Set the Start bit on Bus Master Command Register */
 	port_outb(dev->bmr_command, 0x1 | 0x8);
 
 	while (1) {
 		u8 drive_status = port_inb(dev->status_reg);
 		if (drive_status & 0x1) {
-			DEBUG("Error occured while reading the disk\r\n");
+			debug("Error occured while reading the disk\r\n");
 			ata_software_reset(dev);
 			return NULL;
 		}
@@ -217,7 +223,7 @@ static i8 *ata_read(ata_device_t *dev, u32 sector, u8 nsect) {
 		}
 	}
 	
-	i8 *buf = malloc(SECTOR_SIZE * nsect);
+	buf = malloc(SECTOR_SIZE * nsect);
 	memcpy(buf, dev->mem_buffer, SECTOR_SIZE * nsect);
 	return buf;
 }
@@ -233,10 +239,10 @@ static void ata_handler(registers_state *regs) {
 	port_inb(devices[1].bmr_status);
 	port_outb(devices[1].bmr_command, 0);
 
-	// Sending EOI command code(also to the slave,
-	// because IRQ14(46) > 40
-	port_outb(0xA0, 0x20); // slave
-	port_outb(0x20, 0x20); // master
+	/* Sending EOI command code(also to the slave, */
+	/* because IRQ14(46) > 40 */
+	port_outb(0xA0, 0x20); /* slave */
+	port_outb(0x20, 0x20); /* master */
 }
 
 void rw_ata(u32 rw, u16 dev, u32 block, i8 **buf) {
@@ -246,7 +252,7 @@ void rw_ata(u32 rw, u16 dev, u32 block, i8 **buf) {
 	sector = block * 2;
 	if ((dev=MINOR(dev)) >= 5*NR_HD || sector+1 > hd_disks[dev].nr_sects) {
 		i8 *s = (rw == READ) ? "read" : "write";
-		DEBUG("Cannot %s to block %d, sector %d nr_sects: %d\r\n", s,
+		debug("Cannot %s to block %d, sector %d nr_sects: %d\r\n", s,
 				block, sector, hd_disks[dev].nr_sects);
 		*buf = NULL;
 		return;
@@ -262,12 +268,16 @@ void rw_ata(u32 rw, u16 dev, u32 block, i8 **buf) {
 }
 
 void ata_init() {
+	i8 *boot_sect;
+	struct partition *p;
+	u32 drive, i, pci_command_reg;
+
 	ata_dev = pci_get_device(ATA_PCI_VENDOR_ID, ATA_PCI_DEVICE_ID, -1);
 	
 	register_interrupt_handler(IRQ14, ata_handler);
 	register_interrupt_handler(IRQ15, ata_handler);
 
-	u32 pci_command_reg = pci_read(ata_dev, PCI_COMMAND);
+	pci_command_reg = pci_read(ata_dev, PCI_COMMAND);
 	if (!(pci_command_reg & (1 << 2))) {
 		pci_command_reg |= (1 << 2);
 		pci_write(ata_dev, PCI_COMMAND, pci_command_reg);
@@ -278,18 +288,16 @@ void ata_init() {
 	ata_device_detect(&devices[0], 1);
 	ata_device_detect(&devices[1], 1);
 
-	i8 *boot_sect;
-	struct partition *p;
-	for (u32 drive = 0; drive < NR_HD; ++drive) {
+	for (drive = 0; drive < NR_HD; ++drive) {
 		boot_sect = ata_read(&devices[drive], 0, 1);
 		if (boot_sect[510] != 0x55 && (u8)boot_sect[511] != 0xAA) {
-			kernel_panic("Bad partition table on drive %d\n", drive);
+			panic("Bad partition table on drive %d\n", drive);
 		}
 		p = (struct partition *)(boot_sect + 0x1BE);
-		for (u32 i = 1; i < 5; ++i, ++p) {
+		for (i = 1; i < 5; ++i, ++p) {
 			hd_disks[i + 5 * drive].start_sect = p->start_sect;
 			hd_disks[i + 5 * drive].nr_sects = p->nr_sects;
-			DEBUG("DRIVE #%d partition #%d: "
+			debug("DRIVE #%d partition #%d: "
 				  "start_sect - %d, nr_sects - %d\r\n",
 				  drive, i, p->start_sect, p->nr_sects);
 		}

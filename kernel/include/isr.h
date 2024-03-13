@@ -3,7 +3,6 @@
 
 #include "types.h"
 
-// Use them for setting the specific interrupt request handler
 #define IRQ0  32
 #define IRQ1  33
 #define IRQ2  34
@@ -23,7 +22,6 @@
 
 #define SYSCALL 0x80
 
-// ISRs reserved for CPU exceptions
 extern void isr0();
 extern void isr1();
 extern void isr2();
@@ -57,7 +55,6 @@ extern void isr29();
 extern void isr30();
 extern void isr31();
 
-// Specifically for syscall
 extern void isr0x80();
 
 extern void irq0();
@@ -86,10 +83,11 @@ typedef struct {
 
 void isr_init();
 void irq_init();
+void syscall_init();
 void isr_handler(registers_state *regs);
 void irq_handler(registers_state *regs);
+i32 syscall_handler(registers_state *regs);
 
-// Enables registration of callbacks for interrupts or IRQs
 typedef void (*isr_t)(registers_state*);
 void register_interrupt_handler(u8 n, isr_t handler);
 

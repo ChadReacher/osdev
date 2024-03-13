@@ -2,9 +2,6 @@
 #define SYSCALL_H
 
 #include "types.h"
-#include "isr.h"
-
-#define NR_SYSCALLS 51
 
 #define S_IFMT   0170000
 #define S_IFSOCK 014000
@@ -75,9 +72,5 @@ typedef struct {
 	i32 tms_cstime;
 } tms;
 
-typedef i32 (*syscall_fn)();
-
-void syscall_init();
-i32 syscall_handler(registers_state *regs);
 
 #endif

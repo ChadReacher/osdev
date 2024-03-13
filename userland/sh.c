@@ -25,10 +25,12 @@ void run_cmd(struct cmd *);
 void builtin_cd(i8 *path);
 
 i32 main() {
+	i8 *input;
+	struct cmd *cmd;
 	for (;;) {
 		print_prompt();
 		memset(buf, 0, 1024);
-		i8 *input = read_input();
+		input = read_input();
 		if (strlen(input) == 0) {
 			continue;
 		}
@@ -37,7 +39,7 @@ i32 main() {
 			builtin_cd(path);
 			continue;
 		}
-		struct cmd *cmd = parse_cmd(input);
+		cmd = parse_cmd(input);
 		if (cmd == NULL) {
 			printf("Invalid input\n");
 			continue;
@@ -55,11 +57,11 @@ i32 main() {
 }
 
 void print_prompt() {
-	i32 err = getcwd(cwd, 256);
-	if (err == 0) {
+	i8 *buf = getcwd(cwd, 256);
+	if (buf) {
 		printf("[%s]$ ", cwd);
 	} else {
-		printf("got error - %d\r\n", cwd);
+		printf("got error\n");
 	}
 }
 
@@ -94,21 +96,25 @@ i8 *read_input() {
 static i8 whitespaces[] = " \t\r\n";
 
 struct cmd *parse_cmd(i8 *input) {
+	struct exec_cmd *execmd;
+	struct cmd *cmd;
+	i8 **argv;
+	i32 i_argc, i;
+	i8 *s, *ends, *arg;
 	if (!input || !strlen(input)) {
 		return NULL;
 	}
-	i8 **argv = malloc(10 * sizeof(i8 *));
-	i32 i_argc = 0;
+	argv = malloc(10 * sizeof(i8 *));
+	i_argc = 0;
 
-	i8 *s = input;
-	i8 *ends = input + strlen(input);
+	s = input;
+	ends = input + strlen(input);
 
-	// Skip whitespaces in the beginning	
+	/* Skip whitespaces in the beginning */
 	while (s < ends && strchr(whitespaces, *s) != NULL) {
 		++s;
 	}
 
-	i8 *arg;
 	while ((arg = strsep(&s, " ")) != NULL) {
 		if (strcmp(arg, "") == 0) {
 			continue;
@@ -117,20 +123,20 @@ struct cmd *parse_cmd(i8 *input) {
 		++i_argc;
 		if (i_argc == 10) {
 			printf("error: max args - 10\n");
-			for (i32 i = 0; i < i_argc; ++i) {
+			for (i = 0; i < i_argc; ++i) {
 				free(argv[i]);
 			}
 			free(argv);
 			return NULL;
 		}
 	}
-	struct exec_cmd *execmd = malloc(sizeof(struct exec_cmd));
+	execmd = malloc(sizeof(struct exec_cmd));
 	memset(execmd, 0, sizeof(struct exec_cmd));
 	execmd->argc = i_argc;
 	argv[i_argc] = NULL;
 	memcpy(execmd->argv, argv, 10 * sizeof(i8 *));
 
-	struct cmd *cmd = malloc(sizeof(struct cmd));
+	cmd = malloc(sizeof(struct cmd));
 	cmd->type = 1;
 	cmd->data = (void *)execmd;
 	return cmd;

@@ -3,9 +3,10 @@
 
 void *memset(void *ptr, u32 value, u32 num) {
 	u8 *c_ptr;
+	u32 i;
 
 	c_ptr = (u8 *)ptr;
-	for (u32 i = 0; i < num; ++i) {
+	for (i = 0; i < num; ++i) {
 		*c_ptr++ = (u8) value;
 	}
 	return ptr;
@@ -14,10 +15,11 @@ void *memset(void *ptr, u32 value, u32 num) {
 void *memcpy(void *dst, const void* src, u32 num) {
 	u8 *dest;
 	const u8 *source;
+	u32 i;
 
 	dest = (u8 *)dst;
 	source = (const u8 *)src;
-	for (u32 i = 0; i < num; ++i) {
+	for (i = 0; i < num; ++i) {
 		dest[i] = source[i];
 	}
 	return dest;
@@ -33,12 +35,12 @@ u32 strlen(const i8 *str) {
 }
 
 i8 *strrev(i8 *str) {
-	u32 sz;
+	u32 sz, i;
 	i8 temp;
 
 	sz = strlen(str);
 
-	for (u32 i = 0; i < sz / 2; ++i) {
+	for (i = 0; i < sz / 2; ++i) {
 		temp = str[i];
 		str[i] = str[sz - i - 1];
 		str[sz - i - 1] = temp;
@@ -111,13 +113,13 @@ u32 strcspn(const i8 *str1, const i8 *str2) {
 }
 
 i8 *strsep(i8 **str, const i8 *sep) {
-	i8 *end;
+	i8 *end, *s;
 
 	if (*str == NULL) {
 		return NULL;
 	}
 
-	i8 *s = *str;
+	s = *str;
 	end = s + strcspn(s, sep);
 	if (*end) {
 		*end = 0;
@@ -165,9 +167,12 @@ i8 *strcat(i8 *dest, const i8 *src) {
 }
 
 i8 *strchr(const i8 *s, i32 c) {
-	i8 *s2 = (i8 *)s;
-	u32 sz = strlen(s);
-	for (u32 i = 0; i <= sz; ++i) {
+	i8 *s2;
+	u32 sz, i;
+
+	s2 = (i8 *)s;
+	sz = strlen(s);
+	for (i = 0; i <= sz; ++i) {
 		if (*s2 == c) {
 			return s2;
 		}

@@ -16,9 +16,10 @@ i32 getchar() {
 }
 
 void printf(const i8 *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
 	i8 internal_buf[1024];
+	va_list args;
+
+	va_start(args, fmt);
 	memset(internal_buf, 0, sizeof internal_buf);
 	vsprintf(internal_buf, fmt, args);	
 	write(STDOUT_FILENO, internal_buf, strlen(internal_buf));

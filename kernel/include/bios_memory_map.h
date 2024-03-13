@@ -7,8 +7,10 @@
 #define BIOS_MEMORY_MAP 0xC0008504
 
 typedef struct {
-	u64 base_address;
-	u64 length;
+	u32 base_address_low;
+	u32 base_address_high;
+	u32 length_low;
+	u32 length_high;
 	u32 type;
 	u32 acpi;
 } __attribute__((packed)) memory_map_entry;

@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <blk_dev.h>
 #include <string.h>
+#include <heap.h>
 
 i32 ext2_readdir(struct ext2_inode *inode, struct file *fp, 
 		struct dirent *dent) {

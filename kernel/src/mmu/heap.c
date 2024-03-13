@@ -1,7 +1,7 @@
 #include <heap.h>
 #include <pmm.h>
 #include <paging.h>
-#include <debug.h>
+#include <panic.h>
 #include <string.h>
 
 void *heap_start = NULL;
@@ -12,7 +12,7 @@ void *heap_max = NULL;
 static heap_block *block_list = NULL;
 
 void heap_init() {
-	DEBUG("%s", "Heap initialization started..\r\n");
+	debug("%s", "Heap initialization started..\r\n");
 	u32 heap_blocks;
 	u32 heap_phys_addr, heap_virt_addr;
 
@@ -20,31 +20,32 @@ void heap_init() {
 	heap_curr = heap_start;
 	heap_end = (u8 *)heap_start + HEAP_INITIAL_SIZE;
 	heap_max = (void *)HEAP_MAX_ADDRESS;
-	DEBUG("Heap initial size - 0x%x\r\n", HEAP_INITIAL_SIZE);
-	DEBUG("Virtual heap start - %p\r\n", heap_start);
-	DEBUG("Virtual heap end - %p\r\n", heap_end);
-	DEBUG("Virtual heap max address - %p\r\n", heap_max);
+	debug("Heap initial size - 0x%x\r\n", HEAP_INITIAL_SIZE);
+	debug("Virtual heap start - %p\r\n", heap_start);
+	debug("Virtual heap end - %p\r\n", heap_end);
+	debug("Virtual heap max address - %p\r\n", heap_max);
 
 
 	heap_blocks = HEAP_INITIAL_SIZE / PMM_BLOCK_SIZE;
-	DEBUG("Heap consists of 0x%x heap blocks(4KB)\r\n", heap_blocks);
+	debug("Heap consists of 0x%x heap blocks(4KB)\r\n", heap_blocks);
 	void *heap_ptr = allocate_blocks(heap_blocks);
-	DEBUG("Allocated %d heap blocks at physical address %p\r\n", heap_blocks, heap_ptr);
-	DEBUG("Heap ends at physical address %p\r\n", (u8*)heap_ptr + HEAP_INITIAL_SIZE);
+	debug("Allocated %d heap blocks at physical address %p\r\n", heap_blocks, heap_ptr);
+	debug("Heap ends at physical address %p\r\n", (u8*)heap_ptr + HEAP_INITIAL_SIZE);
 
 	heap_virt_addr = (u32)heap_start;
 	heap_phys_addr = (u32)heap_ptr;
-	DEBUG("%s", "Start with:\r\n");
-	DEBUG("heap_virt_addr = %x\r\n", heap_virt_addr);
-	DEBUG("heap_phys_addr = %x\r\n", heap_phys_addr);
+	debug("%s", "Start with:\r\n");
+	debug("heap_virt_addr = %x\r\n", heap_virt_addr);
+	debug("heap_phys_addr = %x\r\n", heap_phys_addr);
 
-	for (u32 i = 0; i < heap_blocks; ++i) {
+	u32 i;
+	for (i = 0; i < heap_blocks; ++i) {
 		map_page((void *)heap_phys_addr, (void *)heap_virt_addr, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 		heap_virt_addr += PAGE_SIZE;
 		heap_phys_addr += PMM_BLOCK_SIZE;
 	}
-	DEBUG("heap virt addr - 0x%x\r\n", heap_virt_addr - PAGE_SIZE);
-	DEBUG("%s", "Finished heap\r\n");
+	debug("heap virt addr - 0x%x\r\n", heap_virt_addr - PAGE_SIZE);
+	debug("%s", "Finished heap\r\n");
 }
 
 void *sbrk(u32 increment) {
@@ -57,7 +58,7 @@ void *sbrk(u32 increment) {
 		heap_curr = (void *)new_boundary;
 		return (void*)old_boundary;
 	} else {
-		DEBUG("%s", "Ooops, we have reached the HEAP MAX\r\n");
+		debug("%s", "Ooops, we have reached the HEAP MAX\r\n");
 	}
 	return NULL;
 }
@@ -79,7 +80,7 @@ heap_block *best_fit(u32 size) {
 void split_block(heap_block *block, u32 size) {
 	if (block->size > sizeof(heap_block) + size) {
 		heap_block *splited_block = (heap_block *)((u8*)block + sizeof(heap_block) + size);
-		splited_block->free = true;
+		splited_block->free = 1;
 		splited_block->size = block->size - size - sizeof(heap_block);
 		splited_block->next = block->next;
 		block->size = size;
@@ -108,7 +109,7 @@ void *malloc(u32 size) {
 	if (block_list) {
 		heap_block* best_block = best_fit(size);
 		if (best_block) {
-			best_block->free = false;
+			best_block->free = 0;
 			split_block(best_block, size);
 			block = best_block;
 		} else {
@@ -118,7 +119,7 @@ void *malloc(u32 size) {
 			}
 			block->size = size;
 			block->next = NULL;
-			block->free = false;
+			block->free = 0;
 			heap_block *last = block_list;
 			while (last->next) {
 				last = last->next;
@@ -132,12 +133,11 @@ void *malloc(u32 size) {
 		}
 		block->size = size;
 		block->next = NULL;
-		block->free = false;
+		block->free = 0;
 		block_list = block;
 	}
 
 	if (block) {
-		// block + 1 is the same as (u8*)block + 1 * sizeof(heap_block)
 		return block + 1; 
 	}
 	return NULL;
@@ -148,12 +148,10 @@ void free(void *ptr) {
 		return;
 	}
 
-	// Find heap block to free
 	heap_block *block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
 
-	block->free = true;
+	block->free = 1;
 	
-	// Find heap block to free with its previous and next blocks
 	heap_block *prev_block = NULL;
 	heap_block *curr_block = block_list;
 	heap_block *next_block = block_list->next;
@@ -168,12 +166,10 @@ void free(void *ptr) {
 	}
 
 	if (next_block && next_block->free) {
-		// Merge current block with next block
 		curr_block->size = curr_block->size + sizeof(heap_block) + next_block->size;
 		curr_block->next = next_block->next;
 	}
 	if (prev_block && prev_block->free) {
-		// Merge previous block with current one
 		prev_block->size = prev_block->size + sizeof(heap_block) + curr_block->size;
 		prev_block->next = curr_block->next;
 		curr_block = prev_block;
@@ -195,7 +191,7 @@ void *realloc(void *ptr, u32 size) {
 	
 	heap_block *block = best_fit(size);
 	if (block) {
-		block->free = false;
+		block->free = 0;
 		split_block(block, size);
 		memcpy((void *)(block + 1), ptr, old_size);
 	} else {
@@ -205,7 +201,7 @@ void *realloc(void *ptr, u32 size) {
 		}
 		new_block->size = size;
 		new_block->next = NULL;
-		new_block->free = false;
+		new_block->free = 0;
 		
 		memcpy((void *)(new_block + 1), ptr, old_size);
 

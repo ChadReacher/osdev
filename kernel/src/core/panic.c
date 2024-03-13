@@ -3,7 +3,12 @@
 #include <stdarg.h>
 #include <screen.h>
 
-void kernel_panic(i8 *fmt, ...) {
+void debug(i8 *fmt, ...) {
+	(void)fmt;
+	/*serial_printf("DEBUG: %s:%d:%s(): " format "\r\n", __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); */
+}
+
+void panic(i8 *fmt, ...) {
 	i8 buf[1024];
 	va_list arg;
 
@@ -13,7 +18,7 @@ void kernel_panic(i8 *fmt, ...) {
 	kprintf(buf);
 	kprintf("\nSystem halted!\n");
 
-	__asm__ __volatile__ ("cli");
+	__asm__ __volatile__ ("cli; hlt");
 
 	while (1);
 }

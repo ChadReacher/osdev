@@ -4,7 +4,7 @@ LD = $(TOOLCHAIN_SRC)/i386-elf-ld
 OBJCOPY = $(TOOLCHAIN_SRC)/i386-elf-objcopy
 AS = nasm
 AR = ar
-CFLAGS = -g -W -Wall -pedantic -m32 -std=c11 -march=i386
+CFLAGS = -g -W -Wall -pedantic -m32 -std=c99 -march=i386
 CFLAGS += -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles
 CFLAGS += -nodefaultlibs -mno-red-zone -fno-stack-protector -nolibc
 
@@ -35,9 +35,9 @@ user: libc
 	man bash > userland/hdd/usr/file
 	echo "del" > userland/hdd/usr/del
 	echo "bye" > userland/hdd/usr/bye
-	mkdir -p userland/hdd/usr/etc
-	echo "x" > userland/hdd/usr/etc/x
-	./generate.sh
+	#mkdir -p userland/hdd/usr/etc
+	#echo "x" > userland/hdd/usr/etc/x
+	#./generate.sh
 	dd if=/dev/zero of=build/disk.img bs=1024 count=4096
 	sudo losetup -fP build/disk.img
 	losetup

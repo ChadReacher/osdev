@@ -6,7 +6,7 @@
 #define ENOENT			2
 #define ESRCH			3
 #define EINTR			4
-#define EIO				5
+#define EIO			5
 #define ENXIO			6
 #define E2BIG			7
 #define ENOEXEC			8
@@ -37,7 +37,7 @@
 #define EDOM			33
 #define ERANGE			34
 #define EDEADLK			35
-#define ENAMETOOLONG	36
+#define ENAMETOOLONG		36
 #define ENOLCK			37
 #define ENOSYS			38
 #define ENOTEMPTY		39

@@ -15,8 +15,6 @@
 #define O_APPEND   02000
 #define O_NONBLOCK 04000
 
-
-// Symbolic constants for 'mode'
 #define S_IRWXU 0x0700
 #define S_IRUSR 0x0400
 #define S_IWUSR 0x0200
@@ -32,7 +30,6 @@
 #define S_IWOTH 0x0002
 #define S_IXOTH 0x0001
 
-// lseek 'whence' symbolic constants
 #define SEEK_SET 1
 #define SEEK_CUR 2
 #define SEEK_END 3

@@ -13,7 +13,7 @@
 
 #define FRAMEBUFFER_ADDRESS 0xFD000000
 #define FONT_ADDRESS 0xFE000000
-//#define FONT_ADDRESS 0xA000
+/*#define FONT_ADDRESS 0xA000*/
 
 void screen_init();
 

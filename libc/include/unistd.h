@@ -4,18 +4,18 @@
 #include "sys/types.h"
 
 #define _POSIX_SOURCE 1
-// #define _POSIX_JOB_CONTROL
-// #define _POSIX_SAVED_IDS
+/* #define _POSIX_JOB_CONTROL */
+/* #define _POSIX_SAVED_IDS */
 #define _POSIX_VERSION 198808L
 
 #define _POSIX_CHOWN_RESTRICTED 1
-// #define _POSIX_NO_TRUNC
+/* #define _POSIX_NO_TRUNC */
 #define _POSIX_VDISABLE '\0'
 
-#define F_OK        0 // Exists?
-#define X_OK        1 // Execute?
-#define R_OK        2 // Read?
-#define W_OK        4 // Write?
+#define F_OK        0
+#define X_OK        1
+#define R_OK        2
+#define W_OK        4
 
 
 #define STDIN_FILENO 0

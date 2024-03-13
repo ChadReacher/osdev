@@ -33,9 +33,11 @@ void test_sigxset() {
 }
 
 void test_sigaction() {
-	sigaction_t oact;
+	int i;
+	sigaction_t oact, act;
+
 	printf("All current sigaction:\n");
-	for (int i = 0; i < NSIG; ++i) {
+	for (i = 0; i < NSIG; ++i) {
 		printf("Call sigaction(%d, NULL, &oact). ", i);
 		sigaction(i, NULL, &oact);
 		printf("Got the sigaction: "
@@ -43,7 +45,6 @@ void test_sigaction() {
 				oact.sa_handler, oact.sa_mask, oact.sa_flags);
 	}
 	printf("Change SIGALRM to SIG_IGN\n");
-	sigaction_t act;
 	act.sa_handler = SIG_IGN;
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0; 
@@ -168,12 +169,12 @@ int main() {
 	*/
 	
 	i32 pid = fork();
+	i32 stat_loc = 0;
 	if (pid == 0) {
 		i8 *m[] = {"/bin/sh", 0};
 		execv("/bin/sh", m);
 		printf("After exec\n");
 	}
-	i32 stat_loc = 0;
 	do {
 		pid = wait(&stat_loc);
 		printf("PID of terminated child - %d\n", pid);

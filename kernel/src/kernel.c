@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <serial.h>
 #include <panic.h>
-#include <debug.h>
 #include <gdt.h>
 #include <isr.h>
 #include <tss.h>
@@ -17,7 +16,6 @@
 #include <process.h>
 #include <scheduler.h>
 #include <pci.h>
-#include <vfs.h>
 #include <ata.h>
 #include <ext2.h>
 #include <elf.h>
@@ -29,7 +27,7 @@ void _start() {
 	gdt_init();
 	isr_init();
 	tss_init(5, 0x10, 0);
-	//irq_init(); FOR NOW, when testing filesystem
+	/*irq_init(); FOR NOW, when testing filesystem */
 	syscall_init();
 	timer_init(TIMER_FREQ);
 	keyboard_init();
@@ -45,6 +43,6 @@ void _start() {
 	userinit();
 	enter_usermode();
 
-	PANIC("End of kernel\r\n");
+	panic("End of kernel\r\n");
 	for (;;);
 }

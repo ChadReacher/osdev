@@ -5,10 +5,11 @@
 #include <unistd.h>
 
 i32 main(i32 argc, i8 *argv[]) {
-	i8 *dirname = malloc(256);
-	memset(dirname, 0, 256);
-	struct dirent *entry;
 	DIR *dirp;
+	struct dirent *entry;
+	i8 *dirname = malloc(256);
+
+	memset(dirname, 0, 256);
 	
 	if (argc == 1) {
 		getcwd(dirname, 256);
@@ -21,7 +22,6 @@ i32 main(i32 argc, i8 *argv[]) {
 		return -1;
 	}
 
-	printf("start reading\n");
 	while ((entry = readdir(dirp)) != 0) {
 		printf("%s\n", entry->name);
 	}

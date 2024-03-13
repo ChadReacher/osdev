@@ -19,7 +19,6 @@ struct buffer {
 	i8 *b_data;
 };
 
-//void rw_block(u32 rw, u16 dev, u32 block, i8 **buf);
 i32 block_write(u16 dev, u32 *pos, i8 *buf, u32 count);
 i32 block_read(u16 dev, u32 *pos, i8 *buf, u32 count);
 

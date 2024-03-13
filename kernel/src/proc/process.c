@@ -5,7 +5,6 @@
 #include <tss.h>
 #include <stdio.h>
 #include <timer.h>
-#include <debug.h>
 #include <panic.h>
 #include <scheduler.h>
 #include <string.h>
@@ -43,7 +42,7 @@ void userinit() {
 
 	struct ext2_inode *inode = namei("/bin/init");
 	if (!inode) {
-		PANIC("exec init: could not find /bin/init file\r\n");
+		panic("exec init: could not find /bin/init file\r\n");
 	}
 	u32 *data = malloc(inode->i_size);
 	memset((i8 *)data, 0, inode->i_size);
@@ -51,8 +50,9 @@ void userinit() {
 	ext2_file_read(inode, &fp, (i8 *)data, inode->i_size);
 
 	init_process->parent = NULL;
-	init_process->directory = paging_copy_page_dir(false);
-	for (i32 i = 0; i < NSIG; ++i) {
+	init_process->directory = paging_copy_page_dir(0);
+	i32 i;
+	for (i = 0; i < NSIG; ++i) {
 		memset(init_process->signals, 0, sizeof(sigaction_t));
 		init_process->signals[i].sa_handler = SIG_DFL;
 	}
@@ -70,36 +70,36 @@ void userinit() {
 	argv[argc] = NULL;
 	envp[envc] = NULL;
 	
-	// Handle user stack:
+	/* Handle user stack: */
 	memset((void *)0xBFFFF000, 0, 4092);
 	i8 *usp = (i8 *)0xBFFFFFFB;
-	// push envp strings
-	for (i32 i = envc - 1; i >= 0; --i) {
+	/* push envp strings */
+	for (i = envc - 1; i >= 0; --i) {
 		usp -= strlen(envp[i]) + 1;
 		strcpy((i8 *)usp, envp[i]);
 		free(envp[i]);
 		envp[i] = (i8 *)usp;
 	}
-	// push argv strings
-	for (i32 i = argc - 1; i >= 0; --i) {
+	/* push argv strings */
+	for (i = argc - 1; i >= 0; --i) {
 		usp -= strlen(argv[i]) + 1;
 		strcpy((i8 *)usp, argv[i]);
 		free(argv[i]);
 		argv[i] = (i8 *)usp;
 	}
 
-	// Push envp pointers to envp strings
+	/* Push envp pointers to envp strings */
 	usp -= (envc + 1) * 4;
 	memcpy((void *)usp, (void *)envp, (envc + 1) * 4);
 
-	// Save env ptr
+	/* Save env ptr */
 	u32 env_ptr = (u32)usp;
 
-	// Push argv pointers argv strings
+	/* Push argv pointers argv strings */
 	usp -= (argc + 1) * 4;
 	memcpy((void *)usp, (void *)argv, (argc + 1) * 4);
 
-	// Save arg ptr
+	/* Save arg ptr */
 	u32 arg_ptr = (u32)usp;
 
 	usp -= 4;
@@ -115,12 +115,11 @@ void userinit() {
 	free(envp);
 	init_process->regs->useresp = (u32)usp;
 
-	// Get back to the kernel page directory
+	/* Get back to the kernel page directory */
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
 }
 
 process_t *proc_alloc() {
-	//DEBUG("malloc(sizeof(process_t)) - %d\r\n", sizeof(process_t));
 	process_t *process = malloc(sizeof(process_t));
 	if (!process) {
 		return NULL;
@@ -130,12 +129,11 @@ process_t *proc_alloc() {
 	process->pid = next_pid++;
 	process->timeslice = 20;
 	process->state = RUNNING;
-	//process->fds = malloc(FDS_NUM * sizeof(file));
-	//if (!process->fds) {
-	//	return NULL;
-	//}
-	//memset(process->fds, 0, FDS_NUM * sizeof(file));
-	//DEBUG("malloc(4096 * 2) - %d\r\n", 4096 * 2);
+	/*process->fds = malloc(FDS_NUM * sizeof(file)); */
+	/*if (!process->fds) { */
+	/*	return NULL; */
+	/*} */
+	/*memset(process->fds, 0, FDS_NUM * sizeof(file)); */
 	process->kernel_stack_bottom = malloc(4096 * 2);
 	if (!process->kernel_stack_bottom) {
 		return NULL;
@@ -143,32 +141,32 @@ process_t *proc_alloc() {
 	memset(process->kernel_stack_bottom, 0, 4096 * 2);
 	u32 *sp = (u32 *)ALIGN_DOWN((u32)process->kernel_stack_bottom + 4096 * 2 - 1, 4);
 
-	// Setup kernel stack as we have returned from interrupt routine
-	*sp-- = 0x23;			// user DS
-	*sp-- = 0xBFFFFFFB;		// user stack
-	*sp-- = 0x200;			// EFLAGS
-	*sp-- = 0x1B;			// user CS
-	*sp-- = 0x0;			// user eip
-	*sp-- = 0x0;			// err code
-	*sp-- = 0x0;			// int num
-	*sp-- = 0x0;			// eax
-	*sp-- = 0x0; 			// ecx
-	*sp-- = 0x0; 			// edx
-	*sp-- = 0x0; 			// ebx
-	*sp-- = 0x0; 			// esp
-	*sp-- = 0x0;			// ebp
-	*sp-- = 0x0; 			// esi
-	*sp-- = 0x0; 			// edi
-	*sp-- = 0x23;			// ds
-	*sp-- = 0x23; 			// es
-	*sp-- = 0x23; 			// fs
-	*sp-- = 0x23; 			// gs
+	/* Setup kernel stack as we have returned from interrupt routine */
+	*sp-- = 0x23;			/* user DS */
+	*sp-- = 0xBFFFFFFB;		/* user stack */
+	*sp-- = 0x200;			/* EFLAGS */
+	*sp-- = 0x1B;			/* user CS */
+	*sp-- = 0x0;			/* user eip */
+	*sp-- = 0x0;			/* err code */
+	*sp-- = 0x0;			/* int num */
+	*sp-- = 0x0;			/* eax */
+	*sp-- = 0x0; 			/* ecx */
+	*sp-- = 0x0; 			/* edx */
+	*sp-- = 0x0; 			/* ebx */
+	*sp-- = 0x0; 			/* esp */
+	*sp-- = 0x0;			/* ebp */
+	*sp-- = 0x0; 			/* esi */
+	*sp-- = 0x0; 			/* edi */
+	*sp-- = 0x23;			/* ds */
+	*sp-- = 0x23; 			/* es */
+	*sp-- = 0x23; 			/* fs */
+	*sp-- = 0x23; 			/* gs */
 	process->regs = (registers_state *)(sp + 1);
-	*sp-- = (u32)irq_ret;	// irq_ret eip (to return back to the end of the interrupt routine)
-	*sp-- = 0x0;			// ebp
-	*sp-- = 0x0; 			// ebx
-	*sp-- = 0x0; 			// esi
-	*sp-- = 0x0; 			// edi
+	*sp-- = (u32)irq_ret;	/* irq_ret eip (to return back to the end of the interrupt routine) */
+	*sp-- = 0x0;			/* ebp */
+	*sp-- = 0x0; 			/* ebx */
+	*sp-- = 0x0; 			/* esi */
+	*sp-- = 0x0; 			/* edi */
 	++sp;
 
 	process->kernel_stack_top = (void *)sp;
@@ -182,7 +180,7 @@ process_t *proc_alloc() {
 	return process;
 }
 
-// TODO: Work on it or delete it
+/* TODO: Work on it or delete it */
 process_t *copy_process() {
 	process_t *p = malloc(sizeof(process_t));
 	if (!p) {
@@ -210,7 +208,8 @@ i32 get_new_fd() {
 }
 
 struct file *get_empty_file() {
-	for (i32 i = 0; i < NR_FILE; ++i) {
+	i32 i;
+	for (i = 0; i < NR_FILE; ++i) {
 		if (!file_table[i].f_count) {
 			return &file_table[i];
 		}

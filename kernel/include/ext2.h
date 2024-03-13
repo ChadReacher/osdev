@@ -2,6 +2,7 @@
 #define EXT2_H
 
 #include "types.h"
+#include "syscall.h"
 
 #define ROOT_DEV 0x306
 
@@ -18,7 +19,6 @@
 #define EXT2_SUPER_MAGIC 0xEF53
 #define NR_INODE 32
 
-// File Format
 #define EXT2_S_IFSOCK 0xC000
 #define EXT2_S_IFLNK  0xA000
 #define EXT2_S_IFREG  0x8000
@@ -32,12 +32,10 @@
 #define EXT2_S_ISCHR(m) (((m) & EXT2_S_IFREG) == EXT2_S_IFREG)
 #define EXT2_S_ISBLK(m) (((m) & EXT2_S_IFBLK) == EXT2_S_IFBLK)
 
-// Process execution user/group override
 #define EXT2_S_ISUID 0x0800
 #define EXT2_S_ISGID 0x0400
 #define EXT2_S_ISVTX 0x0200
 
-// Access rights
 #define EXT2_S_IRUSR 0x0100
 #define EXT2_S_IWUSR 0x0080
 #define EXT2_S_IXUSR 0x0040
@@ -78,7 +76,7 @@ struct ext2_super_block {
 	u16 s_def_resuid;
 	u16 s_def_resgid;
 
-	// Extended Superblock Fields(if major version >= 1)
+	/* Extended Superblock Fields(if major version >= 1) */
 	u32 s_first_ino;
 	u16 s_inode_size;
 	u16 s_block_group_nr;
@@ -93,24 +91,24 @@ struct ext2_super_block {
 	u8  s_prealloc_dir_blocks;
 	u16 s_padding1;
 
-	// Journaling Support
+	/* Journaling Support */
 	u8  s_journal_uuid[16];
 	u32 s_journal_inum;
 	u32 s_journal_dev;
 	u32 s_last_orphan;
 
-	// Directory Indexing Support
+	/* Directory Indexing Support */
 	u32 s_hash_seed[4];
 	u8  s_def_hash_version;
 	u16 s_padding_a;
 	u8  s_padding_b;
 
-	// Other options
+	/* Other options */
 	u32 s_defaul_mount_options;
 	u32 s_first_meta_bg;
 	u8  s_unused[760];
 
-	// In-memory fields
+	/* In-memory fields */
 	u16 s_dev;
 	u32 s_block_size;
 	u32 s_total_groups;
@@ -130,7 +128,7 @@ struct ext2_blk_grp_desc {
 struct ext2_inode {
 	u16 i_mode;
 	u16 i_uid;
-	u32 i_size;
+	i32 i_size;
 	u32 i_atime;
 	u32 i_ctime;
 	u32 i_mtime;
@@ -147,7 +145,7 @@ struct ext2_inode {
 	u32 i_faddr;
 	u8  osd2[12];
 
-	// In-memory fields
+	/* In-memory fields */
 	u16 i_dev;
 	u32 i_num;
 	u32 i_count;
@@ -185,6 +183,17 @@ i32 ext2_bmap(struct ext2_inode *inode, u32 offset);
 i32 ext2_create_block(struct ext2_inode *inode, u32 offset);
 i32 ext2_file_read(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
 i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
+
+i32 dir_namei(const i8 *pathname, const i8 **name,
+		struct ext2_inode **res_inode);
+i32 check_permission(struct ext2_inode *inode, i32 mask);
+struct buffer *ext2_find_entry(struct ext2_inode *dir, const i8 *name,
+		struct ext2_dir **res_dir, struct ext2_dir **prev_dir);
+i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
+		struct buffer **res_buf, struct ext2_dir **result);
+i32 ext2_readdir(struct ext2_inode *inode, struct file *fp,
+		struct dirent *dent);
+
 
 void free_block(u16 dev, u32 block);
 u32 alloc_block(u16 dev);

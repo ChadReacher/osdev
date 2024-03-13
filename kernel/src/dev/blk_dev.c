@@ -18,14 +18,12 @@ i32 block_write(u16 dev, u32 *pos, i8 *buf, u32 count) {
 			chars = count;
 		}
 		ret_buf = read_blk(dev, block);
-		//rw_block(READ, dev, block, &ret_buf);
 		if (ret_buf == NULL) {
 			return written;
 		}
 		p = ret_buf->b_data + offset;
 		memcpy(p, buf, chars);
 		write_blk(ret_buf);
-		//rw_block(WRITE, dev, block, &ret_buf);
 		offset = 0;
 		++block;
 		*pos += chars;
@@ -52,7 +50,6 @@ i32 block_read(u16 dev, u32 *pos, i8 *buf, u32 count) {
 			chars = count;
 		}
 		ret_buf = read_blk(dev, block);
-		//rw_block(READ, dev, block, &ret_buf);
 		if (ret_buf == NULL) {
 			return read;
 		}
@@ -73,13 +70,13 @@ i32 block_read(u16 dev, u32 *pos, i8 *buf, u32 count) {
 typedef void (*blk_fn)(u32 rw, u16 dev, u32 block, i8 **buf);
 
 static blk_fn blk_dev[] = {
-	NULL,     // no dev
-	NULL,     // dev mem
-	NULL,     // dev fd
-	rw_ata,   // dev hd
-	NULL,     // dev ttyx
-	NULL,     // dev tty
-	NULL,     // dev lp
+	NULL,     /* no dev */
+	NULL,     /* dev mem */
+	NULL,     /* dev fd */
+	rw_ata,   /* dev hd */
+	NULL,     /* dev ttyx */
+	NULL,     /* dev tty */
+	NULL,     /* dev lp */
 };
 
 
@@ -89,7 +86,7 @@ struct buffer *read_blk(u16 dev, u32 block) {
 	blk_fn blk_addr;
 	u16 major;
 	if ((major=MAJOR(dev)) >= NRBLKDEV || !(blk_addr=blk_dev[major])) {
-		kernel_panic("nonexistent block device");
+		panic("nonexistent block device");
 	}
 	blk_addr(READ, dev, block, &data);
 	if (!data) {
@@ -103,13 +100,14 @@ struct buffer *read_blk(u16 dev, u32 block) {
 }
 
 void write_blk(struct buffer *buf) {
+	blk_fn blk_addr;
+	u16 major;
+
 	if (!buf) {
 		return;
 	}
-	blk_fn blk_addr;
-	u16 major;
 	if ((major=MAJOR(buf->b_dev)) >= NRBLKDEV || !(blk_addr=blk_dev[major])) {
-		kernel_panic("nonexistent block device");
+		panic("nonexistent block device");
 	}
 	blk_addr(WRITE, buf->b_dev, buf->b_block, &buf->b_data);
 }
@@ -119,7 +117,7 @@ void rw_block(u32 rw, u16 dev, u32 block, i8 **buf) {
 	blk_fn blk_addr;
 	u16 major;
 	if ((major=MAJOR(dev)) >= NRBLKDEV || !(blk_addr=blk_dev[major])) {
-		kernel_panic("nonexistent block device");
+		panic("nonexistent block device");
 	}
 	blk_addr(rw, dev, block, buf);
 }

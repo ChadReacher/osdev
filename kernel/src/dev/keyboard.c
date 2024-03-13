@@ -2,17 +2,17 @@
 #include <stdlib.h>
 #include <port.h>
 #include <screen.h>
-#include <debug.h>
+#include <panic.h>
 
 #define RING_BUFFER_SIZE 8
 
-// Scancode without info about pressed or released key
-bool ctrl_mode = false;
-bool shift_mode = false;
-bool capslock_mode = false;
+/* Scancode without info about pressed or released key */
+bool ctrl_mode = 0;
+bool shift_mode = 0;
+bool capslock_mode = 0;
 
 static u8 keyboard_layout_us[2][128] = {
-	// When SHIFT is NOT pressed
+	/* When SHIFT is NOT pressed */
 	{
 		KEY_NULL, KEY_ESC, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
 		'-', '=', KEY_BACKSPACE, '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u',
@@ -24,7 +24,7 @@ static u8 keyboard_layout_us[2][128] = {
 		'9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.', 0, 0, 0, KEY_F11,
 		KEY_F12,
 	}, 
-	// When SHIFT IS pressed
+	/* When SHIFT IS pressed */
 	{
 		KEY_NULL, KEY_ESC, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
 		'_', '+', KEY_BACKSPACE, '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U',
@@ -50,9 +50,9 @@ u8 keyboard_getchar() {
 	switch (raw_scancode) {
 		case KEY_LCTRL:
 			if (KEY_IS_PRESSED(scancode)) {
-				ctrl_mode = true;
+				ctrl_mode = 1;
 			} else {
-				ctrl_mode = false;
+				ctrl_mode = 0;
 			}
 			return 0;
 		case KEY_BACKSPACE:
@@ -76,9 +76,9 @@ u8 keyboard_getchar() {
 		case KEY_LSHIFT:
 		case KEY_RSHIFT:
 			if (KEY_IS_PRESSED(scancode)) {
-				shift_mode = true;
+				shift_mode = 1;
 			} else {
-				shift_mode = false;
+				shift_mode = 0;
 			}
 			return 0;
 			break;
@@ -92,12 +92,6 @@ u8 keyboard_getchar() {
 		case DOWN_ARROW:
 		case LEFT_ARROW:
 		case RIGHT_ARROW:
-			//if (KEY_IS_PRESSED(scancode)) {
-			//	reset_readline();
-			//	strcpy(readline, last_readline);
-			//	kprintf(readline);
-			//	readline_index = strlen(readline);
-			//}
 			return 0;
 			break;
 		default:
@@ -109,17 +103,6 @@ u8 keyboard_getchar() {
 
 				if (ctrl_mode) {
 					return c;
-					//if (c == 'c') {
-					//	reset_readline();
-					//	kprintf("^C\n");
-					//	kprintf(cwd);
-					//	kprintf(PROMPT);
-					//} else if (c == 'l') {
-					//	clear();
-					//	reset_readline();
-					//	kprintf(cwd);
-					//	kprintf(PROMPT);
-					//}
 				} else {
 					return c;
 				}
@@ -131,10 +114,11 @@ u8 keyboard_getchar() {
 }
 
 u8 keyboard_get_scancode() {
+	u8 scancode;
 	if (buffer_len == 0) {
 		return 0;
 	}
-	u8 scancode = scancodes[read_idx++];
+	scancode = scancodes[read_idx++];
 	--buffer_len;
 
 	if (read_idx == RING_BUFFER_SIZE) {
@@ -145,16 +129,16 @@ u8 keyboard_get_scancode() {
 }
 
 static void keyboard_handler() {
-	DEBUG("INSIDE KEYBOARD HANDLER -- BEGIN\r\n");
 	u8 status;
+	debug("INSIDE KEYBOARD HANDLER -- BEGIN\r\n");
 
 	status = port_inb(KEYBOARD_STATUS_PORT);
-	if (status & 0x01) { // Is output buffer full?
+	if (status & 0x01) { /* Is output buffer full? */
 		u8 scancode = port_inb(KEYBOARD_DATA_PORT);
 
 		if (buffer_len == RING_BUFFER_SIZE) {
-			DEBUG("%s", "Ring buffer is full.\r\n");
-			DEBUG("INSIDE KEYBOARD HANDLER -- END\r\n");
+			debug("%s", "Ring buffer is full.\r\n");
+			debug("INSIDE KEYBOARD HANDLER -- END\r\n");
 			return;
 		}
 
@@ -165,10 +149,10 @@ static void keyboard_handler() {
 			write_idx = 0;
 		}
 	}
-	DEBUG("INSIDE KEYBOARD HANDLER -- END\r\n");
+	debug("INSIDE KEYBOARD HANDLER -- END\r\n");
 }
 
 void keyboard_init() {
 	register_interrupt_handler(IRQ1, keyboard_handler);
-	DEBUG("%s", "Keyboard has been initialized\r\n");
+	debug("%s", "Keyboard has been initialized\r\n");
 }
