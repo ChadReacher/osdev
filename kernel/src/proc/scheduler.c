@@ -79,9 +79,10 @@ process_t *get_proc_by_id(u32 pid) {
 void schedule() {
 	u32 i;
 	process_t *next_proc;
+	queue_node_t *node;
 
 	debug("Queue of ready processes:\r\n");
-	queue_node_t *node = ready_queue->head;
+	node = ready_queue->head;
 	for (i = 0; i < ready_queue->len; ++i) {
 		process_t *p = (process_t *)node->value;
 		char *state;
@@ -187,12 +188,14 @@ static i32 sigget(sigset_t *sigpend, const sigset_t *sigmask) {
 
 
 i32 handle_signal() {
+	u32 *esp;
+	sigaction_t *action;
 	i32 sig = sigget(&current_process->sigpending, &current_process->sigmask);
 	if (sig <= 0) {
 		return -1;
 	}
 	sigdelset(&current_process->sigpending, sig);
-	sigaction_t *action = &(current_process->signals[sig]);
+	action = &(current_process->signals[sig]);
 	if (current_process->pid == 1) {
 		return 0;
 	}
@@ -221,7 +224,7 @@ i32 handle_signal() {
 
 	current_process->signal_old_regs = *(current_process->regs);
 	current_process->regs->eip = (u32)action->sa_handler;
-	u32 *esp = (u32 *)current_process->regs->useresp;
+	esp = (u32 *)current_process->regs->useresp;
 	++esp;
 	*esp = sig;
 	--esp;
@@ -236,13 +239,14 @@ u32 send_signal(process_t *proc, i32 sig) {
 	if (sig == SIGSTOP || sig == SIGTSTP || sig == SIGTTIN || sig == SIGTTOU) {
 		sigdelset(&proc->sigpending, SIGCONT);
 	} else if (sig == SIGCONT) {
+		queue_node_t *node;
 		sigdelset(&proc->sigpending, SIGSTOP);
 		sigdelset(&proc->sigpending, SIGTSTP);
 		sigdelset(&proc->sigpending, SIGTTIN);
 		sigdelset(&proc->sigpending, SIGTTOU);
 
 		/*TODO: Implement it properly or easier and simpler */
-		queue_node_t *node = stopped_queue->head;
+		node = stopped_queue->head;
 		for (i = 0; i < stopped_queue->len; ++i) {
 			process_t *p = (process_t *)node->value;
 			if (p->pid == proc->pid) {

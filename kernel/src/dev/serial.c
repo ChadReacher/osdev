@@ -7,7 +7,7 @@
 
 static i8 internal_buf[1024];
 
-i32 serial_init() {
+void serial_init() {
 	port_outb(COM1 + 1, 0x00); /* Disable all interrupts */
 	port_outb(COM1 + 3, 0x80); /* Enable DLAB(divisor latch access bit) for baud rate divisor */
 	port_outb(COM1 + 0, 0x03); /* Set divisor to 3 according to 38400 baud(low byte) */
@@ -19,17 +19,16 @@ i32 serial_init() {
 	port_outb(COM1 + 0, 0xAB); /* Test the serial chip(send byte 0xAB and check if serial returns the same byte) */
 
 	if (port_inb(COM1 + 0) != 0xAB) {
-		panic("Could not initiliaze serial port communication");
-		return 1;
+		__asm__ __volatile__ ("cli; hlt");
+		for (;;);
 	}
 	
 	port_outb(COM1 + 4, 0x0F); /* not-loopback with IRQs enabled and OUT1 and OUT2 bits enabled */
 
-	debug("%s", "Serial port has been initialized\r\n");
-	return 0;
+	debug("Serial port has been initialized\r\n");
 }
 
-i32 serial_received() {
+static i32 serial_received() {
 	return port_inb(COM1 + 5) & 1;
 }
 
@@ -39,7 +38,7 @@ i8 read_serial() {
 	return port_inb(COM1);
 }
 
-i32 is_transmit_empty() {
+static i32 is_transmit_empty() {
 	return port_inb(COM1 + 5) & 0x20;
 }
 

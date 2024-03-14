@@ -29,7 +29,7 @@ i32 check_permission(struct ext2_inode *inode, i32 mask) {
 
 static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 	struct buffer *buf;
-	u32 block;
+	u32 block, res_block, ind_block, dind_block, ind_block2;
 
 	block = offset / super_block.s_block_size;
 	if (block < 12) {
@@ -53,7 +53,7 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 			inode->i_size += super_block.s_block_size;
 		}
 		buf = read_blk(inode->i_dev, inode->i_block[12]);
-		u32 res_block = ((u32 *)buf->b_data)[block];
+		res_block = ((u32 *)buf->b_data)[block];
 		if (!res_block && create) {
 			((u32 *)buf->b_data)[block] = res_block = alloc_block(inode->i_dev);
 			inode->i_blocks += 2;
@@ -77,7 +77,7 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 			inode->i_size += super_block.s_block_size;
 		}
 		buf = read_blk(inode->i_dev, inode->i_block[13]);
-		u32 ind_block = ((u32 *)buf->b_data)[block / EXT2_POINTERS_PER_BLOCK];
+		ind_block = ((u32 *)buf->b_data)[block / EXT2_POINTERS_PER_BLOCK];
 		if (!ind_block && create) {
 			((u32 *)buf->b_data)[block / EXT2_POINTERS_PER_BLOCK] =
 				ind_block = alloc_block(inode->i_dev);
@@ -89,7 +89,7 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 		free(buf->b_data);
 		free(buf);
 		buf = read_blk(inode->i_dev, ind_block);
-		u32 res_block = ((u32 *)buf->b_data)[block % EXT2_POINTERS_PER_BLOCK];
+		res_block = ((u32 *)buf->b_data)[block % EXT2_POINTERS_PER_BLOCK];
 		if (!res_block && create) {
 			((u32 *)buf->b_data)[block] = res_block = alloc_block(inode->i_dev);
 			inode->i_blocks += 2;
@@ -115,7 +115,7 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 			inode->i_size += super_block.s_block_size;
 		}
 		buf = read_blk(inode->i_dev, inode->i_block[14]);
-		u32 dind_block = ((u32 *)buf->b_data)[block / (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)];
+		dind_block = ((u32 *)buf->b_data)[block / (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)];
 		if (!dind_block && create) {
 			((u32 *)buf->b_data)[block / (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)] =
 				dind_block = alloc_block(inode->i_dev);
@@ -127,7 +127,7 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 		free(buf->b_data);
 		free(buf);
 		buf = read_blk(inode->i_dev, dind_block);
-		u32 ind_block = ((u32 *)buf->b_data)[block % (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)];
+		ind_block = ((u32 *)buf->b_data)[block % (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)];
 		if (!ind_block && create) {
 			((u32 *)buf->b_data)[block % (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)] =
 				ind_block = alloc_block(inode->i_dev);
@@ -136,11 +136,11 @@ static i32 bmap(struct ext2_inode *inode, u32 offset, i32 create) {
 			inode->i_ctime = get_current_time();
 			inode->i_size += super_block.s_block_size;
 		}
-		u32 ind_block2 = ind_block / EXT2_POINTERS_PER_BLOCK;
+		ind_block2 = ind_block / EXT2_POINTERS_PER_BLOCK;
 		free(buf->b_data);
 		free(buf);
 		buf = read_blk(inode->i_dev, ind_block2);
-		u32 res_block = ((u32 *)buf->b_data)[ind_block % EXT2_POINTERS_PER_BLOCK];
+		res_block = ((u32 *)buf->b_data)[ind_block % EXT2_POINTERS_PER_BLOCK];
 		if (!res_block && create) {
 			((u32 *)buf->b_data)[ind_block % EXT2_POINTERS_PER_BLOCK] =
 				res_block = alloc_block(inode->i_dev);
@@ -554,6 +554,8 @@ i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 		goto end_rename;
 	}
 	if (EXT2_S_ISDIR(old_inode->i_mode)) {
+		u32 parent_i_num;
+		struct ext2_dir *fst_de;
 		retval = -EEXIST;
 		if (new_buf) {
 			goto end_rename;
@@ -571,8 +573,8 @@ i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 		if (!dir_buf) {
 			goto end_rename;
 		}
-		struct ext2_dir *fst_de = (struct ext2_dir *)dir_buf->b_data;
-		u32 parent_i_num = ((struct ext2_dir *)(dir_buf + (fst_de->rec_len)))->inode;
+		fst_de = (struct ext2_dir *)dir_buf->b_data;
+		parent_i_num = ((struct ext2_dir *)(dir_buf + (fst_de->rec_len)))->inode;
 		if (parent_i_num == old_dir->i_num) {
 			goto end_rename;
 		}

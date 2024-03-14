@@ -19,10 +19,11 @@ void queue_delete(queue_t *self) {
 }
 
 void queue_enqueue(queue_t *self, void *value) {
+	queue_node_t *node;
 	if (self == NULL) {
 		return;
 	}
-	queue_node_t *node = malloc(sizeof(queue_node_t));
+	node = malloc(sizeof(queue_node_t));
 	memset(node, 0, sizeof(queue_node_t));
 	node->value = value;
 	if (!self->len) { 
@@ -36,18 +37,21 @@ void queue_enqueue(queue_t *self, void *value) {
 }
 
 void *queue_dequeue(queue_t *self) {
+	queue_node_t *old;
+	void *value;
+
 	if (self == NULL || self->len == 0) {
 		return NULL;
 	}
 	--self->len;
-	queue_node_t *old = self->head;
+	old = self->head;
 	self->head = self->head->next;
 	if (self->head != NULL) {
 		self->head->prev = NULL;
 	} else {
 		self->tail = NULL;
 	}
-	void *value = old->value;
+	value = old->value;
 	free(old);
 
 	return value;

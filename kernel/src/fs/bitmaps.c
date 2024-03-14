@@ -9,6 +9,7 @@ void free_block(u16 dev, u32 block) {
 	u32 *buf2;
 	struct ext2_blk_grp_desc *bgd; 
 	u32 bitmap_block;
+	u32 sub_bitmap_idx, idx, mask;
 
 	u32 group = block / super_block.s_blocks_per_group;
 	bgd = malloc(sizeof(struct ext2_blk_grp_desc));
@@ -21,11 +22,11 @@ void free_block(u16 dev, u32 block) {
 	buf = read_blk(dev, bitmap_block);
 	buf2 = (u32 *)buf->b_data;
 
-	u32 sub_bitmap_idx = (block - super_block.s_blocks_per_group * group) / 32; 
-	u32 idx = (block - super_block.s_blocks_per_group * group) % 32;
+	sub_bitmap_idx = (block - super_block.s_blocks_per_group * group) / 32; 
+	idx = (block - super_block.s_blocks_per_group * group) % 32;
 	--idx;
 	
-	u32 mask = ~(1 << idx);
+	mask = ~(1 << idx);
 	buf2[sub_bitmap_idx] = buf2[sub_bitmap_idx] & mask;
 	
 	write_blk(buf);
@@ -84,6 +85,7 @@ void free_inode(struct ext2_inode *inode) {
 	u32 *buf2;
 	struct ext2_blk_grp_desc *bgd; 
 	u32 bitmap_inode;
+	u32 sub_bitmap_idx, idx, mask;
 
 	u32 group = inode->i_num / super_block.s_inodes_per_group;
 	bgd = malloc(sizeof(struct ext2_blk_grp_desc));
@@ -96,11 +98,11 @@ void free_inode(struct ext2_inode *inode) {
 	buf = read_blk(inode->i_dev, bitmap_inode);
 	buf2 = (u32 *)buf;
 
-	u32 sub_bitmap_idx = (inode->i_num - super_block.s_inodes_per_group * group) / 32; 
-	u32 idx = (inode->i_num - super_block.s_inodes_per_group * group) % 32;
+	sub_bitmap_idx = (inode->i_num - super_block.s_inodes_per_group * group) / 32; 
+	idx = (inode->i_num - super_block.s_inodes_per_group * group) % 32;
 	--idx;
 	
-	u32 mask = ~(1 << idx);
+	mask = ~(1 << idx);
 	buf2[sub_bitmap_idx] = buf2[sub_bitmap_idx] & mask;
 	
 	write_blk(buf);
@@ -121,10 +123,10 @@ struct ext2_inode *alloc_inode(u16 dev) {
 	struct ext2_blk_grp_desc *bgd; 
 	struct ext2_inode *inode;
 	u32 bitmap_block;
+	u32 i, j, k;
 
 	inode = get_empty_inode();
 
-	u32 i, j, k;
 	for (i = 0; i < super_block.s_total_groups; ++i) {
 		bgd = malloc(sizeof(struct ext2_blk_grp_desc));
 		read_group_desc(bgd, i);

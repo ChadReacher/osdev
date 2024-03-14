@@ -12,9 +12,11 @@ void *heap_max = NULL;
 static heap_block *block_list = NULL;
 
 void heap_init() {
-	debug("%s", "Heap initialization started..\r\n");
 	u32 heap_blocks;
 	u32 heap_phys_addr, heap_virt_addr;
+	void *heap_ptr;
+	u32 i;
+	debug("%s", "Heap initialization started..\r\n");
 
 	heap_start = (void *)HEAP_START;
 	heap_curr = heap_start;
@@ -28,7 +30,7 @@ void heap_init() {
 
 	heap_blocks = HEAP_INITIAL_SIZE / PMM_BLOCK_SIZE;
 	debug("Heap consists of 0x%x heap blocks(4KB)\r\n", heap_blocks);
-	void *heap_ptr = allocate_blocks(heap_blocks);
+	heap_ptr = allocate_blocks(heap_blocks);
 	debug("Allocated %d heap blocks at physical address %p\r\n", heap_blocks, heap_ptr);
 	debug("Heap ends at physical address %p\r\n", (u8*)heap_ptr + HEAP_INITIAL_SIZE);
 
@@ -38,7 +40,6 @@ void heap_init() {
 	debug("heap_virt_addr = %x\r\n", heap_virt_addr);
 	debug("heap_phys_addr = %x\r\n", heap_phys_addr);
 
-	u32 i;
 	for (i = 0; i < heap_blocks; ++i) {
 		map_page((void *)heap_phys_addr, (void *)heap_virt_addr, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 		heap_virt_addr += PAGE_SIZE;
@@ -96,6 +97,7 @@ void split_block(heap_block *block, u32 size) {
  */
 void *malloc(u32 size) {
 	u32 real_size;
+	heap_block *block, *last;
 
 	if (size == 0) {
 		return NULL;
@@ -104,7 +106,6 @@ void *malloc(u32 size) {
 	real_size = sizeof(heap_block) + size;
 	real_size = ALIGN(real_size);
 
-	heap_block *block;
 
 	if (block_list) {
 		heap_block* best_block = best_fit(size);
@@ -120,7 +121,7 @@ void *malloc(u32 size) {
 			block->size = size;
 			block->next = NULL;
 			block->free = 0;
-			heap_block *last = block_list;
+			last = block_list;
 			while (last->next) {
 				last = last->next;
 			}
@@ -144,17 +145,21 @@ void *malloc(u32 size) {
 }
 
 void free(void *ptr) {
+	heap_block *block;
+	heap_block *prev_block;
+	heap_block *curr_block;
+	heap_block *next_block;
 	if (!ptr) {
 		return;
 	}
 
-	heap_block *block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
+	block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
 
 	block->free = 1;
 	
-	heap_block *prev_block = NULL;
-	heap_block *curr_block = block_list;
-	heap_block *next_block = block_list->next;
+	prev_block = NULL;
+	curr_block = block_list;
+	next_block = block_list->next;
 
 	while (curr_block && next_block) {
 		if (curr_block == block) {
@@ -178,6 +183,10 @@ void free(void *ptr) {
 
 void *realloc(void *ptr, u32 size) {
 	u32 real_size;
+	heap_block *old_block, *new_block, *last;
+	heap_block *block;
+	u32 old_size;
+
 	if (!ptr) {
 		return malloc(size);
 	} else if (ptr && size == 0) {
@@ -185,17 +194,17 @@ void *realloc(void *ptr, u32 size) {
 		return NULL;
 	}
 
-	heap_block *old_block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
-	u32 old_size = old_block->size;
+	old_block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
+	old_size = old_block->size;
 	real_size = sizeof(heap_block) + size;
 	
-	heap_block *block = best_fit(size);
+	block = best_fit(size);
 	if (block) {
 		block->free = 0;
 		split_block(block, size);
 		memcpy((void *)(block + 1), ptr, old_size);
 	} else {
-		heap_block *new_block = (heap_block*)sbrk(real_size);
+		new_block = (heap_block*)sbrk(real_size);
 		if (!new_block) {
 			return NULL;
 		}
@@ -205,7 +214,7 @@ void *realloc(void *ptr, u32 size) {
 		
 		memcpy((void *)(new_block + 1), ptr, old_size);
 
-		heap_block *last = block_list;
+		last = block_list;
 		while (last->next) {
 			last = last->next;
 		}

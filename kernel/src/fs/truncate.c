@@ -42,6 +42,7 @@ static void trunc_indirect(struct ext2_inode *inode) {
 }
 
 static void trunc_doubly_indirect(struct ext2_inode *inode) {
+	u32 i, j;
 	struct buffer *buf, *buf2;
 	u32 *indirect, *blocks;
 
@@ -50,7 +51,6 @@ static void trunc_doubly_indirect(struct ext2_inode *inode) {
 	}
 	buf = read_blk(inode->i_dev, inode->i_block[13]);
 	indirect = (u32 *)buf->b_data;
-	u32 i, j;
 	for (i = 0; i < 256; ++i) {
 		if (!indirect[i]) {
 			continue;
@@ -85,13 +85,13 @@ static void trunc_doubly_indirect(struct ext2_inode *inode) {
 static void trunc_triply_indirect(struct ext2_inode *inode) {
 	struct buffer *buf, *buf2, *buf3;
 	u32 *dindirect, *indirect, *blocks;
+	u32 i, j, k;
 
 	if (!inode->i_block[14]) {
 		return;
 	}
 	buf = read_blk(inode->i_dev, inode->i_block[14]);
 	dindirect = (u32 *)buf->b_data;
-	u32 i, j, k;
 	for (i = 0; i < 256; ++i) {
 		if (!dindirect[i]) {
 			continue;

@@ -33,6 +33,7 @@ u8 test_block(u32 bit) {
 
 i32 find_first_free_blocks(u32 num_blocks) {
 	u32 memory_bitmap, next_memory_bitmap;
+	u32 i, j, count;
 	if (num_blocks == 0) return -1;
 
 	/*
@@ -40,11 +41,12 @@ i32 find_first_free_blocks(u32 num_blocks) {
 	Each integer contains 4 * BLOCKS_PER_BYTE(8) = 32 blocks.
 	Number of these integers equal 'total_blocks / 32'.
 	*/
-	u32 i, j, count;
 	for (i = 0; i < total_blocks / 32; ++i) { 
 		memory_bitmap = memory_map[i];
-		if (memory_bitmap != 0xFFFFFFFF) { /* Check if this integer is fully used? */
-			for (j = 0; j < 32; ++j) { /* Iterate through each block in the integer */
+		/* Check if this integer is fully used? */
+		if (memory_bitmap != 0xFFFFFFFF) { 
+			/* Iterate through each block in the integer */
+			for (j = 0; j < 32; ++j) {
 				u32 bit = 1 << j;
 				/* Check if the block 'j' in integer 'memory_map[i]' is not used */
 				if ((memory_bitmap & bit) == 0) { 
@@ -78,21 +80,23 @@ i32 find_first_free_blocks(u32 num_blocks) {
 void pmm_init() {
 	u32 num_mmap_entries;
 	memory_map_entry *mmap_entry;
+	u32 total_memory_bytes;
+	u32 i;
 
-	num_mmap_entries = *((u32 *)BIOS_NUM_ENTRIES); /* Get number of memory map entries */
-	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP; /* Get starting address of entries list */
+	/* Get number of memory map entries */
+	num_mmap_entries = *((u32 *)BIOS_NUM_ENTRIES);
+	/* Get starting address of entries list */
+	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
 	mmap_entry += num_mmap_entries - 1;
 	/* Get total amount of bytes */
-	u32 total_memory_bytes = mmap_entry->base_address_low + mmap_entry->length_low - 1;
+	total_memory_bytes = mmap_entry->base_address_low + mmap_entry->length_low - 1;
 
 	/* Initialize physical memory manager at 0x30000  */
-	/* to all available memory.  */
-	/* By default all memory is used/reserved. */
+	/* to all available memory. By default all memory is used/reserved. */
 	_pmm_init(0xC0030000, total_memory_bytes); 
 
 	/* Get back to start of the list to available memory as free to use */
 	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
-	u32 i;
 	for (i = 0; i < num_mmap_entries; ++i) {
 		if (mmap_entry->type == 1) { /* If the type of memory chunk is 'Available Memory'? */
 			mark_memory_as_free(mmap_entry->base_address_low, mmap_entry->length_low);
@@ -100,7 +104,7 @@ void pmm_init() {
 		++mmap_entry;
 	}
 
-	mark_memory_as_used(0xA000, 0x800);		/* Mark font as used memory */
+	mark_memory_as_used(0xA000, 0x800);	/* Mark font as used memory */
 	
 	/* mark kernel and "OS" memory regions as used */
 	mark_memory_as_used(0x10000, 0x25000);
@@ -135,8 +139,8 @@ void mark_memory_as_free(u32 base_address, u32 size) {
 		clear_block(align++);
 		--used_blocks;
 	}
-
-	set_block(0); /* Insure that we won't overwrite Bios Data Area / IVT */
+	/* Insure that we won't overwrite Bios Data Area / IVT */
+	set_block(0); 
 }
 
 void mark_memory_as_used(u32 base_address, u32 size) {
@@ -152,45 +156,45 @@ void mark_memory_as_used(u32 base_address, u32 size) {
 }
 
 void *allocate_blocks(u32 num_blocks) {
+	u32 i;
+	i32 starting_block;
+	u32 address;
 	if (num_blocks >= (total_blocks - used_blocks)) 
 		return 0;
 
 	/* Find free blocks */
-	i32 starting_block = find_first_free_blocks(num_blocks);
+	starting_block = find_first_free_blocks(num_blocks);
 	if (starting_block == -1) 
 		return 0;
 
 	/* Mark them as used */
-	u32 i;
 	for (i = 0; i < num_blocks; ++i)
 		set_block(starting_block + i);
 	used_blocks += num_blocks;
 
 	/* Return its address */
-	u32 address = starting_block * PMM_BLOCK_SIZE;
+	address = starting_block * PMM_BLOCK_SIZE;
 	return (void *)address;
 }
 
 void free_blocks(void *address, u32 num_blocks) {
-	u32 starting_block = (u32)address / PMM_BLOCK_SIZE;
 	u32 i;
+	u32 starting_block = (u32)address / PMM_BLOCK_SIZE;
 	for (i = 0; i < num_blocks; ++i) {
 		clear_block(starting_block + i);
 	}
-
 	used_blocks -= num_blocks;
 }
 
 void print_physical_memory_info() {
-	memory_map_entry *mmap_entry;
+	u8 i;
 	u32 num_entries;
+	memory_map_entry *mmap_entry;
 
 	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
 	num_entries = *((u32 *)BIOS_NUM_ENTRIES);
-
 	debug("Physical memory info: \r\n");
 	debug("Total number of entries: %d\r\n", num_entries);
-	u8 i;
 	for (i = 0; i < num_entries; ++i) {
 		serial_printf("Region: %x | Base: %x | Length: %x | Type(%d): ", 
 				i, mmap_entry->base_address_low, 

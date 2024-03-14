@@ -30,10 +30,8 @@ void gdt_set_entry(u32 idx, u32 base, u32 limit, u8 access_byte, u8 granularity)
 	entry->base_low = base & 0xFFFF;
 	entry->base_middle = ((base >> 16) & 0xFF);
 	entry->base_high = ((base >> 24) & 0xFF);
-
 	entry->limit_low = limit & 0xFFFF;
 	entry->granularity = (limit >> 16) & 0x0F;
-
 	entry->access_byte = access_byte;
 	entry->granularity |= (granularity & 0xF0);
 }

@@ -44,14 +44,11 @@ i32 ext2_file_read(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count
 }
 
 i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count) {
+	i8 *p;
 	struct buffer *lbuf;
 	i32 pos;
 	u32 block, inblock, chars;
 	u32 left = count;
-	(void)inode;
-	(void) fp;
-	(void) buf;
-	(void) count;
 
 	if (fp->f_flags & O_APPEND) {
 		pos = inode->i_size;
@@ -75,7 +72,7 @@ i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 coun
 		}
 		left -= chars;
 		
-		i8 *p = lbuf->b_data + inblock;
+		p = lbuf->b_data + inblock;
 		memcpy(p, buf, chars);
 		write_blk(lbuf);
 		free(lbuf);

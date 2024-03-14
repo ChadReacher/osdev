@@ -80,7 +80,8 @@ cmos_rtc_t cmos_read_rtc() {
 	/* Status Register B contains the formats of bytes */
 	reg_b = cmos_read_register(CMOS_REG_STATUS_B);
 
-	if (!(reg_b & 0x04)) { /* Are we in BCD mode? */
+	/* Are we in BCD mode? */
+	if (!(reg_b & 0x04)) {
 		/* If so, convert it to "good" binary values */
 		rtc.seconds = (rtc.seconds & 0x0F) + ((rtc.seconds / 16) * 10);
 		rtc.minutes = (rtc.minutes & 0x0F) + ((rtc.minutes / 16) * 10);
@@ -136,6 +137,7 @@ static i32 month[12] = {
 void cmos_rtc_init() {
 	u16 year;
 	cmos_rtc_t time;
+
 	/* Enable RTC */
 	u8 prev_reg_value = cmos_read_register(CMOS_REG_STATUS_B);
 	/* Select Register B and disable NMI, reading will reset to register D */
@@ -145,9 +147,11 @@ void cmos_rtc_init() {
 	/* Read status register C to clear out any pending IRQ8 interrupts */
 	cmos_read_register(CMOS_REG_STATUS_C);
 
-	/* Register a handler for CMOS RTC */
-	/*register_interrupt_handler(IRQ8, cmos_rtc_handler); */
-	/*debug("%s", "CMOS RTC has been initialized\r\n"); */
+	/* 
+	 * Register a handler for CMOS RTC
+	 * register_interrupt_handler(IRQ8, cmos_rtc_handler);
+	 * debug("%s", "CMOS RTC has been initialized\r\n");
+	 */
 	time = cmos_read_rtc();
 	year = time.year - 70;
 	startup_time = ((year+1)/4)*DAY + year*YEAR;

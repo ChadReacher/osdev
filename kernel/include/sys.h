@@ -110,6 +110,5 @@ syscall_fn syscall_handlers[NR_SYSCALLS] = {
 	syscall_rmdir,
 	syscall_mkdir,
 };
-t
 
 #endif

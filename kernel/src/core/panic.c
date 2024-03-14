@@ -1,24 +1,26 @@
 #include <panic.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <screen.h>
+#include <string.h>
+#include <serial.h>
 
 void debug(i8 *fmt, ...) {
-	(void)fmt;
-	/*serial_printf("DEBUG: %s:%d:%s(): " format "\r\n", __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); */
+	i8 buf[512] = {0};
+	va_list args;
+
+	va_start(args, fmt);
+	kvsprintf(buf, fmt, args);
+	write_string_serial(buf);
 }
 
 void panic(i8 *fmt, ...) {
-	i8 buf[1024];
+	i8 buf[512];
 	va_list arg;
 
 	va_start(arg, fmt);
-
 	kvsprintf(buf, fmt, arg);
 	kprintf(buf);
 	kprintf("\nSystem halted!\n");
-
-	__asm__ __volatile__ ("cli; hlt");
-
+	__asm__ volatile ("cli; hlt");
 	while (1);
 }

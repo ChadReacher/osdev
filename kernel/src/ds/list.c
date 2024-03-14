@@ -64,6 +64,7 @@ list_node_t *list_insert_back(list_t *list, void *val) {
 }
 
 list_node_t *list_remove_front(list_t *list) {
+	list_node_t *save;
 	if (!list || !list->head) {
 		return NULL;
 	}
@@ -74,7 +75,7 @@ list_node_t *list_remove_front(list_t *list) {
 		list->sz = 0;
 		return save;
 	}
-	list_node_t *save = list->head;
+	save = list->head;
 	list->head = list->head->next;
 	list->head->prev = NULL;
 	--list->sz;
@@ -82,6 +83,7 @@ list_node_t *list_remove_front(list_t *list) {
 }
 
 list_node_t *list_remove_back(list_t *list) {
+	list_node_t *save;
 	if (!list || !list->tail) {
 		return NULL;
 	}
@@ -92,7 +94,7 @@ list_node_t *list_remove_back(list_t *list) {
 		list->sz = 0;
 		return save;
 	}
-	list_node_t *save = list->tail;
+	save = list->tail;
 	list->tail = list->tail->prev;
 	list->tail->next = NULL;
 	--list->sz;

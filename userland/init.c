@@ -121,7 +121,6 @@ void signal_fpe_handler(i32 signo) {
 }
 
 int main() {
-	/*
 	int x = 10;
 	int y = 20;
 	utsname name;
@@ -137,12 +136,14 @@ int main() {
 		sigemptyset(&act.sa_mask);
 		act.sa_flags = 0; 
 		sigaction(SIGFPE, &act, NULL);
+		/*
 		test_sigxset();
 		test_sigaction();
 		test_sigprocmask();
 		test_sigsuspend();
-		int x = 1 / 0;
-		for (int i = 0; i < 100; ++i) {
+		*/
+		int i;
+		for (i = 0; i < 100; ++i) {
 			printf("sky child: %d\n", i);
 			if (i == 50) {
 				kill(getpid(), SIGFPE);
@@ -161,13 +162,14 @@ int main() {
 		printf("utime: %d, stime: %d, cutime: %d, cstime: %d\n",
 				buffer.tms_utime, buffer.tms_stime,
 				buffer.tms_cutime, buffer.tms_cstime);
-		for (int i = 0; i < 10; ++i) {
+		int i;
+		for (i = 0; i < 10; ++i) {
 			printf("sky parent: %d\n", i);
 		}
 
 	}
-	*/
 	
+	/*
 	i32 pid = fork();
 	i32 stat_loc = 0;
 	if (pid == 0) {
@@ -182,5 +184,6 @@ int main() {
 	} while (pid != -1);
 	printf("PID of last terminated child - %d\n", pid);
 	printf("Return value of last terminated child - %d\n", stat_loc);
+	*/
 	return 0;
 }

@@ -124,13 +124,13 @@ void isr_init() {
 	register_interrupt_handler(3, breakpoint_handler);
 
 	init_idt();
-	debug("%s", "IDT has been initialized\r\n");
-	debug("%s", "ISRs have been initialized\r\n");
+	debug("IDT has been initialized\r\n");
+	debug("ISRs have been initialized\r\n");
 }
 
 void irq_init() {
 	__asm__ __volatile__ ("sti");
-	debug("%s", "IRQs have been initialized\r\n");
+	debug("IRQs have been initialized\r\n");
 }
 
 void register_interrupt_handler(u8 n, isr_t handler) {
@@ -171,11 +171,11 @@ void isr_handler(registers_state *regs) {
 	}
 
 	panic("Received interrupt: %s(%d) with error code: %x\n\n"
-		"   Instruction Pointer = 0x%x\n"
-		"   Code Segment		= 0x%x\n"
-		"   CPU Flags			= 0x%x\n"
-		"   Stack Pointer		= 0x%x\n"
-		"   Stack Segment		= 0x%x\n", 
+		  "   Instruction Pointer = 0x%x\n"
+		  "   Code Segment		= 0x%x\n"
+		  "   CPU Flags			= 0x%x\n"
+		  "   Stack Pointer		= 0x%x\n"
+		  "   Stack Segment		= 0x%x\n", 
 		exception_messages[regs->int_number], regs->int_number, regs->err_code,
 		regs->eip,
 		regs->cs,
@@ -185,12 +185,15 @@ void isr_handler(registers_state *regs) {
 	);
 }
 
-void irq_handler(registers_state *regs) {
-	if (regs->int_number >= 40) {
+static void send_eoi(u32 intr_num) {
+	if (intr_num >= 40) {
 		port_outb(0xA0, 0x20);
 	}
 	port_outb(0x20, 0x20);
+}
 
+void irq_handler(registers_state *regs) {
+	send_eoi(regs->int_number);
 	if (interrupt_handlers[regs->int_number] != 0) {
 		isr_t handler = interrupt_handlers[regs->int_number];
 		handler(regs);

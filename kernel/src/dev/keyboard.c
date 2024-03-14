@@ -115,6 +115,7 @@ u8 keyboard_getchar() {
 
 u8 keyboard_get_scancode() {
 	u8 scancode;
+
 	if (buffer_len == 0) {
 		return 0;
 	}
@@ -124,32 +125,25 @@ u8 keyboard_get_scancode() {
 	if (read_idx == RING_BUFFER_SIZE) {
 		read_idx = 0;
 	}
-
 	return scancode;
 }
 
 static void keyboard_handler() {
 	u8 status;
-	debug("INSIDE KEYBOARD HANDLER -- BEGIN\r\n");
 
 	status = port_inb(KEYBOARD_STATUS_PORT);
-	if (status & 0x01) { /* Is output buffer full? */
+	/* Is output buffer full? */
+	if (status & 0x01) {
 		u8 scancode = port_inb(KEYBOARD_DATA_PORT);
-
 		if (buffer_len == RING_BUFFER_SIZE) {
-			debug("%s", "Ring buffer is full.\r\n");
-			debug("INSIDE KEYBOARD HANDLER -- END\r\n");
 			return;
 		}
-
 		scancodes[write_idx++] = scancode;
 		++buffer_len;
-
 		if (write_idx == RING_BUFFER_SIZE) {
 			write_idx = 0;
 		}
 	}
-	debug("INSIDE KEYBOARD HANDLER -- END\r\n");
 }
 
 void keyboard_init() {

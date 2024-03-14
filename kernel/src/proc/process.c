@@ -38,41 +38,52 @@ void enter_usermode() {
 
 
 void userinit() {
-	__asm__ __volatile__ ("cli");
+	struct ext2_inode *inode;
+	u32 *data;
+	i32 i;
+	void *kernel_page_dir;
+	i32 argc = 0;
+	i32 envc = 1;
+	i8 **argv;
+	i8 **envp;
+	i8 *usp;
+	struct file fp;
+	u32 env_ptr, arg_ptr;
 
-	struct ext2_inode *inode = namei("/bin/init");
+	inode = namei("/bin/init");
 	if (!inode) {
 		panic("exec init: could not find /bin/init file\r\n");
 	}
-	u32 *data = malloc(inode->i_size);
+	data = malloc(inode->i_size);
 	memset((i8 *)data, 0, inode->i_size);
-	struct file fp = { inode->i_mode, 0, 1, inode, 0 };
+	fp.f_mode = inode->i_mode;
+	fp.f_flags = 0;
+	fp.f_count = 1;
+	fp.f_inode = inode;
+	fp.f_pos = 0;
 	ext2_file_read(inode, &fp, (i8 *)data, inode->i_size);
 
 	init_process->parent = NULL;
 	init_process->directory = paging_copy_page_dir(0);
-	i32 i;
 	for (i = 0; i < NSIG; ++i) {
 		memset(init_process->signals, 0, sizeof(sigaction_t));
 		init_process->signals[i].sa_handler = SIG_DFL;
 	}
 
-	void *kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
+	kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(init_process->directory));
 	elf_load(data);
 	free(data);
 
-	i32 argc = 0;
-	i32 envc = 1;
-	i8 **argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
-	i8 **envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
+	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
+	envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
 	envp[0] = strdup("PATH=/bin");
 	argv[argc] = NULL;
 	envp[envc] = NULL;
 	
 	/* Handle user stack: */
 	memset((void *)0xBFFFF000, 0, 4092);
-	i8 *usp = (i8 *)0xBFFFFFFB;
+	usp = (i8 *)0xBFFFFFFB;
 	/* push envp strings */
 	for (i = envc - 1; i >= 0; --i) {
 		usp -= strlen(envp[i]) + 1;
@@ -93,14 +104,14 @@ void userinit() {
 	memcpy((void *)usp, (void *)envp, (envc + 1) * 4);
 
 	/* Save env ptr */
-	u32 env_ptr = (u32)usp;
+	env_ptr = (u32)usp;
 
 	/* Push argv pointers argv strings */
 	usp -= (argc + 1) * 4;
 	memcpy((void *)usp, (void *)argv, (argc + 1) * 4);
 
 	/* Save arg ptr */
-	u32 arg_ptr = (u32)usp;
+	arg_ptr = (u32)usp;
 
 	usp -= 4;
 	*((u32*)usp) = env_ptr;
@@ -120,6 +131,7 @@ void userinit() {
 }
 
 process_t *proc_alloc() {
+	u32 *sp;
 	process_t *process = malloc(sizeof(process_t));
 	if (!process) {
 		return NULL;
@@ -139,7 +151,7 @@ process_t *proc_alloc() {
 		return NULL;
 	}
 	memset(process->kernel_stack_bottom, 0, 4096 * 2);
-	u32 *sp = (u32 *)ALIGN_DOWN((u32)process->kernel_stack_bottom + 4096 * 2 - 1, 4);
+	sp = (u32 *)ALIGN_DOWN((u32)process->kernel_stack_bottom + 4096 * 2 - 1, 4);
 
 	/* Setup kernel stack as we have returned from interrupt routine */
 	*sp-- = 0x23;			/* user DS */
@@ -178,23 +190,6 @@ process_t *proc_alloc() {
 	queue_enqueue(ready_queue, process);
 	queue_enqueue(procs, process);
 	return process;
-}
-
-/* TODO: Work on it or delete it */
-process_t *copy_process() {
-	process_t *p = malloc(sizeof(process_t));
-	if (!p) {
-		return NULL;
-	}
-	*p = *current_process;
-	p->kernel_stack_bottom = malloc(4096 * 2);
-	if (!p->kernel_stack_bottom) {
-		return NULL;
-	}
-	memset(p->kernel_stack_bottom, 0, 4096 * 2);
-	u32 *sp = (u32 *)ALIGN_DOWN((u32)p->kernel_stack_bottom + 4096 * 2 - 1, 4);
-	(void)sp;
-	return p;
 }
 
 i32 get_new_fd() {
