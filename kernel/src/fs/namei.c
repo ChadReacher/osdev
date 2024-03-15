@@ -221,7 +221,7 @@ i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
 			}
 		}
 		de = (struct ext2_dir *)(buf->b_data + inblock_offset);
-		if (de->inode != 0 && strncmp(name, de->name, de->name_len) == 0) {
+		if (de->inode != 0 && de->name_len == strlen(name) && strncmp(name, de->name, de->name_len) == 0) {
 			free(buf->b_data);
 			free(buf);
 			*res_buf = NULL;
@@ -325,7 +325,7 @@ struct buffer *ext2_find_entry(struct ext2_inode *dir, const i8 *name,
 			}
 		}
 		de = (struct ext2_dir *)(buf->b_data + inblock_offset);
-		if (strncmp(name, de->name, de->name_len) == 0) {
+		if (de->name_len == strlen(name) && strncmp(name, de->name, de->name_len) == 0) {
 			*res_dir = de;
 			return buf;
 		}

@@ -2,6 +2,7 @@
 #define ELF_H
 
 #include "types.h"
+#include "ext2.h"
 
 #define ELF_MAGIC_NUMBER 0x7F
 
@@ -62,9 +63,7 @@ typedef struct elf_section_header {
 	u32 entsize;
 } __attribute__((packed)) elf_section_header_t;
 
-elf_header_t *elf_load(u32 *data);
-i32 is_elf(elf_header_t *elf);
-void load_segment(u32 *data, elf_program_header_t *program_header);
-void elf_unload(elf_header_t *elf);
+i32 elf_load(struct ext2_inode *inode, 
+		i32 argc, i8 **argv, i32 envc, i8 **envp);
 
 #endif

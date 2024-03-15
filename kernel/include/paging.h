@@ -34,6 +34,7 @@ typedef struct {
 	page_directory_entry entries[PAGE_DIRECTORY_ENTRIES];
 } page_directory_t;
 
+void free_user_image();
 page_table_entry *paging_get_page(virtual_address addr);
 void *paging_allocate_page(page_table_entry *page);
 void paging_free_page(page_table_entry *page);

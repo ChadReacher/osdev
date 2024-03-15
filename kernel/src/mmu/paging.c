@@ -2,6 +2,9 @@
 #include <string.h>
 #include <panic.h>
 #include <pmm.h>
+#include <process.h>
+
+extern process_t *current_process;
 
 page_directory_t *cur_page_dir = (page_directory_t *)0xFFFFF000;
 
@@ -12,6 +15,7 @@ void pagefault_handler(registers_state *regs) {
 	__asm__ __volatile__ ("movl %%cr2, %0" : "=r"(bad_address));
 	err_code = regs->err_code;
 
+	kprintf("page fault\n");
 	debug("Page Fault Exception. Bad Address: 0x%x. Error code: %d\r\n", bad_address, err_code);
 
 	not_present = err_code & 0x1;
@@ -121,6 +125,47 @@ void *virtual_to_physical(void *virt_addr) {
 	phys_addr = page_frame + page_frame_offset;
 
 	return (void *)phys_addr;
+}
+
+void free_user_image() {
+	u32 i, j;
+	page_directory_t *page_dir;
+	void *page_dir_phys;
+	page_directory_entry pde;
+	page_table_t *table;
+	page_table_entry pte;
+	void *table_phys;
+	void *page_frame;
+
+	page_dir_phys = (void *)current_process->directory;
+	map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+	page_dir = (page_directory_t *)0xE0000000;
+	for (i = 0; i < 768; ++i) {
+		if (!page_dir->entries[i]) {
+			continue;
+		}
+		pde = page_dir->entries[i];
+		table_phys = (void *)GET_FRAME(pde);
+		map_page(table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+		table = (page_table_t *)0xEA000000;
+		for (j = 0; j < 1024; ++j) {
+			if (!table->entries[j]) {
+				continue;
+			}
+			pte = table->entries[j];
+			page_frame = (void *)GET_FRAME(pte);
+			free_blocks(page_frame, 1);
+		}
+		memset(table, 0, 4096);
+		unmap_page((void *)0xEA000000);
+		free_blocks(table_phys, 1);
+		page_dir->entries[i] = 0;
+	}
+	unmap_page((void *)0xE0000000);
+
+	/* Flush TLB */
+	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
 }
 
 page_directory_t *paging_copy_page_dir(bool is_deep_copy) {

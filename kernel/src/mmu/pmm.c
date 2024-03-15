@@ -174,6 +174,7 @@ void *allocate_blocks(u32 num_blocks) {
 
 	/* Return its address */
 	address = starting_block * PMM_BLOCK_SIZE;
+	debug("PMM allocate_blocks(%d) - %p\r\n", num_blocks, address);
 	return (void *)address;
 }
 
@@ -184,6 +185,7 @@ void free_blocks(void *address, u32 num_blocks) {
 		clear_block(starting_block + i);
 	}
 	used_blocks -= num_blocks;
+	debug("PMM free_blocks(%d) - %p\r\n", num_blocks, address);
 }
 
 void print_physical_memory_info() {

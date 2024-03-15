@@ -39,95 +39,47 @@ void enter_usermode() {
 
 void userinit() {
 	struct ext2_inode *inode;
-	u32 *data;
-	i32 i;
+	i32 err, i;
+	i8 **argv, **envp;
 	void *kernel_page_dir;
 	i32 argc = 0;
 	i32 envc = 1;
-	i8 **argv;
-	i8 **envp;
-	i8 *usp;
-	struct file fp;
-	u32 env_ptr, arg_ptr;
 
 	inode = namei("/bin/init");
 	if (!inode) {
-		panic("exec init: could not find /bin/init file\r\n");
+		return;
+	} else if (!EXT2_S_ISREG(inode->i_mode)) {
+		iput(inode);
+		return;
+	} else if (!check_permission(inode, MAY_READ | MAY_EXEC)) {
+		iput(inode);
+		return;
 	}
-	data = malloc(inode->i_size);
-	memset((i8 *)data, 0, inode->i_size);
-	fp.f_mode = inode->i_mode;
-	fp.f_flags = 0;
-	fp.f_count = 1;
-	fp.f_inode = inode;
-	fp.f_pos = 0;
-	ext2_file_read(inode, &fp, (i8 *)data, inode->i_size);
-
-	init_process->parent = NULL;
-	init_process->directory = paging_copy_page_dir(0);
-	for (i = 0; i < NSIG; ++i) {
-		memset(init_process->signals, 0, sizeof(sigaction_t));
-		init_process->signals[i].sa_handler = SIG_DFL;
-	}
-
-	kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(init_process->directory));
-	elf_load(data);
-	free(data);
-
+	argc = 0;
+	envc = 1;
 	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
 	envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
 	envp[0] = strdup("PATH=/bin");
 	argv[argc] = NULL;
 	envp[envc] = NULL;
-	
-	/* Handle user stack: */
-	memset((void *)0xBFFFF000, 0, 4092);
-	usp = (i8 *)0xBFFFFFFB;
-	/* push envp strings */
-	for (i = envc - 1; i >= 0; --i) {
-		usp -= strlen(envp[i]) + 1;
-		strcpy((i8 *)usp, envp[i]);
-		free(envp[i]);
-		envp[i] = (i8 *)usp;
+	current_process = init_process;
+	init_process->parent = NULL;
+	init_process->directory = paging_copy_page_dir(0);
+	kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
+	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(init_process->directory));
+	if ((err = elf_load(inode, argc, argv, envc, envp))) {
+		iput(inode);
+		return;
 	}
-	/* push argv strings */
-	for (i = argc - 1; i >= 0; --i) {
-		usp -= strlen(argv[i]) + 1;
-		strcpy((i8 *)usp, argv[i]);
-		free(argv[i]);
-		argv[i] = (i8 *)usp;
-	}
-
-	/* Push envp pointers to envp strings */
-	usp -= (envc + 1) * 4;
-	memcpy((void *)usp, (void *)envp, (envc + 1) * 4);
-
-	/* Save env ptr */
-	env_ptr = (u32)usp;
-
-	/* Push argv pointers argv strings */
-	usp -= (argc + 1) * 4;
-	memcpy((void *)usp, (void *)argv, (argc + 1) * 4);
-
-	/* Save arg ptr */
-	arg_ptr = (u32)usp;
-
-	usp -= 4;
-	*((u32*)usp) = env_ptr;
-
-	usp -= 4;
-	*((u32*)usp) = arg_ptr;
-
-	usp -= 4;
-	*((u32*)usp) = argc;
-
-	free(argv);
-	free(envp);
-	init_process->regs->useresp = (u32)usp;
-
-	/* Get back to the kernel page directory */
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
+	for (i = 0; i < NSIG; ++i) {
+		sighandler_t hand = current_process->signals[i].sa_handler;
+		if (hand != SIG_DFL && hand != SIG_IGN && hand != SIG_ERR) {
+			current_process->signals[i].sa_handler = SIG_DFL;
+		}
+	}
+	current_process->close_on_exec = 0;
+	iput(inode);
 }
 
 process_t *proc_alloc() {

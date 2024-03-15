@@ -7,7 +7,8 @@
 i32 main(i32 argc, i8 *argv[]) {
 	DIR *dirp;
 	struct dirent *entry;
-	i8 *dirname = malloc(256);
+	i8 *dirname;
+	dirname = malloc(256);
 
 	memset(dirname, 0, 256);
 	

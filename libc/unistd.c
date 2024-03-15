@@ -31,7 +31,7 @@ i32 execv(const i8 *pathname, i8 **argv) {
 	return execve(pathname, argv, environ);
 }
 
-#define PATH_MAX 4096 /* TODO: move it to 'limits.h' */
+#define PATH_MAX 1024 /* TODO: move it to 'limits.h' */
 i32 find_file_in_path(const i8 *file, i8 *buf) {
     u32 n;
     i8 *endp, *envpath;

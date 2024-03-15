@@ -149,8 +149,8 @@ void run_cmd(struct cmd *cmd) {
 	if (cmd->type == 1) {
 		struct exec_cmd *exec = (struct exec_cmd *)cmd->data;
 		i32 err = execvp(exec->argv[0], exec->argv);
-        printf("sh: exec %s failed with err - %d\n", exec->argv[0], err);
-        _exit(-1);
+		printf("sh: exec %s failed with err - %d\n", exec->argv[0], err);
+		_exit(-1);
 	}
 }
 
