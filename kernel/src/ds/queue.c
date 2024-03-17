@@ -56,3 +56,20 @@ void *queue_dequeue(queue_t *self) {
 
 	return value;
 }
+
+void queue_remove(queue_t *self, queue_node_t *node) {
+	if (node->prev == NULL) {
+		node->next->prev = NULL;
+		self->head = node->next;
+	} else {
+		node->prev->next = node->next;
+		if (node->next) {
+			node->next->prev = node->prev;
+		} else {
+			self->tail = node->prev;
+		}
+	}
+	free(node);
+	--self->len;
+}
+

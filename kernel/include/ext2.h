@@ -172,7 +172,7 @@ extern struct ext2_super_block super_block;
 void mount_root(void);
 struct ext2_inode *iget(u16 dev, u32 nr);
 void iput(struct ext2_inode *inode);
-struct ext2_inode *namei(const i8 *pathname);
+i32 namei(const i8 *pathname, struct ext2_inode ** res);
 i32 open_namei(i8 *pathname, i32 oflags, i32 mode,
 		struct ext2_inode **res_inode);
 i32 ext2_create(struct ext2_inode *dir, const i8 *name, i32 mode,

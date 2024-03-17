@@ -28,7 +28,7 @@ typedef struct {
 #define NR_OPEN 20
 #define NR_FILE 32
 typedef struct _process {
-	u32 pid;
+	i32 pid;
 	i32 timeslice;
 	state_t state;
 	i32 exit_code;
@@ -51,6 +51,7 @@ typedef struct _process {
 	u32 *sigreturn;
 	sigset_t old_sigmask;
 	registers_state signal_old_regs;
+	u32 sleep;
 	i32 alarm;
 	u16 uid, euid;
 	u8 gid, egid;

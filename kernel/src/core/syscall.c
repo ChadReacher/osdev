@@ -296,97 +296,129 @@ i32 syscall_fork() {
 }
 
 i32 syscall_kill(i32 pid, i32 sig) {
-	process_t *proc = get_proc_by_id(pid);
-	if (proc == NULL) {
-		return -1;
-	}
-	if (sig <= 0 || sig >= NSIG) {
-		return -1;
-	}
+	process_t *p;
 
-	if (pid > 0) {
-		return send_signal(proc, sig);
-	} else if (pid == 0) {
-		/* TODO: Process group id of sender + permission to send a signal */
-		return -1;
+	if (pid == 0) {
+		return kill_pg(current_process->pgrp, sig);
 	} else if (pid == -1) {
+		debug("syscall_kill(pid %d, sig %d) - behaviour unspecified", pid, sig);
 		return 0;
 	} else if (pid < 0) {
-		/* TODO: Process group id == abs(pid) + have permission to send a signal */
-		return -1;
+		return kill_pg(-pid, sig);
+	}
+	p = get_proc_by_id(pid);
+	if (!p) {
+		return -ESRCH;
+	}
+	if (sig <= 0 || sig >= NSIG) {
+		return -EINVAL;
+	}
+	return send_signal(p, sig);
+}
+
+static i32 is_orphaned_pgrp(i32 pgrp) {
+	i32 i, len;
+	process_t *p;
+	queue_node_t *node;
+
+	node = procs->head; 
+	len = procs->len;
+	for (i = 0; i < len; ++i) {
+		p = (process_t *)node->value;
+		if (p->pgrp != pgrp ||
+				p->state == ZOMBIE ||
+				p->parent->pid == 1) {
+			node = node->next;
+			continue;
+		}
+		if (p->parent->pgrp != pgrp &&
+				p->parent->session == p->session) {
+			return 0;
+		}
+		node = node->next;
+	}
+	return 1;
+}
+
+static i32 has_stopped_jobs(i32 pgrp) {
+	i32 i, len;
+	process_t *p;
+	queue_node_t *node;
+
+	node = procs->head; 
+	len = procs->len;
+	for (i = 0; i < len; ++i) {
+		p = (process_t *)node->value;
+		if (p->pgrp != pgrp) {
+			node = node->next;
+			continue;
+		}
+		if (p->state == STOPPED) {
+			return 1;
+		}
+		node = node->next;
 	}
 	return 0;
 }
 
-i32 syscall_exit(i32 exit_code) {
-	u32 i, j;
-	void *page_dir_phys;
-	page_directory_t *page_dir;
+i32 kill_pg(i32 pgrp, i32 sig) {
+	i32 i, len, err, retval = -ESRCH;
+	i32 found = 0;
+	process_t *p;
+	queue_node_t *node;
+
+	node = procs->head; 
+	len = procs->len;
+	if (sig < 0 || sig > 32 || pgrp <= 0) {
+		return -EINVAL;
+	}
+	for (i = 0; i < len; ++i) {
+		p = (process_t *)node->value;
+		if (p->pgrp == pgrp) {
+			if (sig && (err = send_signal(p, sig))) {
+				retval = err;
+			} else {
+				++found;
+			}
+		}
+		node = node->next;
+	}
+	return (found ? 0 : retval);
+}
+
+void do_exit(i32 code) {
+	u32 i;
 	queue_node_t *node;
 
 	if (current_process->pid == 1) {
 		panic("Can't exit the INIT process\r\n");
 	}
 
-	/* Free the user code pages in the page directory */
-	page_dir_phys = (void *)current_process->directory;
-	map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-	page_dir = (page_directory_t *)0xE0000000;
-	for (i = 0; i < 768; ++i) {
-		page_directory_entry pde;
-		void *table_phys;
-		page_table_t *table;
-
-		if (!page_dir->entries[i]) {
-			continue;
-		}
-		pde = page_dir->entries[i];
-		table_phys = (void *)GET_FRAME(pde);
-		map_page(table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-		table = (page_table_t *)0xEA000000;
-		for (j = 0; j < 1024; ++j) {
-			page_table_entry pte;
-			void *page_frame;
-			if (!table->entries[j]) {
-				continue;
-			}
-			pte = table->entries[j];
-			page_frame = (void *)GET_FRAME(pte);
-			free_blocks(page_frame, 1);
-		}
-		memset(table, 0, 4096);
-		unmap_page((void *)0xEA000000);
-		free_blocks(table_phys, 1);
-	}
-	memset(page_dir, 0, 768 * 4);
-	unmap_page((void *)0xE0000000);
-	free_blocks(page_dir_phys, 1);
-	
-	/* Flush TLB */
-	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
-	
+	free_user_image();
+	free_blocks((void *)current_process->directory, 1);
+		
 	/* Close open files */
-	for (i = 3; i < NR_OPEN; ++i) {
-		struct file *f = current_process->fds[i];
-		(void)f;
-		/*
-		if (f && f->vfs_node && f->vfs_node != (void *)-1) {
-			vfs_close(f->vfs_node);
-			free(f->vfs_node);
-			memset(f, 0, sizeof(file));
+	for (i = 0; i < NR_OPEN; ++i) {
+		if (current_process->fds[i]) {
+			syscall_close(i);
 		}
-		*/
 	}
-	/*free(current_process->fds); */
-	
 	iput(current_process->root);
 	current_process->root = NULL;
 	iput(current_process->pwd);
 	current_process->pwd = NULL;
 	free(current_process->str_pwd);
-
-	current_process->exit_code = exit_code;
+	free(current_process->kernel_stack_bottom);
+	current_process->state = ZOMBIE;
+	current_process->exit_code = code;
+	if (current_process->parent->pgrp != current_process->pgrp &&
+			current_process->parent->session == current_process->session && 
+			is_orphaned_pgrp(current_process->pgrp) &&
+			has_stopped_jobs(current_process->pgrp)) {
+		kill_pg(current_process->pgrp, SIGHUP);
+		kill_pg(current_process->pgrp, SIGCONT);
+	}
+	syscall_kill(current_process->parent->pid, SIGCHLD);
 
 	/* Pass current_process's children to INIT process */
 	node = procs->head;
@@ -394,111 +426,103 @@ i32 syscall_exit(i32 exit_code) {
 		process_t *p = (process_t *)node->value;
 		if (p->parent == current_process) {
 			p->parent = init_process;
+			if (p->state == ZOMBIE) {
+				init_process->sigpending |= (1 << (SIGCHLD - 1));
+			}
+			if (p->pgrp != current_process->pgrp &&
+					p->session == current_process->session && 
+					is_orphaned_pgrp(p->pgrp) &&
+					has_stopped_jobs(p->pgrp)) {
+				kill_pg(p->pgrp, SIGHUP);
+				kill_pg(p->pgrp, SIGCONT);
+			}	
 		}
 		node = node->next;
 	}
 
-	syscall_kill(current_process->parent->pid, SIGCHLD);
-
-	current_process->state = ZOMBIE;
 	schedule();
 
-	panic("Zombie returned from scheduler\r\n");
-	return 0;
+	panic("Zombie returned from scheduler\n");
+}
+
+void syscall_exit(i32 exit_code) {
+	do_exit((exit_code & 0xFF) << 8);
 }
 
 i32 syscall_waitpid(i32 pid, i32 *stat_loc, i32 options) {
-	(void)options;
+	i32 i, flag;
+	process_t *p;
+	sigset_t oldsigmask;
+	queue_node_t *node;
+	i32 len;
 
-	if (pid < -1) {
-		/* 
-		 * Wait for any child process whose process group ID
-		 * is equal to the absolute value of 'pid'
-		 */
-		return 0;
-	} else if (pid == -1) {
-		/* Wait for any child process */
-		for (;;) {
-			bool havekids = 0;
-			queue_node_t *node = procs->head;
-			u32 len = procs->len;
-			u32 i;
-			for (i = 0; i < len; ++i) {
-				u32 chd_pid;
-				u32 j;
-				queue_node_t *node2;
-				process_t *p = (process_t *)node->value;
-
-				if (p->parent != current_process) {
-					node = node->next;
-					continue;
-				}
-				havekids = 1;
-
-				if (p->state !=	ZOMBIE && p->state != STOPPED) {
-					if (node->next == NULL) {
-						break;
-					}
-					node = node->next;
-					continue;
-				}
-				chd_pid = p->pid;
+loop:
+	flag = 0;
+	node = procs->head; 
+	len = procs->len;
+	for (i = 0; i < len; ++i) {
+		p = (process_t *)node->value;
+		if (p->parent != current_process) {
+			node = node->next;
+			continue;
+		}
+		if (pid > 0) {
+			if (p->pid != pid) {
+				node = node->next;
+				continue;
+			}
+		} else if (!pid) {
+			if (p->pgrp != current_process->pgrp) {
+				node = node->next;
+				continue;
+			}
+		} else if (pid != -1) {
+			if (p->pgrp != -pid) {
+				node = node->next;
+				continue;
+			}
+		}
+		switch (p->state) {
+			case STOPPED:
 				if (stat_loc) {
-					*stat_loc = p->exit_code & 0xFF;
+					*stat_loc = (p->exit_code << 8) | 0x7F;
 				}
-				/* 
-				 * TODO: remove from procs list, get rid of it
-				 * and implement in a normal way
-				 */
-				node2 = procs->head;
-				for (j = 0; j < procs->len; ++j) {
-					process_t *proc = (process_t *)node2->value;
-					if (proc->pid == chd_pid) {
-						if (node2->prev == NULL) {
-							node2->next->prev = NULL;
-							procs->head = node2->next;
-							free(node2);
-							break;
-						} else {
-							node2->prev->next = node2->next;
-							if (node2->next) {
-								node2->next->prev = node2->prev;
-							} else {
-								procs->tail = node2->prev;
-							}
-							free(node2);
-							break;
-						}
-					}
-					node2 = node2->next;
-				}
-				--procs->len;
-				len = procs->len;
-
-				free(p->kernel_stack_bottom);
+				p->exit_code = 0;
+				return p->pid;
+			case ZOMBIE:
 				current_process->cutime += p->utime;
 				current_process->cstime += p->stime;
+				flag = p->pid;
+				if (stat_loc) {
+					*stat_loc = p->exit_code;
+				}
+				queue_remove(procs, node);
 				free(p);
-				return chd_pid;
-			}
-			if (!havekids) {
-				return -1;
-			}
-			current_process->state = INTERRUPTIBLE;
-			schedule();
+				return flag;
+			default:
+				flag = 1;
+				node = node->next;
+				continue;
 		}
-	} else if (pid == 0) {
-		/*
-		 * Wait for any child process whose process group ID is equal
-		 * to that of the calling process
-		 * at the time of the call to 'waitpid()'
-		 */
-		return 0;
-	} else if (pid > 0) {
-		/* Wait for the child whose process ID is equal to the value of 'pid' */
-		return 0;
 	}
-	return -1;
+	if (flag) {
+		if (options & WNOHANG) {
+			return 0;
+		}
+		current_process->state = INTERRUPTIBLE;
+		oldsigmask = current_process->sigmask;
+		sigdelset(&current_process->sigmask, SIGCHLD);
+		/*current_process->sigmask &= ~(1 << (SIGCHLD - 1));*/
+		schedule();
+		current_process->sigmask = oldsigmask;
+		if (current_process->sigpending & 
+				~(current_process->sigmask | (1 << (SIGCHLD)))) {
+			debug("waitpid: ERESTART\n");
+			return -ERESTART;
+		}
+		goto loop;
+	}
+	return -ECHILD;
 }
 
 i32 syscall_getpid() {
@@ -543,13 +567,6 @@ i32 syscall_sbrk(i32 incr) {
 	return old_brk;
 }
 
-i32 syscall_nanosleep(struct timespec *req, struct timespec *rem) {
-	(void)req;
-	(void)rem;
-	panic("syscall_nanosleep(): UNIMPLEMENTED\n");
-	return 0;
-}
-
 i32 syscall_getcwd(i8 *buf, u32 size) {
 	u32 len;
 
@@ -565,10 +582,11 @@ i32 syscall_getcwd(i8 *buf, u32 size) {
 }
 
 i32 syscall_stat(i8 *path, struct stat *statbuf) {
+	i32 err;
 	struct ext2_inode *inode;
 
-	if (!(inode = namei(path))) {
-		return -ENOENT;
+	if ((err = namei(path, &inode))) {
+		return err;
 	}
 	statbuf->st_dev = inode->i_dev;
 	statbuf->st_ino = inode->i_num;
@@ -611,9 +629,10 @@ i32 syscall_fstat(i32 fd, struct stat *statbuf) {
 }
 
 i32 syscall_chdir(i8 *path) {
+	i32 err;
 	struct ext2_inode *inode;
 
-	if (!(inode = namei(path))) {
+	if ((err = namei(path, &inode))) {
 		return -ENOENT;
 	}
 	if (!EXT2_S_ISDIR(inode->i_mode)) {
@@ -633,8 +652,8 @@ i32 syscall_chdir(i8 *path) {
 
 
 i32 syscall_sigaction(i32 sig, sigaction_t *act, sigaction_t *oact, u32 *sigreturn) {
-	if (sig < 0 || sig >= NSIG) {
-		return -1;
+	if (sig <= 0 || sig >= NSIG || sig == SIGKILL | sig == SIGSTOP) {
+		return -EINVAL;
 	}
 	if (current_process->pid == 1) {
 		return -1;
@@ -659,16 +678,9 @@ i32 syscall_sigaction(i32 sig, sigaction_t *act, sigaction_t *oact, u32 *sigretu
 }
 
 i32 syscall_sigprocmask(i32 how, sigset_t *set, sigset_t *oset) {
-	if (how != SIG_BLOCK && how != SIG_UNBLOCK && how != SIG_SETMASK) {
-		return -1;
-	}
-	if (current_process->pid == 1) {
-		return -1;
-	}
 	if (oset) {
 		memcpy(oset, &current_process->sigmask, sizeof(sigset_t));
 	}
-
 	if (set) {
 		if (how == SIG_BLOCK) {
 			current_process->sigmask |= (*set);
@@ -676,6 +688,8 @@ i32 syscall_sigprocmask(i32 how, sigset_t *set, sigset_t *oset) {
 			current_process->sigmask &= (~(*set));
 		} else if (how == SIG_SETMASK) {
 			current_process->sigmask = *set;
+		} else {
+			return -EINVAL;
 		}
 		if (sigismember(&current_process->sigmask, SIGKILL)) {
 			sigdelset(&current_process->sigmask, SIGKILL);
@@ -684,48 +698,50 @@ i32 syscall_sigprocmask(i32 how, sigset_t *set, sigset_t *oset) {
 			sigdelset(&current_process->sigmask, SIGSTOP);
 		}
 	}
-	handle_signal();
-
 	return 0;
 }
 
 i32 syscall_sigpending(sigset_t *set) {
+	sigset_t tmp;
 	if (!set) {
 		return -1;
 	}
-	memcpy(set, &current_process->sigpending, sizeof(sigset_t));
+	tmp = current_process->sigpending & current_process->sigmask;
+	memcpy(set, &tmp, sizeof(sigset_t));
 	return 0;
 }
 
 i32 syscall_pause() {
 	current_process->state = INTERRUPTIBLE;
 	schedule();
-	return 0;
+	return -EINTR;
 }
 
 i32 syscall_sigsuspend(sigset_t *sigmask) {
-	sigset_t osigmask;
+	sigset_t osigmask = current_process->sigmask;
 	if (sigmask == NULL) {
 		return -1;
 	}
-	syscall_sigprocmask(SIG_SETMASK, sigmask, &osigmask);
+	current_process->sigmask = *sigmask;
 	syscall_pause();
-	syscall_sigprocmask(SIG_SETMASK, &osigmask, NULL);
-	return 0;
+	current_process->sigmask = osigmask;
+	return -EINTR;
 }
 
 
 i32 syscall_alarm(u32 secs) {
-	if (!secs) {
-		return 0;
+	i32 old = current_process->alarm;
+	if (old) {
+		old = (old - ticks) / TIMER_FREQ;
 	}
-	current_process->alarm = ticks + secs * TIMER_FREQ;
+	current_process->alarm = secs > 0 ? ticks + secs * TIMER_FREQ : 0;
 	return 0;
 }
 
 i32 syscall_sleep(u32 secs) {
-	(void)secs;
-	panic("syscall_sleep(): UNIMPLEMENTED\n");
+	current_process->state = INTERRUPTIBLE;
+	current_process->sleep = ticks + secs * TIMER_FREQ;
+	schedule();
 	return 0;
 }
 
@@ -867,9 +883,9 @@ i32 syscall_link(i8 *path1, i8 *path2) {
 	struct ext2_inode *oldinode, *dir;
 	struct ext2_dir *de;
 
-	oldinode = namei(path1);
-	if (!oldinode) {
-		return -ENOENT;
+	err = namei(path1, &oldinode);
+	if (err) {
+		return err;
 	}
 	if (!EXT2_S_ISREG(oldinode->i_mode)) {
 		iput(oldinode);
@@ -996,11 +1012,11 @@ i32 syscall_test(i32 n) {
 
 i32 syscall_access(i8 *path, i32 amode) {
 	struct ext2_inode *inode;
-	i32 res, i_mode;
+	i32 err, res, i_mode;
 
 	amode &= 0007;
-	if (!(inode = namei(path))) {
-		return -EACCES;
+	if ((err = namei(path, &inode))) {
+		return err;
 	}
 	i_mode = res = inode->i_mode & 0777;
 	if (current_process->uid == inode->i_uid) {
@@ -1019,10 +1035,11 @@ i32 syscall_access(i8 *path, i32 amode) {
 }
 
 i32 syscall_chmod(i8 *path, i32 mode) {
+	i32 err;
 	struct ext2_inode *inode;
 
-	if (!(inode = namei(path))) {
-		return -ENOENT;
+	if ((err = namei(path, &inode))) {
+		return err;
 	}
 	if ((current_process->euid != inode->i_uid) && current_process->uid != 0) {
 		iput(inode);
@@ -1036,10 +1053,11 @@ i32 syscall_chmod(i8 *path, i32 mode) {
 }
 
 i32 syscall_chown(i8 *path, i32 owner, i32 group) {
+	i32 err;
 	struct ext2_inode *inode;
 
-	if (!(inode = namei(path))) {
-		return -ENOENT;
+	if ((err = namei(path, &inode))) {
+		return err;
 	}
 	if (current_process->euid != inode->i_uid && current_process->uid != 0) {
 		iput(inode);
@@ -1054,10 +1072,11 @@ i32 syscall_chown(i8 *path, i32 owner, i32 group) {
 
 i32 syscall_utime(i8 *path, struct utimbuf *times) {
 	struct ext2_inode *inode;
+	i32 err;
 	u32 actime, modtime;
 
-	if (!(inode = namei(path))) {
-		return -ENOENT;
+	if ((err = namei(path, &inode))) {
+		return err;
 	}
 	if (times) {
 		actime = times->actime;

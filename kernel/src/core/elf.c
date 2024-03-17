@@ -5,6 +5,7 @@
 #include <panic.h>
 #include <blk_dev.h>
 #include <heap.h>
+#include <errno.h>
 
 extern process_t *current_process;
 extern void irq_ret();
@@ -149,10 +150,10 @@ i32 elf_load(struct ext2_inode *inode,
 	fp.f_pos = 0;
 	if (ext2_file_read(inode, &fp, (i8 *)&elf_header, sizeof(elf_header_t))
 				!= sizeof(elf_header_t)) {
-		return -1;
+		return -ENOEXEC;
 	}
 	if (is_elf(&elf_header) != ET_EXEC) {
-		return -1;
+		return -ENOEXEC;
 	}
 	dump_elf_header(&elf_header);
 	free_user_image();
@@ -168,7 +169,7 @@ i32 elf_load(struct ext2_inode *inode,
 		fp.f_pos = elf_header.phoff + elf_header.ph_size * i;
 		if (ext2_file_read(inode, &fp, (i8 *)&program_header, 
 			sizeof(elf_program_header_t)) != sizeof(elf_program_header_t)) {
-			return -1;
+			return -ENOEXEC;
 		}
 		dump_program_header(program_header);
 

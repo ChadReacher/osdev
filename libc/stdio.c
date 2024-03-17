@@ -2,6 +2,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "unistd.h"
+#include "errno.h"
 
 i32 putchar(i32 c) {
 	return (i32)((u8)write(stdout, &c, 1));
@@ -83,4 +84,11 @@ void vsprintf(i8 *buf, const i8 *fmt, va_list args) {
 				break;
 		}
 	}
+}
+
+void perror(const i8 *s) {
+	if (s && strlen(s) > 0) {
+		printf("%s: ", s);
+	}
+	printf("%s\n", strerror(errno));
 }

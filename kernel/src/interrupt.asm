@@ -1,3 +1,4 @@
+extern check_signals
 extern isr_handler
 extern irq_handler
 
@@ -20,7 +21,7 @@ extern irq_handler
 	global irq%1
 	irq%1:
 		push %1			; Push an interrupt number
-		push %1 + 32  		; Push a stub error code
+		push %1 + 32	; Push a stub error code
 		jmp irq_common_stub
 %endmacro
 
@@ -42,6 +43,8 @@ isr_common_stub:
 
 	; 2. Call C handler
 	call isr_handler
+
+	call check_signals
 	add esp, 4			; skip "registers_state *regs"
 
 	; 3. Restore state
@@ -60,12 +63,12 @@ irq_common_stub:
 	push es
 	push fs
 	push gs
-	mov ax, 0x10
+	mov ax, KERNEL_DS
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-	push dword esp ; for "registers_state *regs"
+	push dword esp		; for "registers_state *regs"
 
 	; 2. Call C handler
 	call irq_handler
@@ -73,6 +76,9 @@ irq_common_stub:
 
 global irq_ret
 irq_ret:
+	push dword esp
+	call check_signals
+	add esp, 4
 	; 3. Restore state
 	pop gs
 	pop fs

@@ -60,20 +60,19 @@
 #define __NR_sigsuspend		34
 #define __NR_sigprocmask	35
 #define __NR_sigreturn		36
-#define __NR_nanosleep		37
-#define __NR_yield			38
-#define __NR_getcwd			39
-#define __NR_sleep			40
-#define __NR_umask          41
-#define __NR_link           42
-#define __NR_rename         43
-#define __NR_readdir        44
-#define __NR_stat			45
-#define __NR_access			46
-#define __NR_dup2			47
-#define __NR_fcntl			48
-#define __NR_rmdir			49
-#define __NR_mkdir          50
+#define __NR_yield			37
+#define __NR_getcwd			38
+#define __NR_sleep			39
+#define __NR_umask          40
+#define __NR_link           41
+#define __NR_rename         42
+#define __NR_readdir        43
+#define __NR_stat			44
+#define __NR_access			45
+#define __NR_dup2			46
+#define __NR_fcntl			47
+#define __NR_rmdir			48
+#define __NR_mkdir          49
 
 #define syscall0(type, name) \
 type name(void) { \
@@ -164,7 +163,6 @@ void _exit(i32);
 i32 getpid();
 i32 dup(i32);
 void *sbrk(u32);
-i32 nanosleep(const struct timespec *, struct timespec *);
 u32 sleep(u32);
 i8 *getcwd(i8 *, u32);
 i32 chdir(const i8 *);
@@ -189,5 +187,6 @@ i32 access(i8 *path, i32 amode);
 i32 dup2(u32 oldfd, u32 newfd);
 i32 fcntl(i32 fd, i32 cmd, i32 arg);
 i32 mkdir(i8 *path, i32 mode);
+void perror(const i8 *s);
 
 #endif

@@ -21,6 +21,16 @@
 #define F_SETLK 6
 #define F_SETLKW 7
 
+#define WNOHANG   1
+#define WUNTRACED 2
+
+#define WIFEXITED(s)	(((s) & 0xFF) == 0)
+#define WEXITSTATUS(s)	(((s) >> 8) & 0xFF)
+#define WIFSIGNALED(s)	(((unsigned int)(s) - 1 & 0xFFFF) < 0xFF)
+#define WTERMSIG(s)		((s) & 0x7F)
+#define WIFSTOPPED(s)	(((s) & 0xFF) == 0x7F)
+#define WSTOPSIG(s)		(((s) >> 8) & 0xFF)
+
 struct dirent {
 	i8 name[256]; 
 	u32 inode;

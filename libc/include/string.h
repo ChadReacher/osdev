@@ -18,4 +18,6 @@ i8 *strdup(const i8 *str);
 i8 *strcat(i8 *dest, const i8 *src);
 i8 *strchr(const i8 *s, i32 c);
 
+i8 *strerror(i32 errnum);
+
 #endif

@@ -19,5 +19,6 @@ queue_t *queue_new();
 void queue_delete(queue_t *self);
 void queue_enqueue(queue_t *self, void *value);
 void *queue_dequeue(queue_t *self);
+void queue_remove(queue_t *self, queue_node_t *node);
 
 #endif

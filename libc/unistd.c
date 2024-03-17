@@ -70,7 +70,7 @@ i32 execvp(const i8 *file, i8 **argv) {
 		return -1;
 	}
 	if (file[0] == '/') {
-		execve(file, argv, environ);
+		return execve(file, argv, environ);
 	}
 	if (find_file_in_path(file, absolute_path) == 0) {
 		return execve(absolute_path, argv, environ);
@@ -242,16 +242,6 @@ void *sbrk(u32 incr) {
 	return (void *)ret;
 }
 
-i32 nanosleep(const struct timespec *req, struct timespec *rem) {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_nanosleep), "b"(req), "c"(rem));
-
-	return ret;
-}
-
 u32 sleep(u32 secs) {
 	i32 ret;
 
@@ -261,7 +251,6 @@ u32 sleep(u32 secs) {
 
 	return ret;
 }
-
 
 i8 *getcwd(i8 *buf, u32 size) {
 	i32 ret;

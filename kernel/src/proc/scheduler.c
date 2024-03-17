@@ -9,7 +9,6 @@
 #include <process.h>
 #include <panic.h>
 
-i32 syscall_exit(i32);
 extern u32 ticks;
 extern void switch_to(context_t **old_context, context_t *new_context);
 
@@ -163,6 +162,11 @@ void schedule() {
 			send_signal(p, SIGALRM);
 			p->alarm = 0;
 		}
+		if (p->sleep && p->sleep < ticks) {
+			p->state = RUNNING;
+			p->sleep = 0;
+			queue_enqueue(ready_queue, p);
+		}
 		if (p->sigpending != 0 && p->state == INTERRUPTIBLE) {
 			p->state = RUNNING;
 			queue_enqueue(ready_queue, p);
@@ -193,121 +197,5 @@ void task_switch(process_t *next_proc) {
             : 
             : "a"((u32)current_process->directory));
 	switch_to(&prev_proc->context, current_process->context);
-}
-
-/*Find first non-blocked signal */
-static i32 sigget(sigset_t *sigpend, const sigset_t *sigmask) {
-	i32 sig;
-
-	for (sig = 0; sig < NSIG; ++sig) {
-		if (sigismember(sigpend, sig) && !sigismember(sigmask, sig)) {
-			break;
-		}
-	}
-	if (sig == NSIG) {
-		return -1;
-	}
-	return sig;
-}
-
-
-i32 handle_signal() {
-	u32 *esp;
-	sigaction_t *action;
-	i32 sig = sigget(&current_process->sigpending, &current_process->sigmask);
-	if (sig <= 0) {
-		return -1;
-	}
-	sigdelset(&current_process->sigpending, sig);
-	action = &(current_process->signals[sig]);
-	if (current_process->pid == 1) {
-		return 0;
-	}
-
-	if (action->sa_handler == SIG_DFL) {
-		if (sig == SIGSTOP || sig == SIGTSTP || sig == SIGTTIN || sig == SIGTTOU) {
-			if (!(current_process->parent->signals[SIGCHLD].sa_flags & SA_NOCLDSTOP)) {
-				send_signal(current_process->parent, SIGCHLD);
-			}
-			current_process->state = STOPPED;
-			current_process->exit_code = sig;
-			queue_enqueue(stopped_queue, current_process);
-			schedule();
-			return 0;
-		} else if (sig == SIGCHLD || sig == SIGCONT) {
-			return 0;
-		} else {
-			syscall_exit(sig);
-			/* TODO: Abnormal termination of the process */
-		}
-	} else if (action->sa_handler == SIG_IGN) {
-		return 0;
-	}
-
-	memcpy(&current_process->old_sigmask, &current_process->sigmask, sizeof(sigset_t));
-
-	current_process->signal_old_regs = *(current_process->regs);
-	current_process->regs->eip = (u32)action->sa_handler;
-	esp = (u32 *)current_process->regs->useresp;
-	++esp;
-	*esp = sig;
-	--esp;
-	*esp = (u32)current_process->sigreturn;
-	return 0;
-}
-
-u32 send_signal(process_t *proc, i32 sig) {
-	u32 i;
-
-	/* Handle generating signal */
-	if (sig == SIGSTOP || sig == SIGTSTP || sig == SIGTTIN || sig == SIGTTOU) {
-		sigdelset(&proc->sigpending, SIGCONT);
-	} else if (sig == SIGCONT) {
-		queue_node_t *node;
-		sigdelset(&proc->sigpending, SIGSTOP);
-		sigdelset(&proc->sigpending, SIGTSTP);
-		sigdelset(&proc->sigpending, SIGTTIN);
-		sigdelset(&proc->sigpending, SIGTTOU);
-
-		/*TODO: Implement it properly or easier and simpler */
-		node = stopped_queue->head;
-		for (i = 0; i < stopped_queue->len; ++i) {
-			process_t *p = (process_t *)node->value;
-			if (p->pid == proc->pid) {
-				if (node->prev == NULL) {
-					ready_queue->head = node->next;
-					free(node);
-					break;
-				} else {
-					node->prev->next = node->next;
-					node->next->prev = node->prev;
-					free(node);
-					break;
-				}
-			}
-			node = node->next;
-		}
-		--stopped_queue->len;
-		proc->state = RUNNING;
-		queue_enqueue(ready_queue, proc);
-	}
-
-	/* Send the signal */
-	
-	/* Check if the signal is blocked */
-	/* TODO: Don't understand */
-	if (!sigismember(&proc->sigmask, sig)) {
-		if (proc->signals[sig].sa_handler == SIG_IGN && sig != SIGCHLD) {
-			return 0;
-		}
-	}
-
-	/* Invalid state */
-	if (proc->state == ZOMBIE) {
-		return -1;
-	}
-
-	sigaddset(&proc->sigpending, sig);
-	return 0;
 }
 

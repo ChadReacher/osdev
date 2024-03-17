@@ -120,8 +120,72 @@ void signal_fpe_handler(i32 signo) {
 	printf("Create new session with new pgrp: %d\n", getpgrp());
 }
 
+void signal_alarm_handler(i32 signo) {
+	printf("got signal: %d, ppid: %d\n", signo, getppid());
+	printf("alarm came\n");
+}
+
+void exec_test_e2big() {
+	i8 *m[] = {"/bin/sh", "x", "y", "y","x", "y", "y","x", "y", "y","x", "y", "y","x", "y", "y","x", "y", "y","x", "y", "y","x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", "x", "y", "y", 0};
+	printf("Exec test e2big\n");
+	execv("/bin/sh", m);
+	perror("e2big");
+}
+
+void exec_test_eacces() {
+	i8 *m[] = {"/usr/dir/x", 0};
+	i8 *x[] = {"/usr/dir2/x", 0};
+	i8 *y[] = {"/usr/dir2", 0};
+	printf("Exec test eacces\n");
+	execv(m[0], m);
+	perror("eaccess");
+	execv(x[0], x);
+	perror("eaccess");
+	execv(y[0], y);
+	perror("eaccess");
+}
+
+void exec_test_enametoolong() {
+	i8 *m[] = {"/bin/ssshskdjflskdfjslkfdjshskdjflskdfjslkfdjshskdjflskdfjslkfdjjjjshskdjflskdfjslkfdjjhskdjflskdfjslkfdjshskdjflskdfjslkfdjshskdjflskdfjslkfdjjjjshskdjflskdfjslkfdjjshskdjflskdfjslkfdjshskdjflskdfjslkfdjshskdjflskdfjslkfdjjjjshskdjflskdfjslkfdjjhskdjflskdfjslkfdjshskdjflskdfjslkfdjshskdjflskdfjslkfdjjjjshskdjflskdfjslkfdjj", 0 };
+	printf("Exec test enametoolong\n");
+	execv(m[0], m);
+	perror("enametoolong");
+}
+
+void exec_test_enoent() {
+	i8 *m[] = {"/usr/x/x", 0};
+	printf("Exec test enoent\n");
+	execv(m[0], m);
+	perror("enoent");
+
+	m[0] = "";
+	execv(m[0], m);
+	perror("enoent");
+}
+
+void exec_test_enotdir() {
+	i8 *m[] = {"/usr/file/x", 0};
+	printf("Exec test enotdir\n");
+	execv(m[0], m);
+	perror("enotdir");
+}
+
 int main() {
 	/*
+	void (*funcs[5])() = {
+		exec_test_eacces,
+		exec_test_e2big,
+		exec_test_enametoolong,
+		exec_test_enoent,
+		exec_test_enotdir,
+	};
+	int i;
+	for (i = 0; i < 5; ++i) {
+		funcs[i]();
+	}
+	*/
+	/*
+	int i;
 	int x = 10;
 	int y = 20;
 	utsname name;
@@ -137,15 +201,21 @@ int main() {
 		sigemptyset(&act.sa_mask);
 		act.sa_flags = 0; 
 		sigaction(SIGFPE, &act, NULL);
+		act.sa_handler = signal_alarm_handler;
+		sigemptyset(&act.sa_mask);
+		act.sa_flags = 0;
+		sigaction(SIGALRM, &act, NULL);
+		alarm(1);
 		test_sigxset();
 		test_sigaction();
 		test_sigprocmask();
 		test_sigsuspend();
-		int i;
-		for (i = 0; i < 100; ++i) {
+		for (i = 0; i < 200; ++i) {
 			printf("sky child: %d\n", i);
 			if (i == 50) {
 				kill(getpid(), SIGFPE);
+			} else if (i == 60) {
+				sleep(3);
 			}
 		}
 	} else {

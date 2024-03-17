@@ -35,6 +35,14 @@ user: libc
 	man bash > userland/hdd/usr/file
 	echo "del" > userland/hdd/usr/del
 	echo "bye" > userland/hdd/usr/bye
+
+	mkdir -p userland/hdd/usr/dir
+	chmod a-x userland/hdd/usr/dir
+
+	mkdir -p userland/hdd/usr/dir3
+	echo "no perm" > userland/hdd/usr/dir3/x
+	chmod a-x userland/hdd/usr/dir3/x
+
 	#mkdir -p userland/hdd/usr/etc
 	#echo "x" > userland/hdd/usr/etc/x
 	#./generate.sh

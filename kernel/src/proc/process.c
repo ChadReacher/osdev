@@ -10,7 +10,6 @@
 #include <string.h>
 #include <elf.h>
 #include <queue.h>
-#include <signal.h>
 #include <ext2.h>
 
 extern void irq_ret();
@@ -44,9 +43,9 @@ void user_init() {
 	i32 argc = 0;
 	i32 envc = 1;
 
-	inode = namei("/bin/init");
-	if (!inode) {
-		return;
+	err = namei("/bin/init", &inode);
+	if (err) {
+		panic("could not find '/bin/init' executable\n");
 	} else if (!EXT2_S_ISREG(inode->i_mode)) {
 		iput(inode);
 		return;

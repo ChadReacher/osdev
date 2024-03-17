@@ -413,22 +413,25 @@ i32 dir_namei(const i8 *pathname, const i8 **name,
 	return 0;
 }
 
-struct ext2_inode *namei(const i8 *pathname) {
+i32 namei(const i8 *pathname, struct ext2_inode **res) {
+	i32 err;
 	struct ext2_inode *dir, *inode;
 	const i8 *basename;
 
-	if (dir_namei(pathname, &basename, &dir)) {
-		return NULL;
+	*res = NULL;
+	if ((err = dir_namei(pathname, &basename, &dir))) {
+		return err;
 	}
 	++dir->i_count; /* lookup eats one 'i_count' */
-	if (ext2_lookup(dir, basename, &inode)) {
+	if ((err = ext2_lookup(dir, basename, &inode))) {
 		iput(dir);
-		return NULL;
+		return err;
 	}
 	iput(dir);
 	inode->i_atime = get_current_time();
 	inode->i_dirt = 1;
-	return inode;
+	*res = inode;
+	return 0;
 }
 
 i32 open_namei(i8 *pathname, i32 oflags, i32 mode, struct ext2_inode **res_inode) {

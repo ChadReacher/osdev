@@ -6,7 +6,6 @@
 #include <panic.h>
 #include <syscall.h>
 #include <process.h>
-#include <signal.h>
 #include <scheduler.h>
 #include <sys.h> 
 
@@ -138,8 +137,10 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 }
 
 void check_signals(registers_state *regs) {
-	if (current_process && current_process->sigpending != 0 && (regs->cs & 0x3) == 0x3) {
-		handle_signal();
+	if (current_process && 
+			(current_process->sigpending & ~current_process->sigmask) &&
+			(regs->cs & 0x3) == 0x3) {
+		handle_signal(regs);
 	}
 }
 
@@ -161,12 +162,10 @@ void isr_handler(registers_state *regs) {
 	if (regs->int_number == SYSCALL) {
 		current_process->regs = regs;
 		regs->eax = syscall_handler(regs);
-		check_signals(regs);
 		return;
 	} else if (interrupt_handlers[regs->int_number] != 0) {
 		isr_t handler = interrupt_handlers[regs->int_number];
 		handler(regs);
-		check_signals(regs);
 		return;
 	}
 
@@ -198,5 +197,4 @@ void irq_handler(registers_state *regs) {
 		isr_t handler = interrupt_handlers[regs->int_number];
 		handler(regs);
 	}
-	check_signals(regs);
 }

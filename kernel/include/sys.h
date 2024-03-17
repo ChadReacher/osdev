@@ -1,7 +1,7 @@
 #ifndef SYS_H
 #define SYS_H
 
-#define NR_SYSCALLS 51
+#define NR_SYSCALLS 50
 
 typedef i32 (*syscall_fn)();
 
@@ -42,7 +42,6 @@ i32 syscall_sigpending();
 i32 syscall_sigsuspend();
 i32 syscall_sigprocmask();
 i32 syscall_sigreturn();
-i32 syscall_nanosleep();
 i32 syscall_yield();
 i32 syscall_getcwd();
 i32 syscall_sleep();
@@ -95,7 +94,6 @@ syscall_fn syscall_handlers[NR_SYSCALLS] = {
 	syscall_sigsuspend,
 	syscall_sigprocmask,
 	syscall_sigreturn,
-	syscall_nanosleep,
 	syscall_yield,
 	syscall_getcwd,
 	syscall_sleep,
