@@ -40,7 +40,7 @@ void _start() {
 	ata_init();
 	scheduler_init();
 	mount_root();
-	userinit();
+	user_init();
 	enter_usermode();
 
 	panic("End of kernel\r\n");

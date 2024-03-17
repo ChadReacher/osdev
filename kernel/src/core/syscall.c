@@ -21,6 +21,8 @@
 #include <ext2.h>
 
 
+extern queue_t *ready_queue;
+extern queue_t *procs;
 extern u32 startup_time;
 extern u32 ticks;
 extern queue_t *procs;
@@ -243,48 +245,55 @@ i32 syscall_yield() {
 	return 0;
 }
 
+extern u32 next_pid;
 i32 syscall_fork() {
-	/* TODO: Create a separate function to copy process */
-	process_t *child_process = proc_alloc();
-	if (!child_process) {
-		return EAGAIN;
+	u32 i;
+	process_t *child = malloc(sizeof(process_t));
+	if (!child) {
+		return -EAGAIN;
 	}
-
-	child_process->directory = paging_copy_page_dir(1);
-	if (!child_process->directory) {
-		return EAGAIN;
+	*child = *current_process;
+	child->pid = next_pid++;
+	child->parent = current_process;
+	child->directory = paging_copy_page_dir(1);
+	if (!child->directory) {
+		--next_pid;
+		free(child);
+		return -EAGAIN;
 	}
-	child_process->parent = current_process;
-
-	child_process->root = current_process->root;
+	child->kernel_stack_bottom = malloc(4096 *2);
+	memset(child->kernel_stack_bottom, 0, 4096 * 2);
+	child->regs = (registers_state *)
+		(ALIGN_DOWN((u32)child->kernel_stack_bottom + 4096 * 2 - 1, 4)
+		 - sizeof(registers_state) + 4);
+	*child->regs = *current_process->regs;
+	child->context = (context_t *)
+		(ALIGN_DOWN((u32)child->kernel_stack_bottom + 4096 * 2 - 1, 4)
+		 - sizeof(registers_state) - sizeof(context_t) + 4);
+	child->context->eip = (u32)irq_ret;
+	child->kernel_stack_top = child->context;
+	memcpy(child->fds, current_process->fds, NR_OPEN * sizeof(struct file *));	
+	for (i = 0; i < NR_OPEN; ++i) {
+		if (child->fds[i]) {
+			++child->fds[i]->f_count;
+		}
+	}
+	child->utime = child->stime = child->cutime = child->cstime = 0;
 	if (current_process->root) {
 		++current_process->root->i_count;
 	}
-	child_process->pwd = current_process->pwd;
 	if (current_process->pwd) {
 		++current_process->pwd->i_count;
-		child_process->str_pwd = strdup(current_process->str_pwd);
+		child->str_pwd = strdup(current_process->str_pwd);
 	}
-
-	child_process->brk = current_process->brk;
-	child_process->timeslice = current_process->timeslice;
-	memcpy(child_process->fds, current_process->fds, NR_OPEN * sizeof(struct file *));	
-	sigemptyset(&child_process->sigpending);
-	memcpy(&child_process->sigmask, &current_process->sigmask, sizeof(sigset_t));
-	memcpy(&child_process->signals, &current_process->signals, NSIG * sizeof(sigaction_t));
-	child_process->uid = current_process->uid;
-	child_process->euid = current_process->euid;
-	child_process->gid = current_process->gid;
-	child_process->egid = current_process->egid;
-	child_process->pgrp = current_process->pgrp;
-	child_process->session = current_process->session;
-
-	*child_process->regs = *current_process->regs;
-
-	child_process->regs->eax = 0;
-	return child_process->pid;
+	child->regs->eax = 0;
+	child->alarm = 0;
+	child->leader = 0;
+	sigemptyset(&child->sigpending);
+	queue_enqueue(ready_queue, child);
+	queue_enqueue(procs, child);
+	return child->pid;
 }
-
 
 i32 syscall_kill(i32 pid, i32 sig) {
 	process_t *proc = get_proc_by_id(pid);

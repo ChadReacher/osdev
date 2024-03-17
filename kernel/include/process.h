@@ -58,9 +58,8 @@ typedef struct _process {
 	i32 utime, stime, cutime, cstime;
 } process_t;
 
-void userinit();
+void user_init();
 void enter_usermode();
-process_t *proc_alloc();
 i32 get_new_fd();
 struct file *get_empty_file();
 

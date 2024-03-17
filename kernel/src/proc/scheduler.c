@@ -21,34 +21,46 @@ process_t *init_process = NULL;
 process_t *idle_process = NULL;
 
 void task_switch(process_t *next_proc);
+extern void irq_ret();
+extern u32 next_pid;
 
 static void cpu_idle() {
-    while (1) {
-		__asm__ __volatile__ ("cli");
-		debug("kernel idle - %d\n", idle_process->pid);
-		__asm__ __volatile__ ("sti");
-		__asm__ __volatile__ ("hlt");
+	while (1){ 
+		__asm__ __volatile__("cli");
+		kprintf("cpu idle\n");
+		__asm__ __volatile__("sti");
+		__asm__ __volatile__("hlt");
 	}
 }
 
-static void create_idle_process() {
-	idle_process = proc_alloc();
+void create_idle_process() {
+	idle_process = malloc(sizeof(process_t));
 	if (!idle_process) {
 		panic("Failed to create 'idle' process\n");
 	}
-	queue_dequeue(ready_queue);
-	idle_process->regs->eflags = 0x202;
+	queue_enqueue(procs, idle_process);
+	memset(idle_process, 0, sizeof(process_t));
+	idle_process->pid = next_pid++;
+	idle_process->timeslice = 20;
 	idle_process->state = RUNNING;
-	idle_process->parent = NULL;
 	idle_process->directory = virtual_to_physical((void *)0xFFFFF000);
+	idle_process->kernel_stack_bottom = malloc(4096 *2);
+	memset(idle_process->kernel_stack_bottom, 0, 4096 * 2);
+	idle_process->regs = (registers_state *)
+		(ALIGN_DOWN((u32)idle_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
+		 - sizeof(registers_state) + 4);
+	idle_process->regs->eflags = 0x202;
 	idle_process->regs->cs = 0x8;
 	idle_process->regs->ds = 0x8;
 	idle_process->regs->es = 0x8;
 	idle_process->regs->fs = 0x8;
 	idle_process->regs->gs = 0x8;
-	idle_process->regs->useresp = 0x0;
-	idle_process->regs->ss = 0x0;
 	idle_process->regs->eip = (u32)cpu_idle;
+	idle_process->context = (context_t *)
+		(ALIGN_DOWN((u32)idle_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
+		 - sizeof(registers_state) - sizeof(context_t) + 4);
+	idle_process->context->eip = (u32)irq_ret;
+	idle_process->kernel_stack_top = idle_process->context;
 }
 
 void scheduler_init() {
@@ -57,10 +69,22 @@ void scheduler_init() {
 	procs = queue_new();
 
 	create_idle_process();
-	current_process = init_process = proc_alloc();
-	if (!init_process) {
-		panic("Failed to create 'init' process\n");
-	}
+
+	current_process = init_process = malloc(sizeof(process_t));
+	queue_enqueue(ready_queue, init_process);
+	queue_enqueue(procs, init_process);
+	memset(init_process, 0, sizeof(process_t));
+	init_process->pid = next_pid++;
+	init_process->timeslice = 20;
+	init_process->state = RUNNING;
+	init_process->kernel_stack_bottom = malloc(4096 * 2);
+	memset(init_process->kernel_stack_bottom, 0, 4096 * 2);
+	init_process->regs = (registers_state *)
+		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
+		 - sizeof(registers_state) + 4);
+	init_process->context = (context_t *)
+		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
+		 - sizeof(registers_state) - sizeof(context_t) + 4);
 }
 
 process_t *get_proc_by_id(u32 pid) {
