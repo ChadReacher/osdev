@@ -20,10 +20,10 @@
 #define CMOS_REG_STATUS_C  0x0C
 
 typedef struct {
-	u8 seconds;
-	u8 minutes;
-	u8 hours;
-	u8 weekdays;
+	u8 second;
+	u8 minute;
+	u8 hour;
+	u8 weekday;
 	u8 day;
 	u8 month;
 	u16 year;

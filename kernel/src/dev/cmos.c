@@ -6,10 +6,10 @@ extern u32 startup_time;
 
 bool rtc_values_are_not_equal(cmos_rtc_t left, cmos_rtc_t right) {
 	return (
-		left.seconds != right.seconds ||
-		left.minutes != right.minutes ||
-		left.hours != right.hours ||
-		left.weekdays != right.weekdays ||
+		left.second != right.second ||
+		left.minute != right.minute ||
+		left.hour != right.hour ||
+		left.weekday != right.weekday ||
 		left.day != right.day ||
 		left.month != right.month ||
 		left.year != right.year ||
@@ -51,10 +51,10 @@ cmos_rtc_t cmos_read_rtc() {
 	while (cmos_update_in_progress());
 
 	/* Read first time */
-	rtc.seconds = cmos_read_register(CMOS_REG_SECONDS);
-	rtc.minutes = cmos_read_register(CMOS_REG_MINUTES);
-	rtc.hours = cmos_read_register(CMOS_REG_HOURS);
-	rtc.weekdays = cmos_read_register(CMOS_REG_WEEKDAYS);
+	rtc.second = cmos_read_register(CMOS_REG_SECONDS);
+	rtc.minute = cmos_read_register(CMOS_REG_MINUTES);
+	rtc.hour = cmos_read_register(CMOS_REG_HOURS);
+	rtc.weekday = cmos_read_register(CMOS_REG_WEEKDAYS);
 	rtc.day = cmos_read_register(CMOS_REG_DAY);
 	rtc.month = cmos_read_register(CMOS_REG_MONTH);
 	rtc.year = cmos_read_register(CMOS_REG_YEAR);
@@ -67,10 +67,10 @@ cmos_rtc_t cmos_read_rtc() {
 		while (cmos_update_in_progress());
 
 		/* Read second time */
-		rtc.seconds = cmos_read_register(CMOS_REG_SECONDS);
-		rtc.minutes = cmos_read_register(CMOS_REG_MINUTES);
-		rtc.hours = cmos_read_register(CMOS_REG_HOURS);
-		rtc.weekdays = cmos_read_register(CMOS_REG_WEEKDAYS);
+		rtc.second = cmos_read_register(CMOS_REG_SECONDS);
+		rtc.minute = cmos_read_register(CMOS_REG_MINUTES);
+		rtc.hour = cmos_read_register(CMOS_REG_HOURS);
+		rtc.weekday = cmos_read_register(CMOS_REG_WEEKDAYS);
 		rtc.day = cmos_read_register(CMOS_REG_DAY);
 		rtc.month = cmos_read_register(CMOS_REG_MONTH);
 		rtc.year = cmos_read_register(CMOS_REG_YEAR);
@@ -83,18 +83,19 @@ cmos_rtc_t cmos_read_rtc() {
 	/* Are we in BCD mode? */
 	if (!(reg_b & 0x04)) {
 		/* If so, convert it to "good" binary values */
-		rtc.seconds = (rtc.seconds & 0x0F) + ((rtc.seconds / 16) * 10);
-		rtc.minutes = (rtc.minutes & 0x0F) + ((rtc.minutes / 16) * 10);
-		rtc.hours = ((rtc.hours & 0x0F) + (((rtc.hours & 0x70) / 16 * 10))) | (rtc.hours & 0x80);
-		rtc.weekdays = (rtc.weekdays & 0x0F) + ((rtc.weekdays / 16) * 10);
-		rtc.month = (rtc.month & 0x0F) + ((rtc.month / 16) * 10);
-		rtc.year = (rtc.year & 0x0F) + ((rtc.year / 16) * 10);
-		rtc.century = (rtc.century & 0x0F) + ((rtc.century / 16) * 10);
+		rtc.second		=	(rtc.second & 0x0F)  + ((rtc.second / 16) * 10);
+		rtc.minute		=	(rtc.minute & 0x0F)  + ((rtc.minute / 16) * 10);
+		rtc.hour		=	(rtc.hour & 0x0F)	 + ((rtc.hour / 16) * 10);
+		rtc.weekday		=	(rtc.weekday & 0x0F) + ((rtc.weekday / 16) * 10);
+		rtc.day			=	(rtc.day & 0x0F)	 + ((rtc.day / 16) * 10);
+		rtc.month		=	(rtc.month & 0x0F)	 + ((rtc.month / 16) * 10);
+		rtc.year		=	(rtc.year & 0x0F)	 + ((rtc.year / 16) * 10);
+		rtc.century		=	(rtc.century & 0x0F) + ((rtc.century / 16) * 10);
 	}
 
 	/* If the hour is pm, then the 0x80 bit is set on the hour byte */
-	if (!(reg_b & 0x02) && (rtc.hours & 0x80)) {
-		rtc.hours = ((rtc.hours & 0x7F) + 12) % 24;
+	if (!(reg_b & 0x02) && (rtc.hour & 0x80)) {
+		rtc.hour = ((rtc.hour & 0x7F) + 12) % 24;
 	}
 
 	/* Compute full year */
@@ -117,26 +118,16 @@ void cmos_rtc_handler(registers_state *regs) {
 #define MINUTE 60
 #define HOUR (60*MINUTE)
 #define DAY (24*HOUR)
-#define YEAR (365*DAY)
 
-static i32 month[12] = {
-	0,
-	DAY*(31),
-	DAY*(31+29),
-	DAY*(31+29+31),
-	DAY*(31+29+31+30),
-	DAY*(31+29+31+30+31),
-	DAY*(31+29+31+30+31+30),
-	DAY*(31+29+31+30+31+30+31),
-	DAY*(31+29+31+30+31+30+31+31),
-	DAY*(31+29+31+30+31+30+31+31+30),
-	DAY*(31+29+31+30+31+30+31+31+30+31),
-	DAY*(31+29+31+30+31+30+31+31+30+31+30),
-};
+static i8 month[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+#define LEAP_YEAR(y) (((y % 4) == 0 && (y % 100) != 0) || (y % 400) == 0)
+#define DAYS_PER_YEAR(y) ((LEAP_YEAR(y)) ? 366 : 365)
 
 void cmos_rtc_init() {
-	u16 year;
+	i32 i;
 	cmos_rtc_t time;
+	u32 total_days = 0, seconds;
 
 	/* Enable RTC */
 	u8 prev_reg_value = cmos_read_register(CMOS_REG_STATUS_B);
@@ -153,15 +144,20 @@ void cmos_rtc_init() {
 	 * debug("%s", "CMOS RTC has been initialized\r\n");
 	 */
 	time = cmos_read_rtc();
-	year = time.year - 70;
-	startup_time = ((year+1)/4)*DAY + year*YEAR;
-	startup_time += month[time.month];
-	if (time.month > 1 && ((year + 2) % 4)) {
-		startup_time -= DAY;
+	for (i = 1970; i < time.year; ++i) {
+		total_days += DAYS_PER_YEAR(i);
 	}
-	startup_time += (time.day-1)*DAY;
-	startup_time += time.hours*HOUR;
-	startup_time += time.minutes*MINUTE;
-	startup_time += time.seconds;
+	for (i = 0; i < (time.month - 1); ++i) {
+		total_days += month[i];
+		if (i == 1) {
+			total_days += LEAP_YEAR(time.year) ? 1 : 0;
+		}
+	}
+	total_days += (time.day - 1);
+	seconds = total_days * DAY;
+	seconds += time.hour * HOUR;
+	seconds += time.minute * MINUTE;
+	seconds += time.second;
+	startup_time = seconds;
 }
 

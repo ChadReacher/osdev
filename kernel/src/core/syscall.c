@@ -799,6 +799,30 @@ i32 syscall_setgid(u32 gid) {
 	return 0;
 }
 
+i32 syscall_getgroups(i32 gidsetsize, i32 *grouplist) {
+	i32 i;
+	for (i = 0; i < NR_GROUPS && current_process->groups[i] != -1;
+			++i, ++grouplist) {
+		if (gidsetsize) {
+			if (i >= gidsetsize) { 
+				return -EINVAL;
+			}
+			*grouplist = current_process->groups[i];
+		}
+	}
+	return i;
+}
+
+i8 *getlogin() {
+	debug("getlogin(): unimplemented\r\n");
+	return NULL;
+}
+
+i8 *cuserid(i8 *s) {
+	debug("cuserid(%d): unimplemented\r\n", s);
+	return NULL;
+}
+
 i32 syscall_getpgrp() {
 	return current_process->pgrp;
 }
@@ -806,11 +830,24 @@ i32 syscall_getpgrp() {
 
 i32 syscall_setsid() {
 	if (current_process->leader) {
-		return -1;
+		return -EPERM;
 	}
 	current_process->leader = 1;
 	current_process->session = current_process->pgrp = current_process->pid;
 	return current_process->pgrp;
+}
+
+static i32 session_of_pgrp(i32 pgrp) {
+	i32 i;
+	queue_node_t *node;
+	for (i = 0; i < procs->len; ++i) {
+		process_t *p = (process_t *)node->value;
+		if (p->pgrp == pgrp) {
+			return p->session;
+		}
+		node = node->next;
+	}
+	return -1;
 }
 
 i32 syscall_setpgid(u32 pid, i32 pgid) {
@@ -822,21 +859,28 @@ i32 syscall_setpgid(u32 pid, i32 pgid) {
 	if (!pgid) {
 		pgid = pid;
 	}
+	if (pgid < 0) {
+		return -EINVAL;
+	}
 	node = procs->head;
 	for (i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
-		if (p->pid == pid) {
+		if (p->pid == pid && 
+				(p->parent == current_process || p == current_process)) {
 			if (p->leader) {
-				return -1;
+				return -EPERM;
 			}
-			if (p->session != current_process->session) {
-				return -1;
+			if (p->session != current_process->session ||
+					(pgid != pid &&
+					 session_of_pgrp(pgid) != current_process->session)) {
+				return -EPERM;
 			}
 			p->pgrp = pgid;
+			return 0;
 		}
 		node = node->next;
 	}
-	return -1;
+	return -ESRCH;
 }
 
 i32 syscall_uname(utsname *name) {
@@ -844,7 +888,7 @@ i32 syscall_uname(utsname *name) {
 		"sierra.0", "nodename", "release ", "version ", "i386    "
 	};
 	if (!name) {
-		return -1;
+		return -EINVAL;
 	}
 	memcpy(name, &thisname, sizeof(utsname));
 	return 0;
@@ -866,7 +910,6 @@ i32 syscall_times(tms *buffer) {
 	buffer->tms_stime = current_process->stime;
 	buffer->tms_cutime = current_process->cutime;
 	buffer->tms_cstime = current_process->cstime;
-
 	return ticks;
 }
 

@@ -73,6 +73,7 @@
 #define __NR_fcntl			47
 #define __NR_rmdir			48
 #define __NR_mkdir          49
+#define __NR_getgroups		50
 
 #define syscall0(type, name) \
 type name(void) { \
@@ -188,5 +189,6 @@ i32 dup2(u32 oldfd, u32 newfd);
 i32 fcntl(i32 fd, i32 cmd, i32 arg);
 i32 mkdir(i8 *path, i32 mode);
 void perror(const i8 *s);
+i32 getgroups(i32 gidsetsize, i32 *grouplist);
 
 #endif

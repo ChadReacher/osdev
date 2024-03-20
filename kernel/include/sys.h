@@ -1,7 +1,7 @@
 #ifndef SYS_H
 #define SYS_H
 
-#define NR_SYSCALLS 50
+#define NR_SYSCALLS 51
 
 typedef i32 (*syscall_fn)();
 
@@ -55,6 +55,7 @@ i32 syscall_dup2();
 i32 syscall_fcntl();
 i32 syscall_rmdir();
 i32 syscall_mkdir();
+i32 syscall_getgroups();
 
 syscall_fn syscall_handlers[NR_SYSCALLS] = {
 	syscall_test,
@@ -107,6 +108,7 @@ syscall_fn syscall_handlers[NR_SYSCALLS] = {
 	syscall_fcntl,
 	syscall_rmdir,
 	syscall_mkdir,
+	syscall_getgroups,
 };
 
 #endif

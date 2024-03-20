@@ -467,3 +467,4 @@ i32 times(tms *buffer) {
 	return ret;
 }
 
+syscall2(i32, getgroups, i32, gidsetsize, i32 *, grouplist);

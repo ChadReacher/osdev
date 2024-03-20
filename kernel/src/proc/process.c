@@ -61,6 +61,9 @@ void user_init() {
 	argv[argc] = NULL;
 	envp[envc] = NULL;
 
+	for (i = 0; i < NR_GROUPS; ++i) {
+		init_process->groups[i] = -1;
+	}
 	init_process->directory = paging_copy_page_dir(0);
 	kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(init_process->directory));

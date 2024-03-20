@@ -27,6 +27,7 @@ DIR *opendir(const i8 *name) {
 	if ((st.st_mode & S_IFDIR) != S_IFDIR) {
 		printf("it's not a dir\n");
 		close(fd);
+		errno = -ENOTDIR;
 		return NULL;
 	}
 
@@ -51,6 +52,10 @@ struct dirent *readdir(DIR *dirp) {
 			: "a"(__NR_readdir), "b"(dirp));
 
 	return ret;
+}
+
+void rewinddir(DIR *dirp) {
+	lseek(dirp->fd, 0, SEEK_SET);
 }
 
 i32 closedir(DIR *dirp) {

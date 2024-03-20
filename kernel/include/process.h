@@ -27,6 +27,7 @@ typedef struct {
 
 #define NR_OPEN 20
 #define NR_FILE 32
+#define NR_GROUPS 32
 typedef struct _process {
 	i32 pid;
 	i32 timeslice;
@@ -56,6 +57,7 @@ typedef struct _process {
 	u16 uid, euid;
 	u8 gid, egid;
 	i32 pgrp, session, leader;
+	i32 groups[NR_GROUPS];
 	i32 utime, stime, cutime, cstime;
 } process_t;
 
