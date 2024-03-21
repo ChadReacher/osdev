@@ -39,6 +39,10 @@ void screen_print_char(i8 ch) {
 	u8 line;
 	i8 bit;
 
+	if (ch < 0) {
+		return;
+	}
+
 	framebuffer = (u32 *)FRAMEBUFFER_ADDRESS;
 	framebuffer += cursor_y * PIXEL_HEIGHT * SCREEN_WIDTH + cursor_x * PIXEL_WIDTH;
 

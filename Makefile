@@ -36,6 +36,7 @@ user: libc
 	echo "del" > userland/hdd/usr/del
 	echo "bye" > userland/hdd/usr/bye
 
+	mkdir -p userland/hdd/empty
 	mkdir -p userland/hdd/usr/dir
 	chmod a-x userland/hdd/usr/dir
 

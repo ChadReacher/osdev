@@ -69,6 +69,7 @@ u32 alloc_block(u16 dev) {
 					write_blk(buf);
 					--bgd->bg_free_blocks_count;
 					write_group_desc(bgd, i);
+					free(buf->b_data);
 					free(buf);
 					return i * super_block.s_blocks_per_group + j * 32 + k + 1;
 				}
@@ -130,12 +131,12 @@ struct ext2_inode *alloc_inode(u16 dev) {
 	for (i = 0; i < super_block.s_total_groups; ++i) {
 		bgd = malloc(sizeof(struct ext2_blk_grp_desc));
 		read_group_desc(bgd, i);
-		if (!bgd->bg_free_blocks_count) {
+		if (!bgd->bg_free_inodes_count) {
 			continue;
 		}
 		bitmap_block = bgd->bg_inode_bitmap;
 		buf = read_blk(dev, bitmap_block);
-		buf2 = (u32 *)buf;
+		buf2 = (u32 *)buf->b_data;
 		for (j = 0; j < super_block.s_block_size / 4; ++j) {
 			u32 sub_bitmap = buf2[j];
 			if (sub_bitmap == 0xFFFFFFFF) {
@@ -150,6 +151,7 @@ struct ext2_inode *alloc_inode(u16 dev) {
 
 					--bgd->bg_free_inodes_count;
 					write_group_desc(bgd, i);
+					free(buf->b_data);
 					free(buf);
 					inode->i_num = i * super_block.s_inodes_per_group + j * 32 + k + 1;
 					inode->i_count = 1;

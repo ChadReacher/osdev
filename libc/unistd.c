@@ -27,6 +27,10 @@ syscall2(i32, rename, i8 *, old, i8 *, new)
 
 syscall3(i32, execve, const i8 *, pathname, i8 **, argv, i8 **, envp)
 
+syscall2(i32, mkdir, i8 *, path, i32, mode)
+
+syscall1(i32, rmdir, i8 *, path)
+
 i32 execv(const i8 *pathname, i8 **argv) {
 	return execve(pathname, argv, environ);
 }
@@ -75,6 +79,7 @@ i32 execvp(const i8 *file, i8 **argv) {
 	if (find_file_in_path(file, absolute_path) == 0) {
 		return execve(absolute_path, argv, environ);
 	}
+	errno = ENOENT;
 	return -1;
 }
 
@@ -467,4 +472,4 @@ i32 times(tms *buffer) {
 	return ret;
 }
 
-syscall2(i32, getgroups, i32, gidsetsize, i32 *, grouplist);
+syscall2(i32, getgroups, i32, gidsetsize, i32 *, grouplist)

@@ -204,6 +204,7 @@ i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
 				if (!buf) {
 					return -ENOSPC;
 				}
+				dir->i_size += super_block.s_block_size;
 				de = (struct ext2_dir *)(buf->b_data + inblock_offset);
 				de->inode = 0;
 				de->rec_len = super_block.s_block_size;
@@ -325,11 +326,11 @@ struct buffer *ext2_find_entry(struct ext2_inode *dir, const i8 *name,
 			}
 		}
 		de = (struct ext2_dir *)(buf->b_data + inblock_offset);
-		if (de->name_len == strlen(name) && strncmp(name, de->name, de->name_len) == 0) {
+		if (de->inode && de->name_len == strlen(name) && strncmp(name, de->name, de->name_len) == 0) {
 			*res_dir = de;
 			return buf;
 		}
-		if (prev_dir) {
+		if (prev_dir && de->inode) {
 			*prev_dir = de;
 		}
 		inblock_offset += de->rec_len;
@@ -509,6 +510,27 @@ static i32 subdir(struct ext2_inode *new, struct ext2_inode *old) {
 	return result;
 }
 
+i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf) {
+	struct ext2_dir *de, *pde;
+	i32 curr_off = 0;
+	pde = NULL;
+	de = (struct ext2_dir *)old_buf->b_data;
+	while (curr_off < 1024) {
+		if (de == dir) {
+			if (pde) {
+				pde->rec_len += dir->rec_len;
+			} else {
+				dir->inode = 0;
+			}
+			return 0;
+		}
+		curr_off += de->rec_len;
+		pde = de;
+		de = (struct ext2_dir *)(old_buf->b_data + curr_off);
+	}
+	return -ENOENT;
+}
+
 i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 		struct ext2_inode *new_dir, const i8 *new_name) {
 	i32 retval;
@@ -516,11 +538,11 @@ i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 	struct ext2_inode *old_inode, *new_inode;
 	struct ext2_dir *old_de, *pde, *new_de;
 
-	old_buf = new_buf = NULL;
+	dir_buf = old_buf = new_buf = NULL;
 	old_inode = new_inode = NULL;
 	retval = -ENOENT;
 
-	old_buf = ext2_find_entry(old_dir, old_name, &old_de, &pde);
+	old_buf = ext2_find_entry(old_dir, old_name, &old_de, NULL);
 	if (!old_buf) {
 		goto end_rename;
 	}
@@ -577,10 +599,12 @@ i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 			goto end_rename;
 		}
 		fst_de = (struct ext2_dir *)dir_buf->b_data;
-		parent_i_num = ((struct ext2_dir *)(dir_buf + (fst_de->rec_len)))->inode;
-		if (parent_i_num == old_dir->i_num) {
+		parent_i_num = ((struct ext2_dir *)(dir_buf->b_data + (fst_de->rec_len)))->inode;
+		if (parent_i_num != old_dir->i_num) {
 			goto end_rename;
 		}
+		free(dir_buf->b_data);
+		free(dir_buf);
 	}
 	if (!new_buf) {
 		ext2_add_entry(new_dir, new_name, &new_buf, &new_de);
@@ -590,27 +614,37 @@ i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 		goto end_rename;
 	}
 	new_de->inode = old_inode->i_num;
-	if (((i8 *)new_de) + new_de->rec_len == ((char *)old_de)) {
-		new_de->rec_len += old_de->rec_len;
-	} else if (pde) {
-		pde->rec_len += old_de->rec_len;
-	} else {
-		old_de->inode = 0;
+	write_blk(new_buf);
+	free(old_buf->b_data);
+	free(old_buf);
+	old_buf = ext2_find_entry(old_dir, old_name, &old_de, NULL);
+	if (!old_buf) {
+		retval = -ENOENT;
+		goto end_rename;
 	}
+	retval = ext2_delete_entry(old_de, old_buf);
+	if (retval) {
+		goto end_rename;
+	}
+	write_blk(old_buf);
 	if (new_inode) {
 		--new_inode->i_links_count;
 		new_inode->i_dirt = 1;
 	}
-	write_blk(old_buf);
-	write_blk(new_buf);
-	if (new_buf) {
+	if (EXT2_S_ISDIR(old_inode->i_mode)) {
+		retval = -EIO;
+		dir_buf = read_blk(old_inode->i_dev, old_inode->i_block[0]);
+		if (!dir_buf) {
+			goto end_rename;
+		}
 		struct ext2_dir *fst_de = (struct ext2_dir *)dir_buf->b_data;
-		((struct ext2_dir *)(dir_buf + (fst_de->rec_len)))->inode = new_dir->i_num;
+		struct ext2_dir *snd_de = (struct ext2_dir *)(dir_buf->b_data + fst_de->rec_len);
+		snd_de->inode = new_dir->i_num;
 		write_blk(dir_buf);
 		--old_dir->i_links_count;
 		++new_dir->i_links_count;
-		write_blk(old_buf);
-		write_blk(new_buf);
+		old_dir->i_dirt = 1;
+		new_dir->i_dirt = 1;
 	}
 	retval = 0;
 
@@ -623,6 +657,10 @@ end_rename:
 		free(new_buf->b_data);
 	}
 	free(new_buf);
+	if (dir_buf) {
+		free(dir_buf->b_data);
+	}
+	free(dir_buf);
 	iput(old_inode);
 	iput(new_inode);
 	iput(old_dir);

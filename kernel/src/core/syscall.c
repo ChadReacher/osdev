@@ -108,6 +108,7 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 	if (EXT2_S_ISCHR(inode->i_mode)) {
 	}
 	if (EXT2_S_ISBLK(inode->i_mode)) {
+		return block_read(inode->i_dev, &f->f_pos, buf, count);
 	}
 	if (EXT2_S_ISDIR(inode->i_mode) || EXT2_S_ISREG(inode->i_mode)) {
 		if (count + f->f_pos > inode->i_size) {
@@ -144,6 +145,7 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 	if (EXT2_S_ISCHR(inode->i_mode)) {
 	}
 	if (EXT2_S_ISBLK(inode->i_mode)) {
+		return block_write(inode->i_dev, &f->f_pos, buf, count);
 	}
 	if (EXT2_S_ISREG(inode->i_mode)) {
 		return ext2_file_write(inode, f, buf, count);
@@ -196,7 +198,7 @@ i32 syscall_unlink(i8 *filename) {
 
 	err = dir_namei(filename, &basename, &dir);
 	if (err) {
-		return -ENOENT;
+		return err;
 	}
 	if (*basename == '\0') {
 		iput(dir);
@@ -601,6 +603,7 @@ i32 syscall_stat(i8 *path, struct stat *statbuf) {
 	statbuf->st_ctime = inode->i_ctime;
 	statbuf->st_blksize = 1024;
 	statbuf->st_blocks = inode->i_blocks;
+	iput(inode);
 	return 0;
 }
 
@@ -610,7 +613,7 @@ i32 syscall_fstat(i32 fd, struct stat *statbuf) {
 
 	if (fd >= NR_OPEN || !(f = current_process->fds[fd]) ||
 			!(inode = f->f_inode)) {
-		return -ENOENT;
+		return -EBADF;
 	}
 	statbuf->st_dev = inode->i_dev;
 	statbuf->st_ino = inode->i_num;
@@ -625,6 +628,7 @@ i32 syscall_fstat(i32 fd, struct stat *statbuf) {
 	statbuf->st_ctime = inode->i_ctime;
 	statbuf->st_blksize = 1024;
 	statbuf->st_blocks = inode->i_blocks;
+	iput(inode);
 	return 0;
 }
 
@@ -633,7 +637,7 @@ i32 syscall_chdir(i8 *path) {
 	struct ext2_inode *inode;
 
 	if ((err = namei(path, &inode))) {
-		return -ENOENT;
+		return err;
 	}
 	if (!EXT2_S_ISDIR(inode->i_mode)) {
 		iput(inode);
@@ -937,7 +941,7 @@ i32 syscall_link(i8 *path1, i8 *path2) {
 	err = dir_namei(path2, &basename, &dir);
 	if (err) {
 		iput(oldinode);
-		return -ENOENT;
+		return err;
 	}
 	if (*basename == '\0') {
 		iput(dir);
@@ -966,9 +970,10 @@ i32 syscall_link(i8 *path1, i8 *path2) {
 	if (err) {
 		iput(dir);
 		iput(oldinode);
-		return -err;
+		return err;
 	}
 	de->inode = oldinode->i_num;
+	write_blk(buf);
 	free(buf->b_data);
 	free(buf);
 	iput(dir);
@@ -1040,15 +1045,8 @@ struct dirent *syscall_readdir(DIR *dirp) {
 
 i32 syscall_test(i32 n) {
 	i32 i;
-	i8 *buf = malloc(8192 * 5);
-
 	debug("START syscall_test()\r\n");
 	kprintf("Got n - %d\r\n", n);
-	for (i = 0; i < 10000; ++i) {
-		i32 fd = syscall_open("/usr/file", O_RDONLY, 0);
-		syscall_read(fd, buf, 8192 * 5);
-		syscall_close(fd);
-	}
 	debug("END syscall_test()\r\n");
 	return 0;
 }
@@ -1065,15 +1063,18 @@ i32 syscall_access(i8 *path, i32 amode) {
 	if (current_process->uid == inode->i_uid) {
 		res >>= 6;
 	} else if (current_process->gid == inode->i_gid) {
-		res >>= 6;
+		res >>= 3;
 	}
 	if ((res & 0007 & amode) == i_mode) {
+		iput(inode);
 		return 0;
 	}
 	if (!current_process->uid &&
 			(!(amode & 1) || (i_mode & 0111))) {
+		iput(inode);
 		return 0;
 	}
+	iput(inode);
 	return -EACCES;
 }
 
@@ -1170,7 +1171,50 @@ i32 syscall_fcntl(i32 fd, i32 cmd, i32 arg) {
 
 /* TODO: Make more in-depth check */
 static i32 is_empty_dir(struct ext2_inode *inode) {
-	return inode->i_size == 24;
+	u32 block;
+	u32 inblock_offset, curr_off;
+	struct buffer *buf;
+	struct ext2_dir *de, *de1;
+
+	buf = read_blk(inode->i_dev, inode->i_block[0]);
+	if (!buf) { 
+		return 1;
+	}
+	de = (struct ext2_dir *)buf->b_data;
+	de1 = (struct ext2_dir *)(buf->b_data + de->rec_len);
+	if (de->inode != inode->i_num || !de1->inode ||
+			strcmp(".", de->name) || strcmp("..", de1->name)) {
+		return 1;
+	}
+	curr_off = inblock_offset = de->rec_len + de1->rec_len;
+	while (curr_off < inode->i_size) {
+		if (inblock_offset >= (i32)super_block.s_block_size) {
+			free(buf->b_data);
+			free(buf);
+			inblock_offset = 0;
+			block = ext2_bmap(inode, curr_off);
+			if (!block) {
+				curr_off += 1024;
+				continue;
+			}
+			buf = read_blk(inode->i_dev, block);
+			if (!buf) {
+				curr_off += 1024;
+				continue;
+			}
+		}
+		de = (struct ext2_dir *)(buf->b_data + inblock_offset);
+		if (de->inode) {
+			free(buf->b_data);
+			free(buf);
+			return 0;
+		}
+		inblock_offset += de->rec_len;
+		curr_off += de->rec_len;
+	}
+	free(buf->b_data);
+	free(buf);
+	return 1;
 }
 
 i32 syscall_rmdir(i8 *path) {
@@ -1181,7 +1225,7 @@ i32 syscall_rmdir(i8 *path) {
 	struct ext2_dir *de;
 
 	if ((retval = dir_namei(path, &basename, &dir))) {
-		return -ENOENT;
+		return retval;
 	}
 	if (*basename == '\0') {
 		iput(dir);
@@ -1248,7 +1292,7 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
 	struct ext2_dir *de;
 
 	if ((err = dir_namei(path, &basename, &dir))) {
-		return -ENOENT;
+		return err;
 	}
 	if (*basename == '\0') {
 		iput(dir);
@@ -1266,7 +1310,6 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
 		iput(dir);
 		return -ENOSPC;
 	}
-	inode->i_size = 24;
 	inode->i_dirt = 1;
 	inode->i_mtime = inode->i_atime = get_current_time();
 	if (!(inode->i_block[0] = alloc_block(inode->i_dev))) {
@@ -1275,18 +1318,23 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
 		iput(inode);
 		return -ENOSPC;
 	}
+	inode->i_size = 1024;
+	inode->i_blocks += 2;
 	if (!(dir_block = read_blk(inode->i_dev, inode->i_block[0]))) {
+		inode->i_blocks -= 2;
 		iput(dir);
 		--inode->i_links_count;
 		iput(inode);
-		return -ERROR;
+		return -EIO;
 	}
 	de = (struct ext2_dir *)(dir_block->b_data);
 	de->inode = inode->i_num;
+	de->rec_len = 12;
 	de->name_len = 1;
 	memcpy(de->name, ".", 1);
-	++de;
+	de = (struct ext2_dir *)(dir_block->b_data + de->rec_len);
 	de->inode = dir->i_num;
+	de->rec_len = 1024 - 12;
 	de->name_len = 2;
 	memcpy(de->name, "..", 2);
 	inode->i_links_count = 2;

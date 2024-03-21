@@ -3,12 +3,12 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define BUF_SZ 1024
+#define BUF_SZ (1024)
 
 i32 main(i32 argc, i8 *argv[]) {
 	i32 i, j, fd;
 	u8 c;
-	i8 buf[BUF_SZ] = {0};
+	i8 *buf = malloc(BUF_SZ);
 
 	if (argc == 1) {
 		while (true) {
@@ -30,15 +30,13 @@ i32 main(i32 argc, i8 *argv[]) {
 			printf("could not open: %s\n", argv[i]);
 			continue;
 		}
-
 		if (read(fd, buf, BUF_SZ) > 0) {
-			for (j = 0; j < 1024; ++j) {
+			for (j = 0; j < BUF_SZ; ++j) {
 				printf("%c", buf[j]);
 			}
 		} else {
 			printf("could not read: %s\n", argv[i]);
 		}
-
 		close(fd);
 	}
 

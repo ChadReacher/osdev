@@ -188,6 +188,7 @@ i32 access(i8 *path, i32 amode);
 i32 dup2(u32 oldfd, u32 newfd);
 i32 fcntl(i32 fd, i32 cmd, i32 arg);
 i32 mkdir(i8 *path, i32 mode);
+i32 rmdir(i8 *path);
 void perror(const i8 *s);
 i32 getgroups(i32 gidsetsize, i32 *grouplist);
 
