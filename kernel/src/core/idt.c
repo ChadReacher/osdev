@@ -11,8 +11,9 @@ void idt_set(u8 index, u32 isr, u8 flags) {
 	idt[index].isr_address_high = ((u32)isr >> 16) & 0xFFFF;
 }
 
-void init_idt() {
+void idt_init() {
 	idtr.base = (u32) &idt;
 	idtr.limit = IDT_ENTRIES * sizeof(idt_entry_t) - 1;
 	__asm__ __volatile__ ("lidt %0" : : "m" (idtr));
+	debug("IDT has been initialized\r\n");
 }

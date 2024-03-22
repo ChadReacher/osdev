@@ -54,7 +54,6 @@ i32 find_file_in_path(const i8 *file, i8 *buf) {
         memcpy(buf, envpath, n);
         buf[n++] = '/';
         strcpy(buf + n, file);
-		/* TODO: change to 'stat' */
         if (access(buf, F_OK) == 0) {
 			return 0;
         }

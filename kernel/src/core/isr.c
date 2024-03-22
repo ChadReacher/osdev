@@ -103,6 +103,12 @@ void isr_init() {
 	idt_set(30, (u32)isr30, 0x8E);
 	idt_set(31, (u32)isr31, 0x8E);
 
+	register_interrupt_handler(3, breakpoint_handler);
+
+	debug("ISRs have been initialized\r\n");
+}
+
+void irq_init() {
 	idt_set(32, (u32)irq0, 0x8E);
 	idt_set(33, (u32)irq1, 0x8E);
 	idt_set(34, (u32)irq2, 0x8E);
@@ -119,16 +125,6 @@ void isr_init() {
 	idt_set(45, (u32)irq13, 0x8E);
 	idt_set(46, (u32)irq14, 0x8E);
 	idt_set(47, (u32)irq15, 0x8E);
-
-	register_interrupt_handler(3, breakpoint_handler);
-
-	init_idt();
-	debug("IDT has been initialized\r\n");
-	debug("ISRs have been initialized\r\n");
-}
-
-void irq_init() {
-	__asm__ __volatile__ ("sti");
 	debug("IRQs have been initialized\r\n");
 }
 

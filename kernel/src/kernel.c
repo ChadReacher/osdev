@@ -23,11 +23,11 @@
 void _start() {
 	__asm__ __volatile__ ("cli");
 	serial_init();
-
 	gdt_init();
 	isr_init();
+	irq_init();
+	idt_init();
 	tss_init(5, 0x10, 0);
-	/*irq_init(); FOR NOW, when testing filesystem */
 	syscall_init();
 	timer_init(TIMER_FREQ);
 	keyboard_init();

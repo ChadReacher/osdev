@@ -27,6 +27,6 @@ typedef struct {
 } __attribute__((packed)) idtr_t;
 
 void idt_set(u8 index, u32 isr, u8 flags);
-void init_idt();
+void idt_init();
 
 #endif
