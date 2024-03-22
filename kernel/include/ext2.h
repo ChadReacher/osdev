@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "syscall.h"
+#include "process.h"
 
 #define ROOT_DEV 0x306
 
@@ -31,6 +32,7 @@
 #define EXT2_S_ISDIR(m) (((m) & EXT2_S_IFDIR) == EXT2_S_IFDIR)
 #define EXT2_S_ISCHR(m) (((m) & EXT2_S_IFREG) == EXT2_S_IFREG)
 #define EXT2_S_ISBLK(m) (((m) & EXT2_S_IFBLK) == EXT2_S_IFBLK)
+#define EXT2_S_ISFIFO(m) (((m) & EXT2_S_IFIFO) == EXT2_S_IFIFO)
 
 #define EXT2_S_ISUID 0x0800
 #define EXT2_S_ISGID 0x0400
@@ -150,6 +152,8 @@ struct ext2_inode {
 	u32 i_num;
 	u32 i_count;
 	i8  i_dirt;
+	i8  i_pipe;
+	struct _process *i_wait;
 } __attribute__((packed));
 
 struct ext2_dir {

@@ -4,6 +4,7 @@
 #include <panic.h>
 #include <gdt.h>
 #include <isr.h>
+#include <idt.h>
 #include <tss.h>
 #include <syscall.h>
 #include <timer.h>

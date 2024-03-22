@@ -4,7 +4,7 @@
 #include <string.h>
 #include <panic.h>
 
-i32 block_write(u16 dev, u32 *pos, i8 *buf, u32 count) {
+i32 block_write(u16 dev, i32 *pos, i8 *buf, u32 count) {
 	u32 block = *pos / BLOCK_SIZE;
 	u32 offset = *pos % BLOCK_SIZE;
 	u32 chars;
@@ -36,7 +36,7 @@ i32 block_write(u16 dev, u32 *pos, i8 *buf, u32 count) {
 	return written;
 }
 
-i32 block_read(u16 dev, u32 *pos, i8 *buf, u32 count) {
+i32 block_read(u16 dev, i32 *pos, i8 *buf, u32 count) {
 	u32 block = *pos / BLOCK_SIZE;
 	u32 offset = *pos % BLOCK_SIZE;
 	u32 chars;

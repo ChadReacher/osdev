@@ -31,6 +31,16 @@ syscall2(i32, mkdir, i8 *, path, i32, mode)
 
 syscall1(i32, rmdir, i8 *, path)
 
+i32 pipe(i32 fildes[2]) {
+	i32 ret;
+
+	__asm__ __volatile__ ("int $0x80" 
+			: "=a"(ret) 
+			: "a"(__NR_pipe), "b"(fildes));
+
+	return ret;
+}
+
 i32 execv(const i8 *pathname, i8 **argv) {
 	return execve(pathname, argv, environ);
 }

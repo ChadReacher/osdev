@@ -2,6 +2,7 @@
 #define SYSCALL_H
 
 #include "types.h"
+
 #define S_IFMT   0170000
 #define S_IFSOCK 014000
 #define S_IFLNK  0120000

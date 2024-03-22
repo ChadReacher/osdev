@@ -14,7 +14,7 @@ void debug(i8 *fmt, ...) {
 }
 
 void panic(i8 *fmt, ...) {
-	i8 buf[512];
+	i8 buf[512] = {0};
 	va_list arg;
 
 	va_start(arg, fmt);

@@ -1,4 +1,5 @@
 #include <idt.h>
+#include <panic.h>
 
 idt_entry_t idt[IDT_ENTRIES];
 idtr_t idtr;

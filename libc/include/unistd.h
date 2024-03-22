@@ -74,6 +74,7 @@
 #define __NR_rmdir			48
 #define __NR_mkdir          49
 #define __NR_getgroups		50
+#define __NR_pipe			51
 
 #define syscall0(type, name) \
 type name(void) { \
@@ -191,5 +192,6 @@ i32 mkdir(i8 *path, i32 mode);
 i32 rmdir(i8 *path);
 void perror(const i8 *s);
 i32 getgroups(i32 gidsetsize, i32 *grouplist);
+i32 pipe(i32 fildes[2]);
 
 #endif

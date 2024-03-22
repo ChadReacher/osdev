@@ -5,6 +5,9 @@
 #include "errno.h"
 #include "isr.h"
 
+
+void do_exit(i32 code);
+
 extern process_t *current_process;
 extern queue_t *stopped_queue;
 extern queue_t *ready_queue;
@@ -35,8 +38,8 @@ i32 handle_signal(registers_state *regs) {
 	}
 	sigdelset(&current_process->sigpending, sig);
 	action = &(current_process->signals[sig]);
-	if (regs->eax == -ERESTART) {
-		if (action->sa_handler > 1) {
+	if ((i32)regs->eax == -ERESTART) {
+		if ((u32)action->sa_handler > 1) {
 			regs->eax = -EINTR;
 		} else {
 			regs->eax = regs->int_number;

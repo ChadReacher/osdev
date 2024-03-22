@@ -81,6 +81,21 @@ struct ext2_inode *get_empty_inode() {
 	return inode;
 }
 
+struct ext2_inode *get_pipe_inode() {
+	struct ext2_inode *inode;
+
+	if (!(inode = get_empty_inode())) {
+		return NULL;
+	}
+	/* Data */
+	inode->i_block[0] = (u32)malloc(4096); 
+	/* [1] - nread, [2] - nwrite */
+	inode->i_block[1] = inode->i_block[2] = 0;
+	inode->i_count = 2;
+	inode->i_pipe = 1;
+	return inode;
+}
+
 struct ext2_inode *iget(u16 dev, u32 nr) {
 	struct ext2_inode *inode;
 
@@ -113,7 +128,18 @@ void iput(struct ext2_inode *inode) {
 		debug("iput failed: inode #%d is already free\r\n", inode->i_num);
 		return;
 	}
-	--inode->i_count;
+	if (inode->i_pipe) {
+		wake_up(&inode->i_wait);
+		if (--inode->i_count) {
+			return;
+		}
+		free((void *)inode->i_block[0]);
+		inode->i_count = 0;
+		inode->i_dirt = 0;
+		inode->i_pipe = 0;
+		inode->i_block[0] = inode->i_block[1] = inode->i_block[2] = 0;
+	}
+	--inode->i_count;	
 	if (!inode->i_count) {
 		if (!inode->i_links_count) {
 			/* Free disk blocks, free inode in inode bitmap,  */

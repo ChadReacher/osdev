@@ -30,6 +30,7 @@ extern process_t *init_process;
 extern process_t *current_process;
 extern void irq_ret();
 
+extern struct file file_table[NR_FILE];
 
 i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 	i32 fd, res;
@@ -105,6 +106,9 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 	}
 
 	inode = f->f_inode;
+	if (inode->i_pipe) {
+		return (f->f_mode & 1 ? read_pipe(inode, buf, count) : -1);
+	}
 	if (EXT2_S_ISCHR(inode->i_mode)) {
 	}
 	if (EXT2_S_ISBLK(inode->i_mode)) {
@@ -142,6 +146,9 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 	}
 
 	inode = f->f_inode;
+	if (inode->i_pipe) {
+		return (f->f_mode & 2 ? write_pipe(inode, buf, count) : -1);
+	}
 	if (EXT2_S_ISCHR(inode->i_mode)) {
 	}
 	if (EXT2_S_ISBLK(inode->i_mode)) {
@@ -162,6 +169,9 @@ i32 syscall_lseek(i32 fd, i32 offset, i32 whence) {
 			!(file->f_inode) ||
 			!IS_SEEKABLE(MAJOR(file->f_inode->i_dev))) {
 		return -EBADF;
+	}
+	if (file->f_inode->i_pipe) {
+		return -ESPIPE;
 	}
 
 	switch (whence) {
@@ -297,6 +307,31 @@ i32 syscall_fork() {
 	return child->pid;
 }
 
+i32 kill_pg(i32 pgrp, i32 sig) {
+	i32 i, len, err, retval = -ESRCH;
+	i32 found = 0;
+	process_t *p;
+	queue_node_t *node;
+
+	node = procs->head; 
+	len = procs->len;
+	if (sig < 0 || sig > 32 || pgrp <= 0) {
+		return -EINVAL;
+	}
+	for (i = 0; i < len; ++i) {
+		p = (process_t *)node->value;
+		if (p->pgrp == pgrp) {
+			if (sig && (err = send_signal(p, sig))) {
+				retval = err;
+			} else {
+				++found;
+			}
+		}
+		node = node->next;
+	}
+	return (found ? 0 : retval);
+}
+
 i32 syscall_kill(i32 pid, i32 sig) {
 	process_t *p;
 
@@ -361,31 +396,6 @@ static i32 has_stopped_jobs(i32 pgrp) {
 		node = node->next;
 	}
 	return 0;
-}
-
-i32 kill_pg(i32 pgrp, i32 sig) {
-	i32 i, len, err, retval = -ESRCH;
-	i32 found = 0;
-	process_t *p;
-	queue_node_t *node;
-
-	node = procs->head; 
-	len = procs->len;
-	if (sig < 0 || sig > 32 || pgrp <= 0) {
-		return -EINVAL;
-	}
-	for (i = 0; i < len; ++i) {
-		p = (process_t *)node->value;
-		if (p->pgrp == pgrp) {
-			if (sig && (err = send_signal(p, sig))) {
-				retval = err;
-			} else {
-				++found;
-			}
-		}
-		node = node->next;
-	}
-	return (found ? 0 : retval);
 }
 
 void do_exit(i32 code) {
@@ -656,7 +666,7 @@ i32 syscall_chdir(i8 *path) {
 
 
 i32 syscall_sigaction(i32 sig, sigaction_t *act, sigaction_t *oact, u32 *sigreturn) {
-	if (sig <= 0 || sig >= NSIG || sig == SIGKILL | sig == SIGSTOP) {
+	if (sig <= 0 || sig >= NSIG || sig == SIGKILL || sig == SIGSTOP) {
 		return -EINVAL;
 	}
 	if (current_process->pid == 1) {
@@ -842,7 +852,7 @@ i32 syscall_setsid() {
 }
 
 static i32 session_of_pgrp(i32 pgrp) {
-	i32 i;
+	u32 i;
 	queue_node_t *node;
 	for (i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
@@ -1044,7 +1054,6 @@ struct dirent *syscall_readdir(DIR *dirp) {
 }
 
 i32 syscall_test(i32 n) {
-	i32 i;
 	debug("START syscall_test()\r\n");
 	kprintf("Got n - %d\r\n", n);
 	debug("END syscall_test()\r\n");
@@ -1358,5 +1367,130 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
 	free(buf);
 	iput(dir);
 	iput(inode);
+	return 0;
+}
+
+void wake_up(process_t **p) {
+	if (p && *p) {
+		(**p).state = RUNNING;
+		queue_enqueue(ready_queue, *p);
+		*p = NULL;
+	}
+}
+
+void sleep_on(process_t **p) {
+	process_t *tmp;
+	if (!p) {
+		return;
+	}
+	tmp = *p;
+	*p = current_process;
+	current_process->state = INTERRUPTIBLE;
+	schedule();
+	debug("after sleep\n");
+	if (tmp) {
+		tmp->state = RUNNING;
+	}
+}
+
+#define PIPE_HEAD(inode) (inode->i_block[1])
+#define PIPE_TAIL(inode) (inode->i_block[2])
+#define PIPE_SIZE(inode) ((PIPE_HEAD(inode)-PIPE_TAIL(inode))&(4096-1))
+#define PIPE_FULL(inode) (PIPE_SIZE(inode) == (4096-1))
+#define PIPE_EMPTY(inode) (PIPE_HEAD(inode) == PIPE_TAIL(inode))
+i32 read_pipe(struct ext2_inode *inode, i8 *buf, u32 count) {
+	i8 *b = buf;
+	
+	while (PIPE_EMPTY(inode)) {
+		wake_up(&inode->i_wait);
+		if (inode->i_count != 2) {
+			return 0;
+		}
+		sleep_on(&inode->i_wait);
+	}
+	while (count > 0 && !(PIPE_EMPTY(inode))) {
+		--count;
+		*b = ((i8 *)inode->i_block[0])[PIPE_TAIL(inode)];
+		++b;
+		PIPE_TAIL(inode) = PIPE_TAIL(inode) + 1;
+	}
+	return b - buf;
+}
+
+i32 write_pipe(struct ext2_inode *inode, i8 *buf, u32 count) {
+	i8 *b = buf;
+
+	wake_up(&inode->i_wait);
+	if (inode->i_count != 2) {
+		sigaddset(&current_process->sigpending, SIGPIPE);
+		return -1;
+	}
+	while (count-- > 0) {
+		while (PIPE_FULL(inode)) {
+			wake_up(&inode->i_wait);
+			if (inode->i_count != 2) {
+				sigaddset(&current_process->sigpending, SIGPIPE);
+				return -1;
+			}
+			sleep_on(&inode->i_wait);
+		}
+		((i8 *)inode->i_block[0])[PIPE_HEAD(inode)] = *b;
+		++b;
+		++PIPE_HEAD(inode);
+		/*PIPE_HEAD(inode) = PIPE_HEAD(inode) + 1;*/
+		wake_up(&inode->i_wait);
+	}
+	wake_up(&inode->i_wait);
+	return b - buf;
+}
+
+i32 syscall_pipe(i32 fidles[2]) {
+	struct ext2_inode *inode;
+	struct file *f[2];
+	i32 fd[2];
+	i32 i, j;
+
+	j = 0;
+	for (i = 0; j < 2 && i < NR_FILE; ++i) {
+		if (!file_table[i].f_count) {
+			f[j] = file_table + i;
+			++f[j]->f_count;
+			++j;
+		}
+	}
+	if (j == 1) {
+		f[0]->f_count = 0;
+	}
+	if (j < 2) {
+		return -1;
+	}
+	j = 0;
+	for (i = 3; j < 2 && i < NR_OPEN; ++i) {
+		if (!current_process->fds[i]) {
+			fd[j] = i;
+			current_process->fds[i] = f[j];
+			++j;
+		}
+	}
+	if (j == 1) {
+		current_process->fds[fd[0]] = NULL;
+	}
+	if (j < 2) {
+		f[0]->f_count=f[1]->f_count = 0;
+		return -1;
+	}
+	if (!(inode = get_pipe_inode())) {
+		current_process->fds[fd[0]] = 
+			current_process->fds[fd[1]] = NULL;
+		f[0]->f_count=f[1]->f_count = 0;
+		return -1;
+	}
+	f[0]->f_mode = 1; /* read */
+	f[1]->f_mode = 2; /* write */
+	f[0]->f_inode = f[1]->f_inode = inode;
+	f[0]->f_pos = f[1]->f_pos = 0;
+
+	fidles[0] = fd[0];
+	fidles[1] = fd[1];
 	return 0;
 }
