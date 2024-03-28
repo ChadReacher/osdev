@@ -536,7 +536,7 @@ i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 	i32 retval;
 	struct buffer *old_buf, *new_buf, *dir_buf;
 	struct ext2_inode *old_inode, *new_inode;
-	struct ext2_dir *old_de, *pde, *new_de;
+	struct ext2_dir *old_de, *new_de;
 
 	dir_buf = old_buf = new_buf = NULL;
 	old_inode = new_inode = NULL;
@@ -632,13 +632,14 @@ i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_name,
 		new_inode->i_dirt = 1;
 	}
 	if (EXT2_S_ISDIR(old_inode->i_mode)) {
+		struct ext2_dir *fst_de, *snd_de;
 		retval = -EIO;
 		dir_buf = read_blk(old_inode->i_dev, old_inode->i_block[0]);
 		if (!dir_buf) {
 			goto end_rename;
 		}
-		struct ext2_dir *fst_de = (struct ext2_dir *)dir_buf->b_data;
-		struct ext2_dir *snd_de = (struct ext2_dir *)(dir_buf->b_data + fst_de->rec_len);
+		fst_de = (struct ext2_dir *)dir_buf->b_data;
+		snd_de = (struct ext2_dir *)(dir_buf->b_data + fst_de->rec_len);
 		snd_de->inode = new_dir->i_num;
 		write_blk(dir_buf);
 		--old_dir->i_links_count;

@@ -2,25 +2,22 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdlib.h>
+#include <fcntl.h>
 
 #define BUF_SZ (1024)
 
 i32 main(i32 argc, i8 *argv[]) {
-	i32 i, j, fd;
-	u8 c;
+	i32 i, j, fd, r, err;
 	i8 *buf = malloc(BUF_SZ);
 
 	if (argc == 1) {
-		while (true) {
-			i = 0;
-			do {
-				c = getchar();
-				putchar(c);
-				buf[i++] = c;
-			} while (c != '\n');
-			printf(buf);
-			memset(buf, 0, BUF_SZ);
-		};
+		while ((r = read(0, buf, BUF_SZ)) > 0) {
+			if ((err = write(1, buf, r)) < 0) {
+				perror("cat: write failed");
+			}
+		}
+		return 0;
 	}
 
 	for (i = 1; i < argc; ++i) {

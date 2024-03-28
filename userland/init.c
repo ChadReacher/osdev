@@ -7,6 +7,7 @@
 #include <sys/times.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <fcntl.h>
 
 extern i8 **environ;
 
@@ -239,9 +240,21 @@ int main() {
 	}
 	*/
 	
-	i32 pid = fork();
-	i32 stat_loc = 0;
+	i32 pid, stat_loc;
+	i32 fd = open("/dev/tty0", O_RDWR, 0);
+	dup(fd);
+	dup(fd);
+
+	pid = fork();
+	stat_loc = 0;
 	if (pid == 0) {
+		close(0);
+		close(1);
+		close(2);
+		setsid();
+		open("/dev/tty0", O_RDWR, 0);
+		dup(0);
+		dup(0);
 		i8 *m[] = {"/bin/sh", 0};
 		execv("/bin/sh", m);
 		printf("After exec\n");

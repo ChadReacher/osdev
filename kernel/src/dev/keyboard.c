@@ -3,147 +3,168 @@
 #include <port.h>
 #include <screen.h>
 #include <panic.h>
+#include <tty.h>
 
 #define RING_BUFFER_SIZE 8
 
+extern struct tty_struct tty_table[];
+
 /* Scancode without info about pressed or released key */
+u32 leds = 0;
+bool alt_mode = 0;
+bool altgr_mode = 0;
 bool ctrl_mode = 0;
 bool shift_mode = 0;
 bool capslock_mode = 0;
 
-static u8 keyboard_layout_us[2][128] = {
-	/* When SHIFT is NOT pressed */
-	{
-		KEY_NULL, KEY_ESC, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-		'-', '=', KEY_BACKSPACE, '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u',
-		'i', 'o', 'p', '[', ']', '\n', KEY_LCTRL, 'a', 's', 'd', 'f', 'g',
-		'h', 'j', 'k', 'l', ';', '\'', '`', KEY_LSHIFT, '\\', 'z', 'x', 'c',
-		'v', 'b', 'n', 'm', ',', '.', '/', KEY_RSHIFT, '*', KEY_LALT, ' ',
-		KEY_CAPSLOCK, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8,
-		KEY_F9, KEY_F10, KEY_NUMBERLOCK, KEY_SCROLLLOCK, '7', '8',
-		'9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.', 0, 0, 0, KEY_F11,
-		KEY_F12,
-	}, 
-	/* When SHIFT IS pressed */
-	{
-		KEY_NULL, KEY_ESC, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
-		'_', '+', KEY_BACKSPACE, '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U',
-		'I', 'O', 'P', '{', '}', '\n', KEY_LCTRL, 'A', 'S', 'D', 'F', 'G',
-		'H', 'J', 'K', 'L', ':', '"', '~', KEY_LSHIFT, '|', 'Z', 'X', 'C',
-		'V', 'B', 'N', 'M', '<', '>', '?', KEY_RSHIFT, '*', KEY_LALT, ' ',
-		KEY_CAPSLOCK, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8,
-		KEY_F9, KEY_F10, KEY_NUMBERLOCK, KEY_SCROLLLOCK, '7', '8',
-		'9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.', 0, 0, 0, KEY_F11,
-		KEY_F12,
-	}
+static u8 key_map[128] = {
+	0, 27,							/* Null, Escape */
+	'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',
+	127, '\t',						/* Backspace, tab */
+	'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']',
+	'\n', 0,						/* Enter, Left CTRL */
+	'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
+	0,								/* left shift */
+	'\\', 
+	'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',
+	0,								/* right shift */
+	'*',							/* asterisk(numpad) */
+	0,								/* left alt */
+	' ',					
+	0,								/* capslock, */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	/* F1 - F10 */
+	0, 0,							/* NumLock, ScrollLock */
+	0, 0, 0, '-',					/* 7(Home), 8, 9(PgUp), minus */
+	0, 0, 0, '+', 					/* 4(left), 5(mid), 6(right), plus */
+	0, 0, 0, 0, 0, 0,				/* 1(End), 2, 3(PgDn), 0, .(Del) */
+	0, 0, 0,						/* NULL... */
+	0, 0,							/* F11, F12 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,	0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-u8 scancodes[RING_BUFFER_SIZE];
-u8 buffer_len = 0;
-u8 read_idx = 0;
-u8 write_idx = 0;
+static u8 shift_map[128] = {
+	0, 27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',
+	127, '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}',
+	'\n', 0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~',
+	0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*',
+	0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '-', 0, 0, 0, '+',
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
 
-u8 keyboard_getchar() {
-	u8 scancode = keyboard_get_scancode();
-	u8 raw_scancode = scancode & ~KEYBOARD_RELEASE;
-	
-	switch (raw_scancode) {
-		case KEY_LCTRL:
-			if (KEY_IS_PRESSED(scancode)) {
-				ctrl_mode = 1;
-			} else {
-				ctrl_mode = 0;
-			}
-			return 0;
-		case KEY_BACKSPACE:
-			if (KEY_IS_PRESSED(scancode)) {
-				return '\b';
-			}
-			return 0;
-			break;
-		case KEY_ENTER:
-			if (KEY_IS_PRESSED(scancode)) {
-				return '\n';
-			}
-			return 0;
-			break;
-		case KEY_TAB:
-			if (KEY_IS_PRESSED(scancode)) {
-				return '\t';
-			}
-			return 0;
-			break;
-		case KEY_LSHIFT:
-		case KEY_RSHIFT:
-			if (KEY_IS_PRESSED(scancode)) {
-				shift_mode = 1;
-			} else {
-				shift_mode = 0;
-			}
-			return 0;
-			break;
-		case KEY_CAPSLOCK:
-			if (KEY_IS_PRESSED(scancode)) {
-				capslock_mode = !capslock_mode;
-			}			
-			return 0;
-			break;
-		case UP_ARROW:
-		case DOWN_ARROW:
-		case LEFT_ARROW:
-		case RIGHT_ARROW:
-			return 0;
-			break;
-		default:
-			if (KEY_IS_PRESSED(scancode)) {
-				u8 c = keyboard_layout_us[(shift_mode ^ capslock_mode) ? 1 : 0][raw_scancode];
-				if (!c) {
-					return 0;
-				}
+static void put_queue(i8 ch) {
+	u32 new_head;
+	struct tty_queue *qp = &tty_table[0].input;
 
-				if (ctrl_mode) {
-					return c;
-				} else {
-					return c;
-				}
-			}
-			return 0;
-			break;
+	qp->buf[qp->head] = ch;
+	if ((new_head = (qp->head + 1) & (TTY_QUEUE_BUF_SZ - 1)) != qp->tail) {
+		qp->head = new_head;
 	}
-
+	if (qp->process != NULL) {
+		qp->process->state = RUNNING;
+	}
 }
 
-u8 keyboard_get_scancode() {
-	u8 scancode;
-
-	if (buffer_len == 0) {
-		return 0;
-	}
-	scancode = scancodes[read_idx++];
-	--buffer_len;
-
-	if (read_idx == RING_BUFFER_SIZE) {
-		read_idx = 0;
-	}
-	return scancode;
-}
+static i8 ext_key = 0;
 
 static void keyboard_handler() {
-	u8 status;
+	u8 status, scancode, key;
 
 	status = port_inb(KEYBOARD_STATUS_PORT);
 	/* Is output buffer full? */
-	if (status & 0x01) {
-		u8 scancode = port_inb(KEYBOARD_DATA_PORT);
-		if (buffer_len == RING_BUFFER_SIZE) {
-			return;
-		}
-		scancodes[write_idx++] = scancode;
-		++buffer_len;
-		if (write_idx == RING_BUFFER_SIZE) {
-			write_idx = 0;
-		}
+	if (!status & 0x01) {
+		return;
 	}
+	scancode = port_inb(KEYBOARD_DATA_PORT);
+	/* scancode is extended byte? */
+	if (scancode == 0xE0) {
+		debug("extkey\r\n");
+		ext_key = 1;
+		return;
+	}
+
+	/* If the key has been released */
+	if (scancode & 0x80) {
+		switch (scancode & 0x7F) {
+			case KEY_LALT:
+				debug("alt\r\n");
+				if (!ext_key) {
+					alt_mode = 0;
+				} else {
+					altgr_mode = 0;
+				}
+				break;
+			case KEY_LCTRL:
+				debug("ctrl\r\n");
+				ctrl_mode = 0;
+				break;
+			case KEY_LSHIFT:
+			case KEY_RSHIFT:
+				debug("shift\r\n");
+				if (!ext_key) {
+					shift_mode = 0;
+				}
+				break;
+			case KEY_CAPSLOCK:
+			case KEY_NUMBERLOCK:
+			case KEY_SCROLLLOCK:
+				debug("capslock or numberlock or scrolllock\r\n");
+				leds = 0;
+				break;
+		}
+		ext_key = 0;
+		return;
+	}
+
+	switch (scancode & 0x7F) {
+		case KEY_CAPSLOCK:
+			leds = 1;
+			return;
+		case KEY_NUMBERLOCK:
+			leds = 1;
+			return;
+		case KEY_SCROLLLOCK:
+			leds = 1;
+			return;
+		case KEY_LALT:
+			if (!ext_key) {
+				alt_mode = 1;
+			} else {
+				altgr_mode = 1;
+			}
+			return;
+		case KEY_LCTRL:
+			ctrl_mode = 1;
+			return;
+		case KEY_LSHIFT:
+		case KEY_RSHIFT:
+			shift_mode = 1;
+			ext_key = 0;
+			return;
+	}
+	debug("begin --------\r\n");
+	debug("scancode - %x, %x\r\n", scancode, scancode & 0x7F);
+	debug("end   --------\r\n");
+
+
+	if (alt_mode) {
+		key = 0;
+		debug("keyboard_handler: alt_mode unimplemented\r\n"); 
+		/*key = alt_map[scancode & 0x7F];*/
+	} else if (shift_mode || ctrl_mode || capslock_mode) {
+		key = shift_map[scancode & 0x7F];
+		if (ctrl_mode) {
+			key &= 0x1F;
+		}
+	} else {
+		key = key_map[scancode & 0x7F];
+	}
+	if (key == 0) {
+		return;
+	}
+	put_queue(key);
+	do_cook(&tty_table[0]);
 }
 
 void keyboard_init() {

@@ -212,15 +212,7 @@ void _exit(i32 exit_code) {
 }
 
 
-i32 waitpid(i32 pid, i32 *stat_loc, i32 options) {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_waitpid), "b"(pid), "c"(stat_loc), "d"(options));
-
-	return ret;
-}
+syscall3(i32, waitpid, i32, pid, i32 *, stat_loc, i32, options)
 
 i32 wait(i32 *stat_loc) {
 	return waitpid(-1, stat_loc, 0);

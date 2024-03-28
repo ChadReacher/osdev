@@ -6,6 +6,7 @@ enter_usermode_asm:
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
+	;sti
 	push eax			; user SS
 	push ebx			; user stack
 	push 0x200			; EFLAGS

@@ -1,0 +1,6 @@
+Plans for working on OS:
+Also implement pipe, fifo
+* Add bootinfo structure and pass it from bootloader to kernel
+* Networking
+* Threads
+* timer events

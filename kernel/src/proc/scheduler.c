@@ -12,6 +12,7 @@
 extern u32 ticks;
 extern void switch_to(context_t **old_context, context_t *new_context);
 
+i32 need_resched = 0;
 queue_t *ready_queue;
 queue_t *stopped_queue;
 queue_t *procs;
@@ -101,11 +102,36 @@ process_t *get_proc_by_id(u32 pid) {
 	return NULL;
 }
 
+void wake_up(process_t **p) {
+	if (p && *p) {
+		(**p).state = RUNNING;
+		queue_enqueue(ready_queue, *p);
+		*p = NULL;
+		need_resched = 1;
+	}
+}
+
+void goto_sleep(process_t **p) {
+	process_t *tmp;
+	if (!p) {
+		return;
+	}
+	tmp = *p;
+	*p = current_process;
+	current_process->state = INTERRUPTIBLE;
+	schedule();
+	debug("after sleep\n");
+	if (tmp) {
+		tmp->state = RUNNING;
+	}
+}
+
 void schedule() {
 	u32 i;
 	process_t *next_proc;
 	queue_node_t *node;
 
+	/*
 	debug("Queue of ready processes:\r\n");
 	node = ready_queue->head;
 	for (i = 0; i < ready_queue->len; ++i) {
@@ -153,7 +179,7 @@ void schedule() {
 		debug("Process(%p) with PID %d, next: %p, state: %s\r\n",
 				p, p->pid, node->next, state);
 		node = node->next;
-	}
+	}*/
 
 	/* Stub implementation */
 	/* TODO: Use separate data structure or organize it effectively */
@@ -176,6 +202,7 @@ void schedule() {
 		node = node->next;
 	}
 
+	need_resched = 0;
 	if (!ready_queue->len) {
 		if (current_process->state == RUNNING) {
 			return;

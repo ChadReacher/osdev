@@ -4,6 +4,7 @@
 #include <string.h>
 #include <panic.h>
 #include <heap.h>
+#include <scheduler.h>
 
 struct ext2_inode inodes_table[NR_INODE] = {{0,},};
 

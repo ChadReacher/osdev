@@ -15,8 +15,8 @@ void pagefault_handler(registers_state *regs) {
 	__asm__ __volatile__ ("movl %%cr2, %0" : "=r"(bad_address));
 	err_code = regs->err_code;
 
-	kprintf("page fault\n");
 	debug("Page Fault Exception. Bad Address: 0x%x. Error code: %d\r\n", bad_address, err_code);
+	kprintf("page fault\n");
 
 	not_present = err_code & 0x1;
 	rw = err_code & 0x2;

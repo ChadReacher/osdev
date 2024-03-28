@@ -31,7 +31,7 @@ void enter_usermode() {
             : 
             : "a"((u32)current_process->directory));
 
-	__asm__ __volatile__ ("sti");
+	/*__asm__ __volatile__ ("sti");*/
 	enter_usermode_asm(current_process->regs->useresp);
 }
 
@@ -64,6 +64,7 @@ void user_init() {
 	for (i = 0; i < NR_GROUPS; ++i) {
 		init_process->groups[i] = -1;
 	}
+	init_process->tty = -1;
 	init_process->directory = paging_copy_page_dir(0);
 	kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
 	__asm__ __volatile__ ("movl %%eax, %%cr3" : : "a"(init_process->directory));
@@ -85,7 +86,7 @@ void user_init() {
 
 i32 get_new_fd() {
 	i32 fd;
-	for (fd = 3; fd < NR_OPEN; ++fd) {
+	for (fd = 0; fd < NR_OPEN; ++fd) {
 		if (!current_process->fds[fd]) {
 			break;
 		}

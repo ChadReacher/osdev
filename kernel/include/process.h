@@ -59,6 +59,7 @@ typedef struct _process {
 	i32 pgrp, session, leader;
 	i32 groups[NR_GROUPS];
 	i32 utime, stime, cutime, cstime;
+	i32 tty;
 } process_t;
 
 void user_init();

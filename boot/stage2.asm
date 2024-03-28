@@ -56,6 +56,7 @@ get_memory_map:
 	clc
 
 setup_vesa:
+	jmp prepare_for_32
 	; Get VESA BIOS information
 	xor ax, ax
 	mov es, ax

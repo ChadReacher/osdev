@@ -11,6 +11,10 @@ int main(i32 argc, i8 *argv[]) {
 	for (i = 0; i < argc; ++i) {
 		printf("argv[%d] - %s\n", i, argv[i]);
 	}
+	for (i = 0; i < 100; ++i) {
+		printf("%d\n", i);
+		sleep(1);
+	}
 	printf("Enter character: ");
 	m = getchar();
 	putchar(m);

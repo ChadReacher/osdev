@@ -30,7 +30,7 @@
 
 #define EXT2_S_ISREG(m) (((m) & EXT2_S_IFREG) == EXT2_S_IFREG)
 #define EXT2_S_ISDIR(m) (((m) & EXT2_S_IFDIR) == EXT2_S_IFDIR)
-#define EXT2_S_ISCHR(m) (((m) & EXT2_S_IFREG) == EXT2_S_IFREG)
+#define EXT2_S_ISCHR(m) (((m) & EXT2_S_IFCHR) == EXT2_S_IFCHR)
 #define EXT2_S_ISBLK(m) (((m) & EXT2_S_IFBLK) == EXT2_S_IFBLK)
 #define EXT2_S_ISFIFO(m) (((m) & EXT2_S_IFIFO) == EXT2_S_IFIFO)
 
@@ -187,6 +187,8 @@ i32 ext2_bmap(struct ext2_inode *inode, u32 offset);
 i32 ext2_create_block(struct ext2_inode *inode, u32 offset);
 i32 ext2_file_read(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
 i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
+
+struct ext2_inode *get_pipe_inode();
 
 i32 dir_namei(const i8 *pathname, const i8 **name,
 		struct ext2_inode **res_inode);

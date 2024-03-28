@@ -4,7 +4,7 @@
 i32 main(i32 argc, i8 *argv[]) {
 	i32 err;
 	if (argc != 2) {
-		printf("usage: rmdir absolute-path");
+		printf("usage: rmdir absolute-path\n");
 		return 1;
 	}
 	err = rmdir(argv[1]);

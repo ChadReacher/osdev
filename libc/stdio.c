@@ -10,9 +10,7 @@ i32 putchar(i32 c) {
 
 i32 getchar() {
 	u8 c = 0;
-	do {
-		read(stdin, &c, 1);
-	} while (c == 0);
+	read(stdin, &c, 1);
 	return c;
 }
 
@@ -22,7 +20,7 @@ void printf(const i8 *fmt, ...) {
 
 	va_start(args, fmt);
 	memset(internal_buf, 0, sizeof internal_buf);
-	vsprintf(internal_buf, fmt, args);	
+	vsprintf(internal_buf, fmt, args);
 	write(STDOUT_FILENO, internal_buf, strlen(internal_buf));
 	va_end(args);
 }

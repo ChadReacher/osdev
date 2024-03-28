@@ -38,7 +38,7 @@ i32 handle_signal(registers_state *regs) {
 	}
 	sigdelset(&current_process->sigpending, sig);
 	action = &(current_process->signals[sig]);
-	if ((i32)regs->eax == -ERESTART) {
+	if (regs->eax == (u32)-ERESTART) {
 		if ((u32)action->sa_handler > 1) {
 			regs->eax = -EINTR;
 		} else {
@@ -52,14 +52,14 @@ i32 handle_signal(registers_state *regs) {
 				send_signal(current_process->parent, SIGCHLD);
 			}
 			current_process->state = STOPPED;
-			current_process->exit_code = sig;
+			current_process->exit_code = ((0x7F << 8) | sig);
 			queue_enqueue(stopped_queue, current_process);
 			schedule();
 			return 0;
 		} else if (sig == SIGCHLD || sig == SIGCONT) {
 			return 0;
 		} else {
-			do_exit(sig);
+			do_exit((0x7E << 8) | sig);
 		}
 	} else if (action->sa_handler == SIG_IGN) {
 		return 0;

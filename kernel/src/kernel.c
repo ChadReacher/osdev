@@ -12,6 +12,7 @@
 #include <cmos.h>
 #include <pmm.h>
 #include <paging.h>
+#include <console.h>
 #include <screen.h>
 #include <heap.h>
 #include <process.h>
@@ -22,26 +23,34 @@
 #include <elf.h>
 
 void _start() {
-	__asm__ __volatile__ ("cli");
 	serial_init();
 	gdt_init();
 	isr_init();
 	irq_init();
-	idt_init();
-	tss_init(5, 0x10, 0);
 	syscall_init();
+	tss_init(5, 0x10, 0);
+	idt_init();
+	/*__asm__ __volatile__ ("sti");*/
 	timer_init(TIMER_FREQ);
 	keyboard_init();
 	cmos_rtc_init();
 	pmm_init();
 	paging_init();
-	screen_init();
+	console_init();
+
+	/*screen_init();*/
 	heap_init();
 	pci_init();
 	ata_init();
 	scheduler_init();
 	mount_root();
 	user_init();
+
+	/*i32 fd = syscall_open("/dev/tty0");
+	syscall_dup(fd);
+	syscall_dup(fd);
+	i8 m[] = "Hello world from TTY!";
+	syscall_write(1, m, sizeof(m));*/
 	enter_usermode();
 
 	panic("End of kernel\r\n");

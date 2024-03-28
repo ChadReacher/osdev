@@ -29,24 +29,14 @@ build/kernel.bin: libk
 
 user: libc
 	$(MAKE) -C userland
-	mkdir -p userland/hdd/bin
-	mv -f userland/bin/* userland/hdd/bin
 	mkdir -p userland/hdd/usr
+	mkdir -p userland/hdd/bin
+	mkdir -p userland/hdd/dev
+	mv -f userland/bin/* userland/hdd/bin
 	man bash > userland/hdd/usr/file
 	echo "del" > userland/hdd/usr/del
 	echo "bye" > userland/hdd/usr/bye
-
-	mkdir -p userland/hdd/empty
-	mkdir -p userland/hdd/usr/dir
-	chmod a-x userland/hdd/usr/dir
-
-	mkdir -p userland/hdd/usr/dir3
-	echo "no perm" > userland/hdd/usr/dir3/x
-	chmod a-x userland/hdd/usr/dir3/x
-
-	#mkdir -p userland/hdd/usr/etc
-	#echo "x" > userland/hdd/usr/etc/x
-	#./generate.sh
+	sudo mknod userland/hdd/dev/tty0 c 0x04 0x00
 	dd if=/dev/zero of=build/disk.img bs=1024 count=4096
 	sudo losetup -fP build/disk.img
 	losetup

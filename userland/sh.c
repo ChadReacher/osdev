@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <signal.h>
 
 static i8 cwd[256];
 
@@ -24,9 +25,21 @@ struct cmd *parse_cmd(i8 *input);
 void run_cmd(struct cmd *);
 void builtin_cd(i8 *path);
 
+void sigpass(i32 s) {
+
+}
+
 i32 main() {
 	i8 *input;
 	struct cmd *cmd;
+	sigaction_t act = {
+		.sa_handler = sigpass,
+		.sa_mask = 0,
+		.sa_flags = 0
+	};
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGQUIT, &act, NULL);
+	printf("\033[2J\033[;H");
 	for (;;) {
 		print_prompt();
 		memset(buf, 0, 1024);
@@ -44,10 +57,23 @@ i32 main() {
 			printf("Invalid input\n");
 			continue;
 		}
-		if (fork() == 0) {
+		i32 chd, s, pid;
+		if ((chd = fork()) == 0) {
 			run_cmd(cmd);
 		}
-		wait(NULL);
+		do {
+			pid = waitpid(chd, &s, 0);
+		} while (pid != chd);
+		if (WIFSIGNALED(s)) {
+			printf("signaled\n");
+			switch (WTERMSIG(s)) {
+				case SIGINT:
+					break;
+				default:
+					printf("Terminated due to signal %d\n", WTERMSIG(s));
+					break;
+			}
+		}
 
 		free(cmd->data);
 		free(cmd);
@@ -73,21 +99,18 @@ i8 *read_input() {
 		c = getchar();
 		if (c == '\n') {
 			buf[len] = '\0';
-			printf("%c", c);
 			return buf;
-		} else if (c == '\b') {
+		} else if (c == 127) {
 			if (len > 0) {
-				buf[--len] = '\0';
-				printf("%c", c);
+				buf[--len] = 'x';
 			}
 		} else if (c == '\t') {
 			continue;
 		} else {
 			if (c < ' ') {
-				break;
+				continue;
 			}
 			buf[len++] = c;
-			printf("%c", c);
 		}
 	}
 	return buf;
@@ -135,6 +158,10 @@ struct cmd *parse_cmd(i8 *input) {
 	execmd->argc = i_argc;
 	argv[i_argc] = NULL;
 	memcpy(execmd->argv, argv, 10 * sizeof(i8 *));
+	for (i = 0; i < i_argc; ++i) {
+		free(argv[i]);
+	}
+	free(argv);
 
 	cmd = malloc(sizeof(struct cmd));
 	cmd->type = 1;
@@ -143,16 +170,18 @@ struct cmd *parse_cmd(i8 *input) {
 }
 
 void run_cmd(struct cmd *cmd) {
+	i32 err;
 	if (!cmd) {
 		return;
 	}
 	if (cmd->type == 1) {
 		struct exec_cmd *exec = (struct exec_cmd *)cmd->data;
-		i32 err = execvp(exec->argv[0], exec->argv);
+		err = execvp(exec->argv[0], exec->argv);
 		if (err) {
+			free(exec);
+			free(cmd);
 			perror("sh failed");
 		}
-		/*printf("sh: exec %s failed with err - %d\n", exec->argv[0], err);*/
 		_exit(-1);
 	}
 }

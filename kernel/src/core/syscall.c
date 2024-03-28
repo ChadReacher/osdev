@@ -19,8 +19,12 @@
 #include <blk_dev.h>
 #include <errno.h>
 #include <ext2.h>
+#include <pipe.h>
+#include <chr_dev.h>
+#include <tty.h>
 
 
+extern struct tty_struct tty_table[];
 extern queue_t *ready_queue;
 extern queue_t *procs;
 extern u32 startup_time;
@@ -55,6 +59,24 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 		f->f_count = 0;
 		return res;
 	}
+	if (EXT2_S_ISCHR(inode->i_mode)) {
+		u16 major, minor;
+		major = (inode->i_block[0] >> 8) & 0xFF;
+		minor = inode->i_block[0] & 0xFF;
+		if (major == 4) {
+			if (current_process->leader && current_process->tty < 0) {
+				current_process->tty = minor;
+				tty_table[current_process->tty].pgrp = current_process->pgrp;
+			}
+		} else if (major == 5) {
+			if (current_process < 0) {
+				iput(inode);
+				current_process->fds[fd] = NULL;
+				f->f_count = 0;
+				return -EPERM;
+			}
+		}
+	}
 	f->f_mode = mode;
 	f->f_flags = oflags;
 	f->f_count = 1;
@@ -88,28 +110,18 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 	struct file *f;
 	struct ext2_inode *inode;
 
-	if (fd == FD_STDIN) {
-		u8 c = keyboard_getchar();
-		if (c) {
-			*((u8 *)buf) = c;
-			return 1;
-		}
-		return 0;
-	}
-
-
 	if (count == 0) {
 		return 0;
 	}
 	if (fd > NR_OPEN || !(f = current_process->fds[fd])) {
 		return -EBADF;
 	}
-
 	inode = f->f_inode;
 	if (inode->i_pipe) {
 		return (f->f_mode & 1 ? read_pipe(inode, buf, count) : -1);
 	}
 	if (EXT2_S_ISCHR(inode->i_mode)) {
+		return char_read(inode->i_block[0], buf, count);
 	}
 	if (EXT2_S_ISBLK(inode->i_mode)) {
 		return block_read(inode->i_dev, &f->f_pos, buf, count);
@@ -130,14 +142,6 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 	struct file *f;
 	struct ext2_inode *inode;
 
-	if (fd == FD_STDOUT || fd == FD_STDERR) {
-		u32 i;
-		for (i = 0; i < count; ++i) {
-			screen_print_char(buf[i]);
-		}
-		return i;
-	}
-
 	if (count == 0) {
 		return 0;
 	}
@@ -150,6 +154,7 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 		return (f->f_mode & 2 ? write_pipe(inode, buf, count) : -1);
 	}
 	if (EXT2_S_ISCHR(inode->i_mode)) {
+		return char_write(inode->i_block[0], buf, count);
 	}
 	if (EXT2_S_ISBLK(inode->i_mode)) {
 		return block_write(inode->i_dev, &f->f_pos, buf, count);
@@ -307,7 +312,7 @@ i32 syscall_fork() {
 	return child->pid;
 }
 
-i32 kill_pg(i32 pgrp, i32 sig) {
+i32 kill_pgrp(i32 pgrp, i32 sig) {
 	i32 i, len, err, retval = -ESRCH;
 	i32 found = 0;
 	process_t *p;
@@ -336,12 +341,12 @@ i32 syscall_kill(i32 pid, i32 sig) {
 	process_t *p;
 
 	if (pid == 0) {
-		return kill_pg(current_process->pgrp, sig);
+		return kill_pgrp(current_process->pgrp, sig);
 	} else if (pid == -1) {
 		debug("syscall_kill(pid %d, sig %d) - behaviour unspecified", pid, sig);
 		return 0;
 	} else if (pid < 0) {
-		return kill_pg(-pid, sig);
+		return kill_pgrp(-pid, sig);
 	}
 	p = get_proc_by_id(pid);
 	if (!p) {
@@ -353,7 +358,7 @@ i32 syscall_kill(i32 pid, i32 sig) {
 	return send_signal(p, sig);
 }
 
-static i32 is_orphaned_pgrp(i32 pgrp) {
+i32 is_orphaned_pgrp(i32 pgrp) {
 	i32 i, len;
 	process_t *p;
 	queue_node_t *node;
@@ -419,6 +424,9 @@ void do_exit(i32 code) {
 	current_process->root = NULL;
 	iput(current_process->pwd);
 	current_process->pwd = NULL;
+	if (current_process->leader && current_process->tty >= 0) {
+		tty_table[current_process->tty].pgrp = 0;
+	}
 	free(current_process->str_pwd);
 	free(current_process->kernel_stack_bottom);
 	current_process->state = ZOMBIE;
@@ -427,8 +435,8 @@ void do_exit(i32 code) {
 			current_process->parent->session == current_process->session && 
 			is_orphaned_pgrp(current_process->pgrp) &&
 			has_stopped_jobs(current_process->pgrp)) {
-		kill_pg(current_process->pgrp, SIGHUP);
-		kill_pg(current_process->pgrp, SIGCONT);
+		kill_pgrp(current_process->pgrp, SIGHUP);
+		kill_pgrp(current_process->pgrp, SIGCONT);
 	}
 	syscall_kill(current_process->parent->pid, SIGCHLD);
 
@@ -445,8 +453,8 @@ void do_exit(i32 code) {
 					p->session == current_process->session && 
 					is_orphaned_pgrp(p->pgrp) &&
 					has_stopped_jobs(p->pgrp)) {
-				kill_pg(p->pgrp, SIGHUP);
-				kill_pg(p->pgrp, SIGCONT);
+				kill_pgrp(p->pgrp, SIGHUP);
+				kill_pgrp(p->pgrp, SIGCONT);
 			}	
 		}
 		node = node->next;
@@ -664,7 +672,6 @@ i32 syscall_chdir(i8 *path) {
 	return 0;
 }
 
-
 i32 syscall_sigaction(i32 sig, sigaction_t *act, sigaction_t *oact, u32 *sigreturn) {
 	if (sig <= 0 || sig >= NSIG || sig == SIGKILL || sig == SIGSTOP) {
 		return -EINVAL;
@@ -848,6 +855,7 @@ i32 syscall_setsid() {
 	}
 	current_process->leader = 1;
 	current_process->session = current_process->pgrp = current_process->pid;
+	current_process->tty = -1;
 	return current_process->pgrp;
 }
 
@@ -1368,80 +1376,6 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
 	iput(dir);
 	iput(inode);
 	return 0;
-}
-
-void wake_up(process_t **p) {
-	if (p && *p) {
-		(**p).state = RUNNING;
-		queue_enqueue(ready_queue, *p);
-		*p = NULL;
-	}
-}
-
-void sleep_on(process_t **p) {
-	process_t *tmp;
-	if (!p) {
-		return;
-	}
-	tmp = *p;
-	*p = current_process;
-	current_process->state = INTERRUPTIBLE;
-	schedule();
-	debug("after sleep\n");
-	if (tmp) {
-		tmp->state = RUNNING;
-	}
-}
-
-#define PIPE_HEAD(inode) (inode->i_block[1])
-#define PIPE_TAIL(inode) (inode->i_block[2])
-#define PIPE_SIZE(inode) ((PIPE_HEAD(inode)-PIPE_TAIL(inode))&(4096-1))
-#define PIPE_FULL(inode) (PIPE_SIZE(inode) == (4096-1))
-#define PIPE_EMPTY(inode) (PIPE_HEAD(inode) == PIPE_TAIL(inode))
-i32 read_pipe(struct ext2_inode *inode, i8 *buf, u32 count) {
-	i8 *b = buf;
-	
-	while (PIPE_EMPTY(inode)) {
-		wake_up(&inode->i_wait);
-		if (inode->i_count != 2) {
-			return 0;
-		}
-		sleep_on(&inode->i_wait);
-	}
-	while (count > 0 && !(PIPE_EMPTY(inode))) {
-		--count;
-		*b = ((i8 *)inode->i_block[0])[PIPE_TAIL(inode)];
-		++b;
-		PIPE_TAIL(inode) = PIPE_TAIL(inode) + 1;
-	}
-	return b - buf;
-}
-
-i32 write_pipe(struct ext2_inode *inode, i8 *buf, u32 count) {
-	i8 *b = buf;
-
-	wake_up(&inode->i_wait);
-	if (inode->i_count != 2) {
-		sigaddset(&current_process->sigpending, SIGPIPE);
-		return -1;
-	}
-	while (count-- > 0) {
-		while (PIPE_FULL(inode)) {
-			wake_up(&inode->i_wait);
-			if (inode->i_count != 2) {
-				sigaddset(&current_process->sigpending, SIGPIPE);
-				return -1;
-			}
-			sleep_on(&inode->i_wait);
-		}
-		((i8 *)inode->i_block[0])[PIPE_HEAD(inode)] = *b;
-		++b;
-		++PIPE_HEAD(inode);
-		/*PIPE_HEAD(inode) = PIPE_HEAD(inode) + 1;*/
-		wake_up(&inode->i_wait);
-	}
-	wake_up(&inode->i_wait);
-	return b - buf;
 }
 
 i32 syscall_pipe(i32 fidles[2]) {

@@ -1,3 +1,6 @@
+extern need_resched
+extern schedule
+
 extern check_signals
 extern isr_handler
 extern irq_handler
@@ -79,6 +82,13 @@ irq_ret:
 	push dword esp
 	call check_signals
 	add esp, 4
+
+	cmp dword [need_resched], dword 1
+	jne next
+	call schedule
+
+next:
+
 	; 3. Restore state
 	pop gs
 	pop fs
