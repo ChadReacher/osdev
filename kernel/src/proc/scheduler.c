@@ -89,7 +89,7 @@ void scheduler_init() {
 		 - sizeof(registers_state) - sizeof(context_t) + 4);
 }
 
-process_t *get_proc_by_id(u32 pid) {
+process_t *get_proc_by_id(i32 pid) {
 	queue_node_t *node = procs->head;
 	u32 i;
 	for (i = 0; i < procs->len; ++i) {

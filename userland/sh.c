@@ -26,17 +26,13 @@ void run_cmd(struct cmd *);
 void builtin_cd(i8 *path);
 
 void sigpass(i32 s) {
-
+	(void)s;
 }
 
 i32 main() {
 	i8 *input;
 	struct cmd *cmd;
-	sigaction_t act = {
-		.sa_handler = sigpass,
-		.sa_mask = 0,
-		.sa_flags = 0
-	};
+	sigaction_t act = { sigpass, 0, 0 };
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGQUIT, &act, NULL);
 	printf("\033[2J\033[;H");

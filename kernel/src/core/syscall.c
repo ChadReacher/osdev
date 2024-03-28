@@ -69,7 +69,7 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 				tty_table[current_process->tty].pgrp = current_process->pgrp;
 			}
 		} else if (major == 5) {
-			if (current_process < 0) {
+			if (current_process->tty < 0) {
 				iput(inode);
 				current_process->fds[fd] = NULL;
 				f->f_count = 0;
@@ -872,7 +872,7 @@ static i32 session_of_pgrp(i32 pgrp) {
 	return -1;
 }
 
-i32 syscall_setpgid(u32 pid, i32 pgid) {
+i32 syscall_setpgid(i32 pid, i32 pgid) {
 	u32 i;
 	queue_node_t *node;
 	if (!pid) {
@@ -1204,8 +1204,8 @@ static i32 is_empty_dir(struct ext2_inode *inode) {
 		return 1;
 	}
 	curr_off = inblock_offset = de->rec_len + de1->rec_len;
-	while (curr_off < inode->i_size) {
-		if (inblock_offset >= (i32)super_block.s_block_size) {
+	while (curr_off < (u32)inode->i_size) {
+		if (inblock_offset >= super_block.s_block_size) {
 			free(buf->b_data);
 			free(buf);
 			inblock_offset = 0;

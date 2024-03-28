@@ -8,6 +8,7 @@
 
 void console_write(struct tty_struct *tty);
 i32 is_orphaned_pgrp(i32 pgrp);
+i32 kill_pgrp(i32 pgrp, i32 sig);
 
 extern process_t *current_process;
 extern queue_t *ready_queue;
@@ -72,7 +73,7 @@ void sleep_if_full(struct tty_queue *q) {
 	}
 }
 
-i32 tty_read(u32 minor, i8 *buf, i32 count) {
+i32 tty_read(u16 minor, i8 *buf, i32 count) {
 	struct tty_struct *tty;
 	i8 c, *b = buf;
 
@@ -113,7 +114,7 @@ i32 tty_read(u32 minor, i8 *buf, i32 count) {
 	return b - buf;
 }
 
-i32 tty_write(u32 channel, i8 *buf, i32 count) {
+i32 tty_write(u16 channel, i8 *buf, i32 count) {
 	static i32 cr_flag = 0;
 	struct tty_struct *tty;
 	i8 c, *b = buf;
@@ -122,14 +123,15 @@ i32 tty_write(u32 channel, i8 *buf, i32 count) {
 		return -1;
 	}
 	tty = tty_table + channel;
-	if ((tty->termios.c_lflag & TOSTOP) && current_process->tty == channel &&
+	if ((tty->termios.c_lflag & TOSTOP) && 
+			current_process->tty == (i32)channel &&
 			current_process->pgrp != tty->pgrp) {
 		if (is_orphaned_pgrp(tty->pgrp)) {
 			return -EIO;
 		}
 		kill_pgrp(current_process->pgrp, SIGTTOU);
 		if (sigismember(&current_process->sigmask, SIGTTOU) ||
-				current_process->signals[SIGTTOU].sa_handler == 1) {
+				(u32)current_process->signals[SIGTTOU].sa_handler == 1) {
 			return -EIO;
 		} else if (current_process->signals[SIGTTOU].sa_handler) {
 			return -EINTR;

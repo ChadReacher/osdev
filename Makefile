@@ -5,6 +5,7 @@ OBJCOPY = $(TOOLCHAIN_SRC)/i386-elf-objcopy
 AS = nasm
 AR = ar
 CFLAGS = -g -W -Wall -pedantic -m32 -std=c89 -march=i386
+CFLAGS += -Wno-address-of-packed-member
 CFLAGS += -ffreestanding -nostdlib -nostdinc -fno-builtin -nostartfiles
 CFLAGS += -nodefaultlibs -mno-red-zone -fno-stack-protector -nolibc
 

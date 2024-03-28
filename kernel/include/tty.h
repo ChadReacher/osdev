@@ -46,8 +46,8 @@ struct tty_struct {
 #define INIT_C_CC "\003\034\177\025\004\0\1\021\032\023\0"
 
 
-i32 tty_read(u32 channel, i8 *buf, i32 count);
-i32 tty_write(u32 channel, i8 *buf, i32 count);
+i32 tty_read(u16 channel, i8 *buf, i32 count);
+i32 tty_write(u16 channel, i8 *buf, i32 count);
 void do_cook(struct tty_struct *tty);
 i8 ttyq_getchar(struct tty_queue *q);
 

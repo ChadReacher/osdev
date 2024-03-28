@@ -81,10 +81,10 @@ static void csi_k(u32 param) {
 		start = (u16 *)pos;
 		count = COLUMNS - x;
 	} else if (param == 1) {
-		start = pos - (x * 2);
+		start = (u16 *)(pos - (x * 2));
 		count = (x < COLUMNS?x:COLUMNS);
 	} else if (param == 2) {
-		start = pos - (x * 2);
+		start = (u16 *)(pos - (x * 2));
 		count = COLUMNS;
 	} else {
 		return;

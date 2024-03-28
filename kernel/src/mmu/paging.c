@@ -3,6 +3,7 @@
 #include <panic.h>
 #include <pmm.h>
 #include <process.h>
+#include <stdio.h>
 
 extern process_t *current_process;
 
