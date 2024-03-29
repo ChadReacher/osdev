@@ -11,6 +11,9 @@ extern i8 **environ;
 
 syscall0(pid_t, fork)
 
+syscall2(i32, tcsetpgrp, i32, fildes, pid_t, pgrp_id)
+syscall1(i32, tcgetpgrp, i32, fildes)
+
 u32 umask(u32 mode) {
 	u32 ret;
 

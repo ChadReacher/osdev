@@ -1428,3 +1428,35 @@ i32 syscall_pipe(i32 fidles[2]) {
 	fidles[1] = fd[1];
 	return 0;
 }
+
+i32 syscall_tcsetpgrp(i32 fildes, i32 pgrp_id) {
+	struct file *f;
+	if (fildes > NR_OPEN) {
+		return -EBADF;
+	}
+	f = current_process->fds[fildes];
+	if (!f) {
+		return -EBADF;
+	}
+	if (current_process->tty < 0) {
+		return -ENOTTY;
+	}
+	tty_table[current_process->tty].pgrp = pgrp_id;
+	return 0;
+}
+
+
+i32 syscall_tcgetpgrp(i32 fildes) {
+	struct file *f;
+	if (fildes > NR_OPEN) {
+		return -EBADF;
+	}
+	f = current_process->fds[fildes];
+	if (!f) {
+		return -EBADF;
+	}
+	if (current_process->tty < 0) {
+		return -ENOTTY;
+	}
+	return tty_table[current_process->tty].pgrp;
+}

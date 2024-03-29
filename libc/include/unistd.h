@@ -75,6 +75,8 @@
 #define __NR_mkdir          49
 #define __NR_getgroups		50
 #define __NR_pipe			51
+#define __NR_tcsetpgrp		52
+#define __NR_tcgetpgrp		53
 
 #define syscall0(type, name) \
 type name(void) { \
@@ -193,5 +195,7 @@ i32 rmdir(i8 *path);
 void perror(const i8 *s);
 i32 getgroups(i32 gidsetsize, i32 *grouplist);
 i32 pipe(i32 fildes[2]);
+i32 tcsetpgrp(i32 fildes, pid_t pgrp_id);
+i32 tcgetpgrp(i32 fildes);
 
 #endif
