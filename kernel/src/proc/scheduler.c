@@ -131,7 +131,6 @@ void schedule() {
 	process_t *next_proc;
 	queue_node_t *node;
 
-	/*
 	debug("Queue of ready processes:\r\n");
 	node = ready_queue->head;
 	for (i = 0; i < ready_queue->len; ++i) {
@@ -179,7 +178,7 @@ void schedule() {
 		debug("Process(%p) with PID %d, next: %p, state: %s\r\n",
 				p, p->pid, node->next, state);
 		node = node->next;
-	}*/
+	}
 
 	/* Stub implementation */
 	/* TODO: Use separate data structure or organize it effectively */
@@ -191,11 +190,14 @@ void schedule() {
 			p->alarm = 0;
 		}
 		if (p->sleep && p->sleep < ticks) {
-			p->state = RUNNING;
 			p->sleep = 0;
-			queue_enqueue(ready_queue, p);
+			if (p->state == INTERRUPTIBLE) {
+				p->state = RUNNING;
+				queue_enqueue(ready_queue, p);
+			}
 		}
 		if (p->sigpending != 0 && p->state == INTERRUPTIBLE) {
+			p->sleep = 0;
 			p->state = RUNNING;
 			queue_enqueue(ready_queue, p);
 		}

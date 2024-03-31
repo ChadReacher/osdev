@@ -504,6 +504,11 @@ loop:
 		}
 		switch (p->state) {
 			case STOPPED:
+				if (!(options & WUNTRACED) || 
+						!p->exit_code) {
+					node = node->next;
+					continue;
+				}
 				if (stat_loc) {
 					*stat_loc = (p->exit_code << 8) | 0x7F;
 				}
@@ -532,7 +537,6 @@ loop:
 		current_process->state = INTERRUPTIBLE;
 		oldsigmask = current_process->sigmask;
 		sigdelset(&current_process->sigmask, SIGCHLD);
-		/*current_process->sigmask &= ~(1 << (SIGCHLD - 1));*/
 		schedule();
 		current_process->sigmask = oldsigmask;
 		if (current_process->sigpending & 
@@ -861,7 +865,7 @@ i32 syscall_setsid() {
 
 static i32 session_of_pgrp(i32 pgrp) {
 	u32 i;
-	queue_node_t *node;
+	queue_node_t *node = procs->head;
 	for (i = 0; i < procs->len; ++i) {
 		process_t *p = (process_t *)node->value;
 		if (p->pgrp == pgrp) {

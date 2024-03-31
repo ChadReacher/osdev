@@ -23,6 +23,7 @@ i32 read_pipe(struct ext2_inode *inode, i8 *buf, u32 count) {
 		*b = ((i8 *)inode->i_block[0])[PIPE_TAIL(inode)];
 		++b;
 		++PIPE_TAIL(inode);
+		PIPE_TAIL(inode) &= (4096 - 1);
 	}
 	return b - buf;
 }
@@ -47,6 +48,7 @@ i32 write_pipe(struct ext2_inode *inode, i8 *buf, u32 count) {
 		((i8 *)inode->i_block[0])[PIPE_HEAD(inode)] = *b;
 		++b;
 		++PIPE_HEAD(inode);
+		PIPE_HEAD(inode) &= (4096 - 1);
 		wake_up(&inode->i_wait);
 	}
 	wake_up(&inode->i_wait);

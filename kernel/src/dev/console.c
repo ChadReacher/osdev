@@ -127,6 +127,11 @@ void console_write(struct tty_struct *tty) {
 					*(u16 *)pos = (c | (0x07 << 8));
 					pos += 2;
 					++x;
+				} else if (c == 9) {
+					c = 8 - (x & 7);
+					x += c;
+					pos += (c * 2);
+					c = 9;
 				} else if (c == 10 || c == 11 || c == 12) {
 					line_feed();
 				} else if (c == 27) {

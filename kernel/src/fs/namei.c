@@ -268,15 +268,16 @@ i32 ext2_create(struct ext2_inode *dir, const i8 *name, i32 mode,
 		iput(dir);
 		return -ENOSPC;
 	}
-	inode->i_mode = mode;
+	inode->i_mode = EXT2_S_IFREG | (mode & 0777 & ~current_process->umask);
 	inode->i_dirt = 1;
-	if (!(err = ext2_add_entry(dir, name, &buf, &de))) {
+	if ((err = ext2_add_entry(dir, name, &buf, &de))) {
 		--inode->i_links_count;
 		iput(inode);
 		iput(dir);
 		return err;
 	}
 	de->inode = inode->i_num;
+	write_blk(buf);
 	free(buf->b_data);
 	free(buf);
 	iput(dir);

@@ -11,27 +11,9 @@ int main(i32 argc, i8 *argv[]) {
 	for (i = 0; i < argc; ++i) {
 		printf("argv[%d] - %s\n", i, argv[i]);
 	}
-	for (i = 0; i < 100; ++i) {
+	for (i = 0; i < 30; ++i) {
 		printf("%d\n", i);
 		sleep(1);
-	}
-	printf("Enter character: ");
-	m = getchar();
-	putchar(m);
-	putchar('\n');
-	printf("Test malloc:\n");
-	x = (u8 *)malloc(4);
-	x[0] = 1;
-	x[1] = 2;
-	x[2] = 3;
-	x[3] = 4;
-	for (i = 0; i < 4; ++i) {
-		printf("%d\n", x[i]);
-	}
-	printf("Before free\n");
-	free(x);
-	for (i = 0; i < 10; ++i) {
-		printf("friends\n");
 	}
 	return 123;
 }

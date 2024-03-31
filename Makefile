@@ -34,7 +34,7 @@ user: libc
 	mkdir -p userland/hdd/bin
 	mkdir -p userland/hdd/dev
 	mv -f userland/bin/* userland/hdd/bin
-	man bash > userland/hdd/usr/file
+	man wc > userland/hdd/usr/file
 	echo "del" > userland/hdd/usr/del
 	echo "bye" > userland/hdd/usr/bye
 	sudo mknod userland/hdd/dev/tty0 c 0x04 0x00
@@ -71,8 +71,8 @@ log:
 
 debug:
 	qemu-system-i386\
-		-drive format=raw,file=build/boot.img\
-		-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1 \
+		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
+	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
 		-rtc base=localtime,clock=host,driftfix=slew\
 		-boot a -s -S &\
 		gdb

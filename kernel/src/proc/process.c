@@ -64,6 +64,7 @@ void user_init() {
 	for (i = 0; i < NR_GROUPS; ++i) {
 		init_process->groups[i] = -1;
 	}
+	init_process->sleep = 0;
 	init_process->tty = -1;
 	init_process->directory = paging_copy_page_dir(0);
 	kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);

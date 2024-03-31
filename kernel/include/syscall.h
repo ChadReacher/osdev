@@ -26,8 +26,8 @@
 
 #define WIFEXITED(s)	(((s) & 0xFF) == 0)
 #define WEXITSTATUS(s)	(((s) >> 8) & 0xFF)
-#define WIFSIGNALED(s)	(((unsigned int)(s) - 1 & 0xFFFF) < 0xFF)
-#define WTERMSIG(s)		((s) & 0x7F)
+#define WIFSIGNALED(s)	((((unsigned int)(s) - 1) & 0xFFFF) < 0xFF)
+#define WTERMSIG(s)		((s >> 8) & 0xFF)
 #define WIFSTOPPED(s)	(((s) & 0xFF) == 0x7F)
 #define WSTOPSIG(s)		(((s) >> 8) & 0xFF)
 

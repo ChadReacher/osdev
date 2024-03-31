@@ -73,6 +73,19 @@ heap_block *best_fit(u32 size) {
 	return best_current;
 }
 
+bool isdigit(u8 c) {
+	return c >= '0' && c <= '9';
+}
+
+u32 atoi(const i8 *str) {
+	u32 i = 0;
+	while (isdigit(*str)) {
+		i = i * 10  + (*str - '0');
+		++str;
+	}
+	return i;
+}
+
 void split_block(heap_block *block, u32 size) {
 	if (block->size > sizeof(heap_block) + size) {
 		heap_block *splited_block = (heap_block *)((u8*)block + sizeof(heap_block) + size);

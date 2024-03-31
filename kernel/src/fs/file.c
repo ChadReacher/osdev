@@ -75,6 +75,7 @@ i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 coun
 		p = lbuf->b_data + inblock;
 		memcpy(p, buf, chars);
 		write_blk(lbuf);
+		free(lbuf->b_data);
 		free(lbuf);
 
 		buf += chars;

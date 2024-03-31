@@ -92,6 +92,7 @@ i32 send_signal(process_t *proc, i32 sig) {
 	} else if (sig == SIGCONT) {
 		queue_node_t *node;
 		sigdelset(&proc->sigpending, SIGSTOP);
+		proc->exit_code = 0;
 		sigdelset(&proc->sigpending, SIGTSTP);
 		sigdelset(&proc->sigpending, SIGTTIN);
 		sigdelset(&proc->sigpending, SIGTTOU);

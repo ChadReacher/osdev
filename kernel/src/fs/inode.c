@@ -88,6 +88,7 @@ struct ext2_inode *get_pipe_inode() {
 	if (!(inode = get_empty_inode())) {
 		return NULL;
 	}
+	inode->i_dev = super_block.s_dev;
 	/* Data */
 	inode->i_block[0] = (u32)malloc(4096); 
 	/* [1] - nread, [2] - nwrite */
