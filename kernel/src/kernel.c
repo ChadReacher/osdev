@@ -45,12 +45,6 @@ void _start() {
 	scheduler_init();
 	mount_root();
 	user_init();
-
-	/*i32 fd = syscall_open("/dev/tty0");
-	syscall_dup(fd);
-	syscall_dup(fd);
-	i8 m[] = "Hello world from TTY!";
-	syscall_write(1, m, sizeof(m));*/
 	enter_usermode();
 
 	panic("End of kernel\r\n");

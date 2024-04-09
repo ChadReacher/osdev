@@ -21,7 +21,7 @@ int main() {
 		open("/dev/tty0", O_RDWR, 0);
 		dup(0);
 		dup(0);
-		execv("/bin/sh_x", m);
+		execv("/bin/sh", m);
 		printf("After exec\n");
 	}
 	do {
