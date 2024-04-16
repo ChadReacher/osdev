@@ -119,9 +119,6 @@ void pmm_init() {
 	debug("Number of free 4K blocks: %x\r\n", (total_blocks - used_blocks));
 	debug("Total amount of 4K blocks: %x\r\n", total_blocks);
 	print_physical_memory_info();
-	debug("total_blocks - 0x%p\r\n", &total_blocks);
-	debug("used_blocks - 0x%p\r\n", &used_blocks);
-	debug("memory_map - 0x%p\r\n", &memory_map);
 }
 
 void _pmm_init(u32 start_address, u32 size) {

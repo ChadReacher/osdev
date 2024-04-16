@@ -19,7 +19,7 @@ void serial_init() {
 	port_outb(COM1 + 0, 0xAB); /* Test the serial chip(send byte 0xAB and check if serial returns the same byte) */
 
 	if (port_inb(COM1 + 0) != 0xAB) {
-		__asm__ __volatile__ ("cli; hlt");
+		__asm__ volatile ("cli; hlt");
 		for (;;);
 	}
 	

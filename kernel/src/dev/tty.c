@@ -11,7 +11,7 @@ i32 is_orphaned_pgrp(i32 pgrp);
 i32 kill_pgrp(i32 pgrp, i32 sig);
 
 extern process_t *current_process;
-extern queue_t *ready_queue;
+extern process_t *procs[NR_PROCS];
 
 i8 ttyq_getchar(struct tty_queue *q) {
 	i8 c = q->buf[q->tail];
@@ -167,23 +167,21 @@ i32 tty_write(u16 channel, i8 *buf, i32 count) {
 	return b - buf;
 }
 
-extern queue_t *procs;
 static void send_intr(struct tty_struct *tty, i32 signal) {
-	i32 i, len;
-	queue_node_t *node;
+	i32 i;
 	process_t *p;
 
 	if (tty->pgrp <= 0) {
 		return;
 	}
-	node = procs->head; 
-	len = procs->len;
-	for (i = 0; i < len; ++i) {
-		p = (process_t *)node->value;
+	for (i = 0; i < NR_PROCS; ++i) {
+		p = procs[i];
+		if (!p) {
+			continue;
+		}
 		if (p->pgrp == tty->pgrp) {
 			send_signal(p, signal);
 		}
-		node = node->next;
 	}
 }
 

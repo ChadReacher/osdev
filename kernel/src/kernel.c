@@ -30,15 +30,12 @@ void _start() {
 	syscall_init();
 	tss_init(5, 0x10, 0);
 	idt_init();
-	/*__asm__ __volatile__ ("sti");*/
 	timer_init(TIMER_FREQ);
 	keyboard_init();
 	cmos_rtc_init();
 	pmm_init();
 	paging_init();
 	console_init();
-
-	/*screen_init();*/
 	heap_init();
 	pci_init();
 	ata_init();

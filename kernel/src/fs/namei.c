@@ -383,7 +383,7 @@ static i32 ext2_lookup(struct ext2_inode *dir, const i8 *name,
 i32 dir_namei(const i8 *pathname, const i8 **name,
 		struct ext2_inode **res_inode) {
 	i32 error;
-	const i8 *basename;
+	const i8 *basename = NULL;
 	struct ext2_inode *inode;
 	i8 *pathname_dup, *saved_pathname, *tmp;
 
@@ -408,6 +408,9 @@ i32 dir_namei(const i8 *pathname, const i8 **name,
 			free(saved_pathname);
 			return error;
 		}
+	}
+	if (basename == NULL) {
+		return -1;
 	}
 	*name = strdup(basename);
 	*res_inode = inode;

@@ -1,5 +1,4 @@
 #include "scheduler.h"
-#include "queue.h"
 #include "heap.h"
 #include "string.h"
 #include "errno.h"
@@ -9,8 +8,6 @@
 void do_exit(i32 code);
 
 extern process_t *current_process;
-extern queue_t *stopped_queue;
-extern queue_t *ready_queue;
 
 /* Find first non-blocked signal */
 static i32 sigget(sigset_t *sigpend, const sigset_t *sigmask) {
@@ -53,7 +50,6 @@ i32 handle_signal(registers_state *regs) {
 			}
 			current_process->state = STOPPED;
 			current_process->exit_code = ((0x7F << 8) | sig);
-			queue_enqueue(stopped_queue, current_process);
 			schedule();
 			return 0;
 		} else if (sig == SIGCHLD || sig == SIGCONT) {
@@ -76,7 +72,6 @@ i32 handle_signal(registers_state *regs) {
 }
 
 i32 send_signal(process_t *proc, i32 sig) {
-	u32 i;
 	if (!proc) {
 		return -EINVAL;
 	}
@@ -90,39 +85,17 @@ i32 send_signal(process_t *proc, i32 sig) {
 	if (sig == SIGSTOP || sig == SIGTSTP || sig == SIGTTIN || sig == SIGTTOU) {
 		sigdelset(&proc->sigpending, SIGCONT);
 	} else if (sig == SIGCONT) {
-		queue_node_t *node;
 		sigdelset(&proc->sigpending, SIGSTOP);
 		proc->exit_code = 0;
 		sigdelset(&proc->sigpending, SIGTSTP);
 		sigdelset(&proc->sigpending, SIGTTIN);
 		sigdelset(&proc->sigpending, SIGTTOU);
 
-		/*TODO: Implement it properly or easier and simpler */
 		if (proc->state == STOPPED) {
-			node = stopped_queue->head;
-			for (i = 0; i < stopped_queue->len; ++i) {
-				process_t *p = (process_t *)node->value;
-				if (p->pid == proc->pid) {
-					if (node->prev == NULL) {
-						ready_queue->head = node->next;
-						free(node);
-						break;
-					} else {
-						node->prev->next = node->next;
-						node->next->prev = node->prev;
-						free(node);
-						break;
-					}
-				}
-				node = node->next;
-			}
-			--stopped_queue->len;
 			proc->state = RUNNING;
 			proc->exit_code = 0;
-			queue_enqueue(ready_queue, proc);
 		}
 	}
-	/* Send the signal */
 	sigaddset(&proc->sigpending, sig);
 	return 0;
 }

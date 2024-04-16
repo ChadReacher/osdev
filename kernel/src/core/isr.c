@@ -68,7 +68,6 @@ void breakpoint_handler(registers_state *regs) {
 
 void isr_init() {
 	pic_remap();
-	debug("PIC has been remapped");
 
 	idt_set(0, (u32)isr0, 0x8E);
 	idt_set(1, (u32)isr1, 0x8E);
@@ -147,7 +146,7 @@ void syscall_init() {
 i32 syscall_handler(registers_state *regs) {
 	syscall_fn sys;
 	if (regs->eax > NR_SYSCALLS) {
-		debug("Received unimplemented syscall: %d\n", regs->eax);
+		debug("Received unimplemented syscall: %d\r\n", regs->eax);
 		return -1;
 	}
 	sys = syscall_handlers[regs->eax];
@@ -192,5 +191,7 @@ void irq_handler(registers_state *regs) {
 	if (interrupt_handlers[regs->int_number] != 0) {
 		isr_t handler = interrupt_handlers[regs->int_number];
 		handler(regs);
+	} else {
+		debug("interesting interrupt - %d\r\n", regs->int_number);
 	}
 }

@@ -12,8 +12,8 @@ static void dump_super_block_info();
 static struct ext2_super_block *do_mount(u16 dev) {
 	struct buffer *buf;
 	struct ext2_super_block *p;
+
 	p = &super_block;
-	
 	buf = read_blk(dev, 1);
 	if (!buf) {
 		debug("Failed to read block #1 on device %d\r\n");

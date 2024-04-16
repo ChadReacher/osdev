@@ -1,5 +1,6 @@
 #include <pic.h>
 #include <port.h>
+#include <panic.h>
 
 void pic_disable() {
 	port_outb(PIC2_DATA, 0xFF);
@@ -80,6 +81,8 @@ void pic_remap() {
 	/* Save current masks */
 	port_outb(PIC1_DATA, pic1_mask);
 	port_outb(PIC2_DATA, pic2_mask);
+
+	debug("PIC has been remapped\r\n");
 
 }
 

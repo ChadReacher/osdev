@@ -124,25 +124,11 @@ static i8 month[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 #define LEAP_YEAR(y) (((y % 4) == 0 && (y % 100) != 0) || (y % 400) == 0)
 #define DAYS_PER_YEAR(y) ((LEAP_YEAR(y)) ? 366 : 365)
 
-void cmos_rtc_init() {
+void setup_startup_time() {
 	i32 i;
 	cmos_rtc_t time;
 	u32 total_days = 0, seconds;
 
-	/* Enable RTC */
-	u8 prev_reg_value = cmos_read_register(CMOS_REG_STATUS_B);
-	/* Select Register B and disable NMI, reading will reset to register D */
-	port_outb(CMOS_COMMAND_PORT, 0x8B);
-	/* Set bit 6 to enable periodic interrupts at default rate of 1024 Hz */
-	port_outb(CMOS_DATA_PORT, prev_reg_value | 0x40);
-	/* Read status register C to clear out any pending IRQ8 interrupts */
-	cmos_read_register(CMOS_REG_STATUS_C);
-
-	/* 
-	 * Register a handler for CMOS RTC
-	 * register_interrupt_handler(IRQ8, cmos_rtc_handler);
-	 * debug("%s", "CMOS RTC has been initialized\r\n");
-	 */
 	time = cmos_read_rtc();
 	for (i = 1970; i < time.year; ++i) {
 		total_days += DAYS_PER_YEAR(i);
@@ -159,5 +145,24 @@ void cmos_rtc_init() {
 	seconds += time.minute * MINUTE;
 	seconds += time.second;
 	startup_time = seconds;
+}
+
+
+void cmos_rtc_init() {
+	/* Enable RTC */
+	u8 prev_reg_value = cmos_read_register(CMOS_REG_STATUS_B);
+	/* Select Register B and disable NMI, reading will reset to register D */
+	port_outb(CMOS_COMMAND_PORT, 0x8B);
+	/* Set bit 6 to enable periodic interrupts at default rate of 1024 Hz */
+	port_outb(CMOS_DATA_PORT, prev_reg_value | 0x40);
+	/* Read status register C to clear out any pending IRQ8 interrupts */
+	cmos_read_register(CMOS_REG_STATUS_C);
+
+	/* 
+	 * Register a handler for CMOS RTC
+	 * register_interrupt_handler(IRQ8, cmos_rtc_handler);
+	 * debug("%s", "CMOS RTC has been initialized\r\n");
+	 */
+	setup_startup_time();
 }
 

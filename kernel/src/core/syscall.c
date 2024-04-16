@@ -13,7 +13,6 @@
 #include <pmm.h>
 #include <idt.h>
 #include <heap.h>
-#include <queue.h>
 #include <tss.h>
 #include <timer.h>
 #include <blk_dev.h>
@@ -24,17 +23,15 @@
 #include <tty.h>
 
 
-extern struct tty_struct tty_table[];
-extern queue_t *ready_queue;
-extern queue_t *procs;
 extern u32 startup_time;
 extern u32 ticks;
-extern queue_t *procs;
-extern process_t *init_process;
+extern process_t *procs[NR_PROCS];
 extern process_t *current_process;
-extern void irq_ret();
-
+extern u32 next_pid;
 extern struct file file_table[NR_FILE];
+extern struct tty_struct tty_table[];
+
+extern void irq_ret();
 
 i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 	i32 fd, res;
@@ -262,10 +259,17 @@ i32 syscall_yield() {
 	return 0;
 }
 
-extern u32 next_pid;
 i32 syscall_fork() {
 	u32 i;
-	process_t *child = malloc(sizeof(process_t));
+	i32 idx;
+	process_t *child;
+
+	idx = get_free_proc();
+	if (idx < 0) { 
+		panic("No more procs\r\n");
+		return -ENOMEM;
+	}
+	child = procs[idx] = malloc(sizeof(process_t));
 	if (!child) {
 		return -EAGAIN;
 	}
@@ -307,24 +311,22 @@ i32 syscall_fork() {
 	child->alarm = 0;
 	child->leader = 0;
 	sigemptyset(&child->sigpending);
-	queue_enqueue(ready_queue, child);
-	queue_enqueue(procs, child);
 	return child->pid;
 }
 
 i32 kill_pgrp(i32 pgrp, i32 sig) {
-	i32 i, len, err, retval = -ESRCH;
+	i32 i, err, retval = -ESRCH;
 	i32 found = 0;
 	process_t *p;
-	queue_node_t *node;
 
-	node = procs->head; 
-	len = procs->len;
 	if (sig < 0 || sig > 32 || pgrp <= 0) {
 		return -EINVAL;
 	}
-	for (i = 0; i < len; ++i) {
-		p = (process_t *)node->value;
+	for (i = 0; i < NR_PROCS; ++i) {
+		p = procs[i];
+		if (!p) {
+			continue;
+		}
 		if (p->pgrp == pgrp) {
 			if (sig && (err = send_signal(p, sig))) {
 				retval = err;
@@ -332,7 +334,6 @@ i32 kill_pgrp(i32 pgrp, i32 sig) {
 				++found;
 			}
 		}
-		node = node->next;
 	}
 	return (found ? 0 : retval);
 }
@@ -359,53 +360,48 @@ i32 syscall_kill(i32 pid, i32 sig) {
 }
 
 i32 is_orphaned_pgrp(i32 pgrp) {
-	i32 i, len;
+	i32 i;
 	process_t *p;
-	queue_node_t *node;
 
-	node = procs->head; 
-	len = procs->len;
-	for (i = 0; i < len; ++i) {
-		p = (process_t *)node->value;
+	for (i = 0; i < NR_PROCS; ++i) {
+		p = procs[i];
+		if (!p) {
+			continue;
+		}
 		if (p->pgrp != pgrp ||
 				p->state == ZOMBIE ||
 				p->parent->pid == 1) {
-			node = node->next;
 			continue;
 		}
 		if (p->parent->pgrp != pgrp &&
 				p->parent->session == p->session) {
 			return 0;
 		}
-		node = node->next;
 	}
 	return 1;
 }
 
 static i32 has_stopped_jobs(i32 pgrp) {
-	i32 i, len;
+	i32 i;
 	process_t *p;
-	queue_node_t *node;
 
-	node = procs->head; 
-	len = procs->len;
-	for (i = 0; i < len; ++i) {
-		p = (process_t *)node->value;
+	for (i = 0; i < NR_PROCS; ++i) {
+		p = procs[i];
+		if (!p) { 
+			continue;
+		}
 		if (p->pgrp != pgrp) {
-			node = node->next;
 			continue;
 		}
 		if (p->state == STOPPED) {
 			return 1;
 		}
-		node = node->next;
 	}
 	return 0;
 }
 
 void do_exit(i32 code) {
 	u32 i;
-	queue_node_t *node;
 
 	if (current_process->pid == 1) {
 		panic("Can't exit the INIT process\r\n");
@@ -441,13 +437,15 @@ void do_exit(i32 code) {
 	syscall_kill(current_process->parent->pid, SIGCHLD);
 
 	/* Pass current_process's children to INIT process */
-	node = procs->head;
-	for (i = 0; i < procs->len; ++i) {
-		process_t *p = (process_t *)node->value;
+	for (i = 0; i < NR_PROCS; ++i) {
+		process_t *p = procs[i];
+		if (!p) {
+			continue;
+		}
 		if (p->parent == current_process) {
-			p->parent = init_process;
+			p->parent = procs[1];
 			if (p->state == ZOMBIE) {
-				init_process->sigpending |= (1 << (SIGCHLD - 1));
+				(procs[1])->sigpending |= (1 << (SIGCHLD - 1));
 			}
 			if (p->pgrp != current_process->pgrp &&
 					p->session == current_process->session && 
@@ -457,7 +455,6 @@ void do_exit(i32 code) {
 				kill_pgrp(p->pgrp, SIGCONT);
 			}	
 		}
-		node = node->next;
 	}
 
 	schedule();
@@ -473,32 +470,27 @@ i32 syscall_waitpid(i32 pid, i32 *stat_loc, i32 options) {
 	i32 i, flag;
 	process_t *p;
 	sigset_t oldsigmask;
-	queue_node_t *node;
-	i32 len;
 
 loop:
 	flag = 0;
-	node = procs->head; 
-	len = procs->len;
-	for (i = 0; i < len; ++i) {
-		p = (process_t *)node->value;
+	for (i = 0; i < NR_PROCS; ++i) {
+		p = procs[i];
+		if (!p) { 
+			continue;
+		}
 		if (p->parent != current_process) {
-			node = node->next;
 			continue;
 		}
 		if (pid > 0) {
 			if (p->pid != pid) {
-				node = node->next;
 				continue;
 			}
 		} else if (!pid) {
 			if (p->pgrp != current_process->pgrp) {
-				node = node->next;
 				continue;
 			}
 		} else if (pid != -1) {
 			if (p->pgrp != -pid) {
-				node = node->next;
 				continue;
 			}
 		}
@@ -506,7 +498,6 @@ loop:
 			case STOPPED:
 				if (!(options & WUNTRACED) || 
 						!p->exit_code) {
-					node = node->next;
 					continue;
 				}
 				if (stat_loc) {
@@ -521,12 +512,10 @@ loop:
 				if (stat_loc) {
 					*stat_loc = p->exit_code;
 				}
-				queue_remove(procs, node);
-				free(p);
+				procs[i] = NULL;
 				return flag;
 			default:
 				flag = 1;
-				node = node->next;
 				continue;
 		}
 	}
@@ -865,20 +854,20 @@ i32 syscall_setsid() {
 
 static i32 session_of_pgrp(i32 pgrp) {
 	u32 i;
-	queue_node_t *node = procs->head;
-	for (i = 0; i < procs->len; ++i) {
-		process_t *p = (process_t *)node->value;
+	for (i = 0; i < NR_PROCS; ++i) {
+		process_t *p = procs[i];
+		if (!p) {
+			continue;
+		}
 		if (p->pgrp == pgrp) {
 			return p->session;
 		}
-		node = node->next;
 	}
 	return -1;
 }
 
 i32 syscall_setpgid(i32 pid, i32 pgid) {
 	u32 i;
-	queue_node_t *node;
 	if (!pid) {
 		pid = current_process->pid;
 	}
@@ -888,9 +877,11 @@ i32 syscall_setpgid(i32 pid, i32 pgid) {
 	if (pgid < 0) {
 		return -EINVAL;
 	}
-	node = procs->head;
-	for (i = 0; i < procs->len; ++i) {
-		process_t *p = (process_t *)node->value;
+	for (i = 0; i < NR_PROCS; ++i) {
+		process_t *p = procs[i];
+		if (!p) {
+			continue;
+		}
 		if (p->pid == pid && 
 				(p->parent == current_process || p == current_process)) {
 			if (p->leader) {
@@ -904,7 +895,6 @@ i32 syscall_setpgid(i32 pid, i32 pgid) {
 			p->pgrp = pgid;
 			return 0;
 		}
-		node = node->next;
 	}
 	return -ESRCH;
 }

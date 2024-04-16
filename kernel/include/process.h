@@ -7,6 +7,11 @@
 #include <signal.h>
 #include "ext2.h" 
 
+#define NR_OPEN 20
+#define NR_FILE 32
+#define NR_GROUPS 32
+#define NR_PROCS 32
+
 #define ALIGN_UP(val, a) (((val) + ((a) - 1)) & ~((a) - 1))
 #define ALIGN_DOWN(val, a) ((val) & ~((a) - 1))
 
@@ -25,9 +30,6 @@ typedef struct {
 	u32 eip;
 } context_t;
 
-#define NR_OPEN 20
-#define NR_FILE 32
-#define NR_GROUPS 32
 typedef struct _process {
 	i32 pid;
 	i32 timeslice;

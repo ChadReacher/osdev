@@ -1,6 +1,5 @@
 #include <scheduler.h>
 #include <tss.h>
-#include <queue.h>
 #include <syscall.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,33 +9,160 @@
 #include <panic.h>
 
 extern u32 ticks;
+extern u32 next_pid;
+extern void irq_ret();
 extern void switch_to(context_t **old_context, context_t *new_context);
 
 i32 need_resched = 0;
-queue_t *ready_queue;
-queue_t *stopped_queue;
-queue_t *procs;
+process_t *procs[NR_PROCS];
 process_t *current_process = NULL;
-process_t *init_process = NULL;
-process_t *idle_process = NULL;
 
 void task_switch(process_t *next_proc);
-extern void irq_ret();
-extern u32 next_pid;
 
 static void cpu_idle() {
 	while (1){ 
-		__asm__ __volatile__("hlt");
+		__asm__ volatile ("hlt");
 	}
 }
 
-void create_idle_process() {
-	idle_process = malloc(sizeof(process_t));
-	if (!idle_process) {
-		panic("Failed to create 'idle' process\n");
+process_t *get_proc_by_id(i32 pid) {
+	if (pid < 0 || pid > NR_PROCS) {
+		return NULL;
 	}
-	queue_enqueue(procs, idle_process);
+	return procs[pid];
+}
+
+int get_free_proc() {
+	int i;
+	for (i = 0; i < NR_PROCS; ++i) {
+		if (procs[i] == NULL) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+void wake_up(process_t **p) {
+	if (p && *p) {
+		(**p).state = RUNNING;
+		*p = NULL;
+		need_resched = 1;
+	}
+}
+
+void goto_sleep(process_t **p) {
+	process_t *tmp;
+	if (!p) {
+		return;
+	}
+	tmp = *p;
+	*p = current_process;
+	current_process->state = INTERRUPTIBLE;
+	schedule();
+	debug("after sleep\n");
+	if (tmp) {
+		tmp->state = RUNNING;
+	}
+}
+
+void schedule() {
+	int i, count;
+	process_t *next_proc, *p;
+
+	debug("Queue of all processes:\r\n");
+	for (i = 0; i < NR_PROCS; ++i) {
+		char *state;
+		process_t *p = procs[i];
+		if (!p) {
+			continue;
+		}
+		switch (p->state) {
+			case RUNNING:
+				state = "RUNNING";
+				break;
+			case ZOMBIE:
+				state = "ZOMBIE";
+				break;
+			case INTERRUPTIBLE:
+				state = "INTERRUPTIBLE";
+				break;
+			case STOPPED:
+				state = "STOPPED";
+				break;
+			default:
+				state = "UNKNOWN";
+				break;
+		}
+		debug("Process(%p) with PID %d, state: %s\r\n",
+				p, p->pid, state);
+	}
+
+	for (i = 1; i < NR_PROCS; ++i) {
+		process_t *p = procs[i];
+		if (!p) {
+			continue;
+		}
+		if (p->alarm && (u32)p->alarm < ticks) {
+			send_signal(p, SIGALRM);
+			p->alarm = 0;
+		}
+		if (p->sleep && p->sleep < ticks) {
+			p->sleep = 0;
+			if (p->state == INTERRUPTIBLE) {
+				p->state = RUNNING;
+			}
+		}
+		if (p->sigpending != 0 && p->state == INTERRUPTIBLE) {
+			p->sleep = 0;
+			p->state = RUNNING;
+		}
+	}
+
+	need_resched = 0;
+	while (1) {
+		count = -1;
+		next_proc = procs[0];
+		for (i = 1; i < NR_PROCS; ++i) {
+			p = procs[i];
+			if (!p) {
+				continue;
+			}
+			if (p->state == RUNNING && p->timeslice > count) {
+				next_proc = p;
+				count = p->timeslice;
+			}
+		}	
+		if (count) {
+			break;
+		}
+		for (i = 1; i < NR_PROCS; ++i) {
+			p = procs[i];
+			if (p) {
+				p->timeslice = 20;
+			}
+		}	
+	}
+	
+	if (next_proc != current_process) {
+		task_switch(next_proc);
+	}
+}
+
+void task_switch(process_t *next_proc) {
+	process_t *prev_proc = current_process;
+	current_process = next_proc;
+
+	tss_set_stack((u32)current_process->kernel_stack_top);
+	__asm__ volatile ("movl %%eax, %%cr3" 
+            : 
+            : "a"((u32)current_process->directory));
+	switch_to(&prev_proc->context, current_process->context);
+}
+
+void create_idle_process() {
+	process_t *idle_process = procs[0] = malloc(sizeof(process_t));
 	memset(idle_process, 0, sizeof(process_t));
+
 	idle_process->pid = next_pid++;
 	idle_process->timeslice = 20;
 	idle_process->state = RUNNING;
@@ -61,15 +187,11 @@ void create_idle_process() {
 }
 
 void scheduler_init() {
-	ready_queue = queue_new();
-	stopped_queue = queue_new();
-	procs = queue_new();
+	process_t *init_process;
 
 	create_idle_process();
 
-	current_process = init_process = malloc(sizeof(process_t));
-	queue_enqueue(ready_queue, init_process);
-	queue_enqueue(procs, init_process);
+	init_process = current_process = procs[1] = malloc(sizeof(process_t));
 	memset(init_process, 0, sizeof(process_t));
 	init_process->pid = next_pid++;
 	init_process->timeslice = 20;
@@ -83,145 +205,3 @@ void scheduler_init() {
 		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
 		 - sizeof(registers_state) - sizeof(context_t) + 4);
 }
-
-process_t *get_proc_by_id(i32 pid) {
-	queue_node_t *node = procs->head;
-	u32 i;
-	for (i = 0; i < procs->len; ++i) {
-		process_t *p = (process_t *)node->value;
-		if (p->pid == pid) {
-			return p;
-		}
-		node = node->next;
-	}
-	return NULL;
-}
-
-void wake_up(process_t **p) {
-	if (p && *p) {
-		(**p).state = RUNNING;
-		queue_enqueue(ready_queue, *p);
-		*p = NULL;
-		need_resched = 1;
-	}
-}
-
-void goto_sleep(process_t **p) {
-	process_t *tmp;
-	if (!p) {
-		return;
-	}
-	tmp = *p;
-	*p = current_process;
-	current_process->state = INTERRUPTIBLE;
-	schedule();
-	debug("after sleep\n");
-	if (tmp) {
-		tmp->state = RUNNING;
-	}
-}
-
-void schedule() {
-	u32 i;
-	process_t *next_proc;
-	queue_node_t *node;
-
-	debug("Queue of ready processes:\r\n");
-	node = ready_queue->head;
-	for (i = 0; i < ready_queue->len; ++i) {
-		process_t *p = (process_t *)node->value;
-		char *state;
-		switch (p->state) {
-			case RUNNING:
-				state = "RUNNING";
-				break;
-			case ZOMBIE:
-				state = "ZOMBIE";
-				break;
-			case INTERRUPTIBLE:
-				state = "INTERRUPTIBLE";
-				break;
-			case STOPPED:
-				state = "STOPPED";
-				break;
-		}
-		debug("Process(%p) with PID %d, next: %p, state: %s\r\n",
-				p, p->pid, node->next, state);
-		node = node->next;
-	}
-
-
-	debug("Queue of all processes(%d):\r\n", procs->len);
-	node = procs->head;
-	for (i = 0; i < procs->len; ++i) {
-		process_t *p = (process_t *)node->value;
-		char *state;
-		switch (p->state) {
-			case RUNNING:
-				state = "RUNNING";
-				break;
-			case ZOMBIE:
-				state = "ZOMBIE";
-				break;
-			case INTERRUPTIBLE:
-				state = "INTERRUPTIBLE";
-				break;
-			case STOPPED:
-				state = "STOPPED";
-				break;
-		}
-		debug("Process(%p) with PID %d, next: %p, state: %s\r\n",
-				p, p->pid, node->next, state);
-		node = node->next;
-	}
-
-	/* Stub implementation */
-	/* TODO: Use separate data structure or organize it effectively */
-	node = procs->head;
-	for (i = 0; i < procs->len; ++i) {
-		process_t *p = (process_t *)node->value;
-		if (p->alarm && (u32)p->alarm < ticks) {
-			send_signal(p, SIGALRM);
-			p->alarm = 0;
-		}
-		if (p->sleep && p->sleep < ticks) {
-			p->sleep = 0;
-			if (p->state == INTERRUPTIBLE) {
-				p->state = RUNNING;
-				queue_enqueue(ready_queue, p);
-			}
-		}
-		if (p->sigpending != 0 && p->state == INTERRUPTIBLE) {
-			p->sleep = 0;
-			p->state = RUNNING;
-			queue_enqueue(ready_queue, p);
-		}
-		node = node->next;
-	}
-
-	need_resched = 0;
-	if (!ready_queue->len) {
-		if (current_process->state == RUNNING) {
-			return;
-		}
-		next_proc = idle_process;
-	} else {
-		next_proc = queue_dequeue(ready_queue);
-	}
-	if (current_process != idle_process && current_process->state == RUNNING) {
-		queue_enqueue(ready_queue, current_process);
-	}
-	task_switch(next_proc);
-}
-
-void task_switch(process_t *next_proc) {
-	process_t *prev_proc = current_process;
-	current_process = next_proc;
-
-	tss_set_stack((u32)current_process->kernel_stack_top);
-	__asm__ __volatile__ ("movl %%eax, %%cr3" 
-            : 
-            : "a"((u32)current_process->directory));
-	switch_to(&prev_proc->context, current_process->context);
-}
-

@@ -25,7 +25,7 @@ static void timer_handler(registers_state *regs) {
 	if ((--current_process->timeslice) > 0) {
 		return;
 	}
-	current_process->timeslice = 20;
+	current_process->timeslice = 0;
 	schedule();
 }
 

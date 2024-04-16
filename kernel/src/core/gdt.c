@@ -1,7 +1,7 @@
 #include <gdt.h>
 
 gdt_entry_t gdt[GDT_ENTRIES];
-gdtr_t gdtr;
+volatile gdtr_t gdtr;
 
 void gdt_init() {
 	gdtr.size = sizeof(gdt) - 1;

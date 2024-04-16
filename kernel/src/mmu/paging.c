@@ -13,11 +13,11 @@ void pagefault_handler(registers_state *regs) {
 	u32 bad_address, err_code;
 	i8 not_present, rw, us;
 
-	__asm__ __volatile__ ("movl %%cr2, %0" : "=r"(bad_address));
+	__asm__ volatile ("movl %%cr2, %0" : "=r"(bad_address));
 	err_code = regs->err_code;
 
 	debug("Page Fault Exception. Bad Address: 0x%x. Error code: %d\r\n", bad_address, err_code);
-	kprintf("page fault\n");
+	kprintf("page fault\r\n");
 
 	not_present = err_code & 0x1;
 	rw = err_code & 0x2;
@@ -32,8 +32,8 @@ void pagefault_handler(registers_state *regs) {
 	} else {
 		debug("%s", "Not user heap\r\n");
 		while (1) {
-			__asm__ __volatile__ ("cli");
-			__asm__ __volatile__ ("hlt");
+			__asm__ volatile ("cli");
+			__asm__ volatile ("hlt");
 		}
 	}
 }
@@ -90,14 +90,14 @@ void unmap_page(void *virt_addr) {
 	*page = ((*page & ~0xFFFFF000) | 0);
 
 	/* Flush TLB */
-	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
+	__asm__ volatile ("movl %%cr3, %%eax" : : );
+	__asm__ volatile ("movl %%eax, %%cr3" : : );
 }
 
 void paging_init() {
 	register_interrupt_handler(14, pagefault_handler);
 
-	debug("%s", "Paging has been initialized\r\n");
+	debug("Paging has been initialized\r\n");
 }
 
 void *virtual_to_physical(void *virt_addr) {
@@ -165,8 +165,8 @@ void free_user_image() {
 	unmap_page((void *)0xE0000000);
 
 	/* Flush TLB */
-	__asm__ __volatile__ ("movl %%cr3, %%eax" : : );
-	__asm__ __volatile__ ("movl %%eax, %%cr3" : : );
+	__asm__ volatile ("movl %%cr3, %%eax" : : );
+	__asm__ volatile ("movl %%eax, %%cr3" : : );
 }
 
 page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
