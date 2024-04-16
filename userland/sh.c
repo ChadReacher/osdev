@@ -130,7 +130,6 @@ int get_proc_count(int jobid, int filter) {
 }
 
 int set_job_status(int jobid, int status) {
-	int i;
 	struct process *p;
 	if (jobid > NR_JOBS || job_table[jobid] == NULL){ 
 		return -1;
@@ -247,6 +246,37 @@ int wait_for_job(int id) {
 	return status;
 }
 
+struct job *get_job_by_id(int id) {
+	if (id > NR_JOBS) {
+		return NULL;
+	}
+	return job_table[id];
+}
+
+int get_pgid_by_job_id(int jobid) {
+	struct job *job = get_job_by_id(jobid);
+	if (!job) {
+		return -1;
+	}
+	return job->pgid;
+}
+
+int get_job_id_by_pid(int pid) {
+	int i;
+	struct process *p;
+
+	for (i = 1; i < NR_JOBS; ++i) {
+		if (job_table[i]) {
+			for (p = job_table[i]->root; p != NULL; p = p->next) {
+				if (p->pid == pid) {
+					return i;
+				}
+			}
+		}
+	}
+	return -1;
+}
+
 void sigint_handler(int sig) {
 	(void)sig;
 	printf("\n");
@@ -254,6 +284,7 @@ void sigint_handler(int sig) {
 
 void builtin_cd(int argc, char **argv) {
 	int err;
+	(void)argc;
 
 	err = chdir(argv[1]);
 	if (err) {
@@ -280,7 +311,7 @@ void builtin_jobs() {
 }
 
 void builtin_fg(int argc, char **argv) {
-	int status, pid, job_id = -1;
+	int pid, job_id = -1;
 	if (argc < 2) {
 		printf("\tusage: fg pid\n");
 		return;
@@ -312,7 +343,7 @@ void builtin_fg(int argc, char **argv) {
 }
 
 void builtin_bg(int argc, char **argv) {
-	int status, pid, job_id = -1;
+	int pid, job_id = -1;
 	if (argc < 2) {
 		printf("\tusage: bg pid\n");
 		return;
@@ -423,36 +454,6 @@ int run_proc(struct job *job, struct process *p, int ifd, int ofd, int mode) {
 	return status;
 }
 
-struct job *get_job_by_id(int id) {
-	if (id > NR_JOBS) {
-		return NULL;
-	}
-	return job_table[id];
-}
-
-int get_pgid_by_job_id(int jobid) {
-	struct job *job = get_job_by_id(jobid);
-	if (!job) {
-		return -1;
-	}
-	return job->pgid;
-}
-
-int get_job_id_by_pid(int pid) {
-	int i;
-	struct process *p;
-
-	for (i = 1; i < NR_JOBS; ++i) {
-		if (job_table[i]) {
-			for (p = job_table[i]->root; p != NULL; p = p->next) {
-				if (p->pid == pid) {
-					return i;
-				}
-			}
-		}
-	}
-	return -1;
-}
 
 int is_job_completed(int id) {
 	struct process *p;
@@ -469,14 +470,14 @@ int is_job_completed(int id) {
 }
 
 void check_zombie() {
-	int status, pid;
+	int status, pid, jobid;
 	while ((pid = waitpid(-1, &status, WNOHANG|WUNTRACED)) > 0) {
 		if (WIFEXITED(status)) {
 			set_process_status(pid, DONE);
 		} else if (WIFSTOPPED(status)) {
 			set_process_status(pid, SUSPENDED);
 		}
-		int jobid = get_job_id_by_pid(pid);
+		jobid = get_job_id_by_pid(pid);
 		if (jobid > 0 && is_job_completed(jobid)) {
 			print_job_status(jobid);
 			remove_job(jobid);
@@ -535,6 +536,7 @@ struct process *parse_cmd(char *cmd) {
 	char *s = strdup(cmd), *arg;
 	char *ss = s;
 	char *ipath = NULL, *opath = NULL;
+	struct process *p;
 	
 	tokens = malloc(sizeof(char *) * 10);
 	for (i = 0; i < 10; ++i) {
@@ -584,7 +586,7 @@ struct process *parse_cmd(char *cmd) {
 	for (i = argc; i < count; ++i) {
 		tokens[i] = NULL;
 	}
-	struct process *p = malloc(sizeof(struct process));
+	p = malloc(sizeof(struct process));
 	p->command = cmd;
 	p->argc = argc;
 	p->argv = tokens;
@@ -602,6 +604,7 @@ struct job *parse_line(char *line) {
 	struct process *root = NULL, *proc = NULL, *new_proc;
 	int mode = EXEC_FOREGROUND, cmd_len = 0;
 	char *cmd, *cursor, *c;
+	struct job *job;
 
 	cursor = line;
 	c = line;
@@ -636,7 +639,7 @@ struct job *parse_line(char *line) {
 			++c;
 		}
 	}
-	struct job *job = malloc(sizeof(struct job));
+	job = malloc(sizeof(struct job));
 	job->id = 0;
 	job->root = root;
 	job->command = strdup(line);

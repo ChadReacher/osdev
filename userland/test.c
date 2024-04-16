@@ -6,7 +6,6 @@
 
 int main(i32 argc, i8 *argv[]) {
 	i32 i;
-	u8 m, *x;
 	printf("argc - %x\n", argc);
 	for (i = 0; i < argc; ++i) {
 		printf("argv[%d] - %s\n", i, argv[i]);
