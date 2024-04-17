@@ -3,8 +3,6 @@
 #include "errno.h"
 #include "process.h"
 
-extern struct proc *current_process;
-
 static i32 rw_ttyx(i32 rw, u16 minor, i8 *buf, i32 count) {
 	return (rw == READ) ? tty_read(minor, buf, count) : tty_write(minor, buf, count);
 }

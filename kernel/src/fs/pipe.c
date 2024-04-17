@@ -3,11 +3,6 @@
 #include <process.h>
 #include <scheduler.h>
 
-extern struct proc *current_process;
-
-void wake_up(struct proc **p);
-void goto_sleep(struct proc **p);
-
 i32 read_pipe(struct ext2_inode *inode, i8 *buf, u32 count) {
 	i8 *b = buf;
 	

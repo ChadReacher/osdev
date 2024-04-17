@@ -5,8 +5,8 @@
 #include <process.h>
 #include <string.h>
 
-extern struct proc *current_process;
 struct ext2_super_block super_block;
+
 static void dump_super_block_info();
 
 static struct ext2_super_block *do_mount(u16 dev) {

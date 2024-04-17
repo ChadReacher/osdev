@@ -5,8 +5,6 @@
 #include <process.h>
 #include <stdio.h>
 
-extern struct proc *current_process;
-
 page_directory_t *cur_page_dir = (page_directory_t *)0xFFFFF000;
 
 void pagefault_handler(struct registers_state *regs) {

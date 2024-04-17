@@ -5,8 +5,6 @@
 #include <process.h>
 #include <scheduler.h>
 
-extern struct proc *current_process;
-
 u32 startup_time;
 u32 ticks = 0;
 
@@ -16,11 +14,10 @@ static void timer_handler(struct registers_state *regs) {
 	if (current_process == NULL) {
 		return;
 	}
-	/* TODO: Think about stime and utime */
-	if (regs->cs == 0x18 || regs->cs == 0x20) {
-		++current_process->stime;
-	} else {
+	if (regs->cs & 0x3) {
 		++current_process->utime;
+	} else {
+		++current_process->stime;
 	}
 	if ((--current_process->timeslice) > 0) {
 		return;

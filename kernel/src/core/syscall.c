@@ -26,7 +26,6 @@
 extern u32 startup_time;
 extern u32 ticks;
 extern struct proc *procs[NR_PROCS];
-extern struct proc *current_process;
 extern u32 next_pid;
 extern struct file file_table[NR_FILE];
 extern struct tty_struct tty_table[];
@@ -1180,7 +1179,6 @@ i32 syscall_fcntl(i32 fd, i32 cmd, i32 arg) {
 	return 0;
 }
 
-/* TODO: Make more in-depth check */
 static i32 is_empty_dir(struct ext2_inode *inode) {
 	u32 block;
 	u32 inblock_offset, curr_off;

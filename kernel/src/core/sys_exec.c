@@ -10,8 +10,6 @@
 #include <idt.h>
 #include <tss.h>
 
-extern struct proc *current_process;
-
 i32 syscall_close(i32 fd);
 
 #define ARG_MAX 64

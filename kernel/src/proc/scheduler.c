@@ -65,10 +65,8 @@ void goto_sleep(struct proc **p) {
 	}
 }
 
-void schedule() {
-	int i, count;
-	struct proc *next_proc, *p;
-
+static void dump_procs() {
+	int i;
 	debug("Queue of all processes:\r\n");
 	for (i = 0; i < NR_PROCS; ++i) {
 		char *state;
@@ -96,9 +94,16 @@ void schedule() {
 		debug("Process(%p) with PID %d, state: %s\r\n",
 				p, p->pid, state);
 	}
+}
+
+void schedule() {
+	int i, count;
+	struct proc *next_proc, *p;
+
+	dump_procs();
 
 	for (i = 1; i < NR_PROCS; ++i) {
-		struct proc *p = procs[i];
+		p = procs[i];
 		if (!p) {
 			continue;
 		}

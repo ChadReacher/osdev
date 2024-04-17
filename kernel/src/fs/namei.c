@@ -8,8 +8,6 @@
 #include <errno.h>
 #include <fcntl.h>
 
-extern struct proc *current_process;
-
 i32 check_permission(struct ext2_inode *inode, i32 mask) {
 	i32 mode = inode->i_mode;
 	if (inode->i_dev && !inode->i_links_count) {

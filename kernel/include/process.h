@@ -69,4 +69,6 @@ void enter_usermode();
 i32 get_new_fd();
 struct file *get_empty_file();
 
+extern struct proc *current_process;
+
 #endif

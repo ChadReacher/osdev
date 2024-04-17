@@ -7,8 +7,6 @@
 
 void do_exit(i32 code);
 
-extern struct proc *current_process;
-
 /* Find first non-blocked signal */
 static i32 sigget(sigset_t *sigpend, const sigset_t *sigmask) {
 	i32 sig;

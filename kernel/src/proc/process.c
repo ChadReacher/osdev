@@ -11,9 +11,7 @@
 #include <elf.h>
 #include <ext2.h>
 
-extern void irq_ret();
 extern struct proc *procs[NR_PROCS];
-extern struct proc *current_process;
 extern void enter_usermode_asm(u32 useresp);
 
 struct file file_table[NR_FILE];

@@ -10,7 +10,6 @@ void console_write(struct tty_struct *tty);
 i32 is_orphaned_pgrp(i32 pgrp);
 i32 kill_pgrp(i32 pgrp, i32 sig);
 
-extern struct proc *current_process;
 extern struct proc *procs[NR_PROCS];
 
 i8 ttyq_getchar(struct tty_queue *q) {

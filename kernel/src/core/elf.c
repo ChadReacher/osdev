@@ -7,7 +7,6 @@
 #include <heap.h>
 #include <errno.h>
 
-extern struct proc *current_process;
 extern void irq_ret();
 
 static void dump_elf_header(struct elf_header *elf_h);

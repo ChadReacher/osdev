@@ -9,8 +9,6 @@
 #include <scheduler.h>
 #include <sys.h> 
 
-extern struct proc *current_process;
-
 isr_t interrupt_handlers[256];
 
 i8 *exception_messages[] = {
