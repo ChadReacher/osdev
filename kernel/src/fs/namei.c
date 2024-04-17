@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
-extern process_t *current_process;
+extern struct proc *current_process;
 
 i32 check_permission(struct ext2_inode *inode, i32 mask) {
 	i32 mode = inode->i_mode;

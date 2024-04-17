@@ -9,7 +9,7 @@
 #define ET_NONE 0x00
 #define ET_EXEC 0x02
 
-typedef struct elf_header {
+struct elf_header {
 	u8 magic_number;
 	u8 elf_ascii[3];
 	u8 class;
@@ -30,7 +30,7 @@ typedef struct elf_header {
 	u16 sh_size;
 	u16 sh_num;
 	u16 strtab_idx;
-} __attribute__((packed)) elf_header_t;
+} __attribute__((packed));
 
 #define PT_NULL 0x0
 #define PT_LOAD 0x1
@@ -39,7 +39,7 @@ typedef struct elf_header {
 #define PF_W 0x2
 #define PF_R 0x3
 
-typedef struct elf_program_header {
+struct elf_program_header {
 	u32 type;
 	u32 offset;
 	u32 vaddr;
@@ -48,9 +48,9 @@ typedef struct elf_program_header {
 	u32 memsz;
 	u32 flags;
 	u32 align;
-} __attribute__((packed)) elf_program_header_t;
+} __attribute__((packed));
 
-typedef struct elf_section_header {
+struct elf_section_header {
 	u32 name;
 	u32 type;
 	u32 flags;
@@ -61,7 +61,7 @@ typedef struct elf_section_header {
 	u32 info;
 	u32 addralign;
 	u32 entsize;
-} __attribute__((packed)) elf_section_header_t;
+} __attribute__((packed));
 
 i32 elf_load(struct ext2_inode *inode, 
 		i32 argc, i8 **argv, i32 envc, i8 **envp);

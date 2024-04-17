@@ -79,14 +79,14 @@ i32 find_first_free_blocks(u32 num_blocks) {
 }
 void pmm_init() {
 	u32 num_mmap_entries;
-	memory_map_entry *mmap_entry;
+	struct phys_mmap_entry *mmap_entry;
 	u32 total_memory_bytes;
 	u32 i;
 
 	/* Get number of memory map entries */
 	num_mmap_entries = *((u32 *)BIOS_NUM_ENTRIES);
 	/* Get starting address of entries list */
-	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
+	mmap_entry = (struct phys_mmap_entry *)BIOS_MEMORY_MAP;
 	mmap_entry += num_mmap_entries - 1;
 	/* Get total amount of bytes */
 	total_memory_bytes = mmap_entry->base_address_low + mmap_entry->length_low - 1;
@@ -96,7 +96,7 @@ void pmm_init() {
 	_pmm_init(0xC0030000, total_memory_bytes); 
 
 	/* Get back to start of the list to available memory as free to use */
-	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
+	mmap_entry = (struct phys_mmap_entry *)BIOS_MEMORY_MAP;
 	for (i = 0; i < num_mmap_entries; ++i) {
 		if (mmap_entry->type == 1) { /* If the type of memory chunk is 'Available Memory'? */
 			mark_memory_as_free(mmap_entry->base_address_low, mmap_entry->length_low);
@@ -188,17 +188,17 @@ void free_blocks(void *address, u32 num_blocks) {
 void print_physical_memory_info() {
 	u8 i;
 	u32 num_entries;
-	memory_map_entry *mmap_entry;
+	struct phys_mmap_entry *entry;
 
-	mmap_entry = (memory_map_entry *)BIOS_MEMORY_MAP;
+	entry = (struct phys_mmap_entry *)BIOS_MEMORY_MAP;
 	num_entries = *((u32 *)BIOS_NUM_ENTRIES);
 	debug("Physical memory info: \r\n");
 	debug("Total number of entries: %d\r\n", num_entries);
 	for (i = 0; i < num_entries; ++i) {
 		serial_printf("Region: %x | Base: %x | Length: %x | Type(%d): ", 
-				i, mmap_entry->base_address_low, 
-				mmap_entry->length_low, mmap_entry->type);
-		switch (mmap_entry->type) {
+				i, entry->base_address_low, 
+				entry->length_low, entry->type);
+		switch (entry->type) {
 			case 1:
 				serial_printf("Available Memory");
 				break;
@@ -216,8 +216,8 @@ void print_physical_memory_info() {
 				break;
 		}
 		serial_printf("\r\n");
-		++mmap_entry; 
+		++entry; 
 	}
-	--mmap_entry;
-	debug("Total amount of memory(in bytes): %x\r\n", mmap_entry->base_address_low + mmap_entry->length_low - 1);
+	--entry;
+	debug("Total amount of memory(in bytes): %x\r\n", entry->base_address_low + entry->length_low - 1);
 }

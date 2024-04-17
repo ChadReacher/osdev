@@ -42,7 +42,7 @@ void map_page(void *phys_addr, void *virt_addr, u32 flags);
 void unmap_page(void *virt_addr);
 page_table_entry *get_page(virtual_address addr);
 void paging_init();
-void pagefault_handler(registers_state *regs);
+void pagefault_handler(struct registers_state *regs);
 void *virtual_to_physical(void *virt_addr);
 page_directory_t *paging_copy_page_dir(bool is_deep_copy);
 

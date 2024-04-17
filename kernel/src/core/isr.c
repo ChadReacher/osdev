@@ -9,7 +9,7 @@
 #include <scheduler.h>
 #include <sys.h> 
 
-extern process_t *current_process;
+extern struct proc *current_process;
 
 isr_t interrupt_handlers[256];
 
@@ -51,7 +51,7 @@ i8 *exception_messages[] = {
 	"Reserved",
 };
 
-void breakpoint_handler(registers_state *regs) {
+void breakpoint_handler(struct registers_state *regs) {
 	kprintf("Exception: BREAKPOINT\n"
 		  "   Instruction Pointer = 0x%x\n"
 		  "   Code Segment        = 0x%x\n"
@@ -131,7 +131,7 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 	interrupt_handlers[n] = handler;
 }
 
-void check_signals(registers_state *regs) {
+void check_signals(struct registers_state *regs) {
 	if (current_process && 
 			(current_process->sigpending & ~current_process->sigmask) &&
 			(regs->cs & 0x3) == 0x3) {
@@ -143,7 +143,7 @@ void syscall_init() {
 	idt_set(SYSCALL, (u32)isr0x80, 0xEE);
 }
 
-i32 syscall_handler(registers_state *regs) {
+i32 syscall_handler(struct registers_state *regs) {
 	syscall_fn sys;
 	if (regs->eax > NR_SYSCALLS) {
 		debug("Received unimplemented syscall: %d\r\n", regs->eax);
@@ -153,7 +153,7 @@ i32 syscall_handler(registers_state *regs) {
 	return sys(regs->ebx, regs->ecx, regs->edx, regs->esi);
 }
 
-void isr_handler(registers_state *regs) {
+void isr_handler(struct registers_state *regs) {
 	if (regs->int_number == SYSCALL) {
 		current_process->regs = regs;
 		regs->eax = syscall_handler(regs);
@@ -186,7 +186,7 @@ static void send_eoi(u32 intr_num) {
 	port_outb(0x20, 0x20);
 }
 
-void irq_handler(registers_state *regs) {
+void irq_handler(struct registers_state *regs) {
 	send_eoi(regs->int_number);
 	if (interrupt_handlers[regs->int_number] != 0) {
 		isr_t handler = interrupt_handlers[regs->int_number];

@@ -10,7 +10,7 @@
 #include <idt.h>
 #include <tss.h>
 
-extern process_t *current_process;
+extern struct proc *current_process;
 
 i32 syscall_close(i32 fd);
 

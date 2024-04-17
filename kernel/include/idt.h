@@ -13,18 +13,18 @@
  * 6-8 bits 	Interrupt gate(110) or Trap Gate(111)
  */
 
-typedef struct {
+struct idt_entry {
 	u16 isr_address_low;	/* The lower 16 bits of the ISR's address */
 	u16 kernel_cs;		 	/* Code segment for this ISR */
 	u8 reserved;		 	/* Set to 0 */
 	u8 attributes;		 	/* Type and attributes */
 	u16 isr_address_high;	/* The higher 16 bits of the ISR's address */
-} __attribute__((packed)) idt_entry_t;
+} __attribute__((packed));
 
-typedef struct {
+struct idtr {
 	u16 limit;
 	u32 base;
-} __attribute__((packed)) idtr_t;
+} __attribute__((packed));
 
 void idt_set(u8 index, u32 isr, u8 flags);
 void idt_init();

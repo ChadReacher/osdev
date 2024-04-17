@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-typedef struct tss_entry {
+struct tss_entry {
 	u32 prev_tss;
 	u32 esp0;
 	u32 ss0;
@@ -31,7 +31,7 @@ typedef struct tss_entry {
 	u32 ldtr;
 	u32 trap;
 	u32 iomap;
-} __attribute__((packed)) tss_entry_t;
+} __attribute__((packed));
 
 extern void tss_flush();
 

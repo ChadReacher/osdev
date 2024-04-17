@@ -5,12 +5,12 @@
 #include <process.h>
 #include <scheduler.h>
 
-extern process_t *current_process;
+extern struct proc *current_process;
 
 u32 startup_time;
 u32 ticks = 0;
 
-static void timer_handler(registers_state *regs) {
+static void timer_handler(struct registers_state *regs) {
 	(void)regs;
 	++ticks;
 	if (current_process == NULL) {

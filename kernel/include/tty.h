@@ -10,7 +10,7 @@ struct tty_queue {
 	u32 count;
 	u32 head;
 	u32 tail;
-	struct _process *process;
+	struct proc *process;
 	i8 buf[TTY_QUEUE_BUF_SZ];
 };
 

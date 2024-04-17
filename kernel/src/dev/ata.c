@@ -12,18 +12,18 @@ static struct hd_disk {
 	u32 start_sect;
 	u32 nr_sects;
 } hd_disks[NR_HD*5];
-static ata_device_t devices[NR_HD];
+static struct ata_device devices[NR_HD];
 
-static void ata_device_init(ata_device_t *dev, u32 primary);
+static void ata_device_init(struct ata_device *dev, u32 primary);
 
-static void ata_io_wait(ata_device_t *dev) {
+static void ata_io_wait(struct ata_device *dev) {
 	port_inb(dev->alt_status_reg);
 	port_inb(dev->alt_status_reg);
 	port_inb(dev->alt_status_reg);
 	port_inb(dev->alt_status_reg);
 }
 
-static void ata_software_reset(ata_device_t *dev) {
+static void ata_software_reset(struct ata_device *dev) {
 	u8 control_reg_val;
 	u32 count;
 
@@ -40,7 +40,7 @@ static void ata_software_reset(ata_device_t *dev) {
 	} while ((control_reg_val & 0xC0) != 0x40);
 }
 
-static void ata_device_detect(ata_device_t *dev, u32 primary) {
+static void ata_device_detect(struct ata_device *dev, u32 primary) {
 	u8 res, status_reg, drq_bit, err_bit;
 	u16 lba_low, lba_high;
 	u32 i;
@@ -96,12 +96,12 @@ static void ata_device_detect(ata_device_t *dev, u32 primary) {
 	}
 }
 
-static void ata_device_init(ata_device_t *dev, u32 primary) {
+static void ata_device_init(struct ata_device *dev, u32 primary) {
 	u16 data_reg = primary ? 0x1F0 : 0x170;
 	u16 alt_status_reg = primary ? 0x3F6 : 0x376;
 
-	dev->prdt = malloc(sizeof(phys_reg_desc_t));
-	memset(dev->prdt, 0, sizeof(phys_reg_desc_t));
+	dev->prdt = malloc(sizeof(struct phys_reg_desc));
+	memset(dev->prdt, 0, sizeof(struct phys_reg_desc));
 	dev->prdt_phys = (u8 *)virtual_to_physical(dev->prdt);
 
 	dev->mem_buffer = malloc(4096);
@@ -133,7 +133,7 @@ static void ata_device_init(ata_device_t *dev, u32 primary) {
 	dev->bmr_prdt = dev->bar4 + 4;
 }
 
-static void ata_write(ata_device_t *dev, u32 sector, u8 nsect, i8 *buf) {
+static void ata_write(struct ata_device *dev, u32 sector, u8 nsect, i8 *buf) {
 	memcpy(dev->mem_buffer, buf, SECTOR_SIZE * nsect);
 
 	/* Reset command register */
@@ -179,7 +179,7 @@ static void ata_write(ata_device_t *dev, u32 sector, u8 nsect, i8 *buf) {
 	}
 }
 
-static i8 *ata_read(ata_device_t *dev, u32 sector, u8 nsect) {
+static i8 *ata_read(struct ata_device *dev, u32 sector, u8 nsect) {
 	i8 *buf;
 
 	/* Reset command register */
@@ -228,7 +228,7 @@ static i8 *ata_read(ata_device_t *dev, u32 sector, u8 nsect) {
 	return buf;
 }
 
-static void ata_handler(registers_state *regs) {
+static void ata_handler(struct registers_state *regs) {
 	(void)regs;
 
 	port_inb(devices[0].status_reg);
@@ -246,7 +246,7 @@ static void ata_handler(registers_state *regs) {
 }
 
 void rw_ata(u32 rw, u16 dev, u32 block, i8 **buf) {
-	ata_device_t *devp;
+	struct ata_device *devp;
 	u32 sector;
 
 	sector = block * 2;

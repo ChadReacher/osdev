@@ -4,7 +4,7 @@
 
 extern u32 startup_time;
 
-bool rtc_values_are_not_equal(cmos_rtc_t left, cmos_rtc_t right) {
+bool rtc_values_are_not_equal(struct cmos_time left, struct cmos_time right) {
 	return (
 		left.second != right.second ||
 		left.minute != right.minute ||
@@ -34,15 +34,15 @@ bool cmos_update_in_progress() {
 	return port_inb(CMOS_DATA_PORT) & 0x80;
 }
 
-cmos_rtc_t cmos_read_rtc() {
+struct cmos_time cmos_read_rtc() {
 	/*
 	 * First, you have to ensure that you won't be effected
 	 * by an update. Then select the associated "CMOS register"
 	 * and read value 
 	 */
 	u8 reg_b;
-	cmos_rtc_t rtc;
-	cmos_rtc_t last;
+	struct cmos_time rtc;
+	struct cmos_time last;
 
 	/* 
 	 * This uses the "read registers until you get the same values twice in a
@@ -62,7 +62,7 @@ cmos_rtc_t cmos_read_rtc() {
 
 	do {
 		/* Prepare to read for a second time */
-		memcpy(&last, &rtc, sizeof(cmos_rtc_t));
+		memcpy(&last, &rtc, sizeof(struct cmos_time));
 
 		while (cmos_update_in_progress());
 
@@ -104,8 +104,8 @@ cmos_rtc_t cmos_read_rtc() {
 	return rtc;
 }
 
-void cmos_rtc_handler(registers_state *regs) {
-	cmos_rtc_t date_and_time;
+void cmos_rtc_handler(struct registers_state *regs) {
+	struct cmos_time date_and_time;
 	(void)regs;
 
 	date_and_time = cmos_read_rtc();
@@ -126,7 +126,7 @@ static i8 month[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 void setup_startup_time() {
 	i32 i;
-	cmos_rtc_t time;
+	struct cmos_time time;
 	u32 total_days = 0, seconds;
 
 	time = cmos_read_rtc();

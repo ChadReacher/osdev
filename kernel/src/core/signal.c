@@ -7,7 +7,7 @@
 
 void do_exit(i32 code);
 
-extern process_t *current_process;
+extern struct proc *current_process;
 
 /* Find first non-blocked signal */
 static i32 sigget(sigset_t *sigpend, const sigset_t *sigmask) {
@@ -24,7 +24,7 @@ static i32 sigget(sigset_t *sigpend, const sigset_t *sigmask) {
 	return sig;
 }
 
-i32 handle_signal(registers_state *regs) {
+i32 handle_signal(struct registers_state *regs) {
 	u32 *esp;
 	sigaction_t *action;
 	i32 sig;
@@ -71,7 +71,7 @@ i32 handle_signal(registers_state *regs) {
 	return 0;
 }
 
-i32 send_signal(process_t *proc, i32 sig) {
+i32 send_signal(struct proc *proc, i32 sig) {
 	if (!proc) {
 		return -EINVAL;
 	}

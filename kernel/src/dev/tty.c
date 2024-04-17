@@ -10,8 +10,8 @@ void console_write(struct tty_struct *tty);
 i32 is_orphaned_pgrp(i32 pgrp);
 i32 kill_pgrp(i32 pgrp, i32 sig);
 
-extern process_t *current_process;
-extern process_t *procs[NR_PROCS];
+extern struct proc *current_process;
+extern struct proc *procs[NR_PROCS];
 
 i8 ttyq_getchar(struct tty_queue *q) {
 	i8 c = q->buf[q->tail];
@@ -42,8 +42,8 @@ struct tty_struct tty_table[] = {
 	},
 };
 
-void interruptible_sleep_on(struct _process **p) {
-	process_t *tmp;
+void interruptible_sleep_on(struct proc **p) {
+	struct proc *tmp;
 	if (!p) {
 		return;
 	}
@@ -169,7 +169,7 @@ i32 tty_write(u16 channel, i8 *buf, i32 count) {
 
 static void send_intr(struct tty_struct *tty, i32 signal) {
 	i32 i;
-	process_t *p;
+	struct proc *p;
 
 	if (tty->pgrp <= 0) {
 		return;

@@ -42,13 +42,13 @@ isr_common_stub:
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-	push dword esp		; for "registers_state *regs"
+	push dword esp		; for "struct registers_state *regs"
 
 	; 2. Call C handler
 	call isr_handler
 
 	call check_signals
-	add esp, 4			; skip "registers_state *regs"
+	add esp, 4			; skip "struct registers_state *regs"
 
 	; 3. Restore state
 	pop gs
@@ -71,7 +71,7 @@ irq_common_stub:
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-	push dword esp		; for "registers_state *regs"
+	push dword esp		; for "struct registers_state *regs"
 
 	; 2. Call C handler
 	call irq_handler

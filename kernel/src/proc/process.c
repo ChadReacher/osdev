@@ -12,8 +12,8 @@
 #include <ext2.h>
 
 extern void irq_ret();
-extern process_t *procs[NR_PROCS];
-extern process_t *current_process;
+extern struct proc *procs[NR_PROCS];
+extern struct proc *current_process;
 extern void enter_usermode_asm(u32 useresp);
 
 struct file file_table[NR_FILE];
@@ -35,7 +35,7 @@ void user_init() {
 	i32 err, i, argc = 0, envc = 1;
 	i8 **argv, **envp;
 	void *kernel_page_dir;
-	process_t *init_process = procs[1];
+	struct proc *init_process = procs[1];
 
 	err = namei("/bin/init", &inode);
 	if (err) {

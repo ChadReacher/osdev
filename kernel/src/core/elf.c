@@ -7,13 +7,13 @@
 #include <heap.h>
 #include <errno.h>
 
-extern process_t *current_process;
+extern struct proc *current_process;
 extern void irq_ret();
 
-static void dump_elf_header(elf_header_t *elf_h);
-static void dump_program_header(elf_program_header_t ph);
+static void dump_elf_header(struct elf_header *elf_h);
+static void dump_program_header(struct elf_program_header ph);
 
-static i32 is_elf(elf_header_t *elf) {
+static i32 is_elf(struct elf_header *elf) {
 	i32 ret = -1;
 	if (elf->magic_number == ELF_MAGIC_NUMBER && strncmp((i8 *)elf->elf_ascii, "ELF", 3) == 0) {
 		ret = 0;
@@ -122,7 +122,7 @@ static void setup_kernel_stack(i8 *usp) {
 	*sp-- = 0x23; 			/* es */
 	*sp-- = 0x23; 			/* fs */
 	*sp-- = 0x23; 			/* gs */
-	*current_process->regs = *((registers_state *)(sp + 1));
+	*current_process->regs = *((struct registers_state *)(sp + 1));
 	*sp-- = (u32)irq_ret;	/* irq_ret eip (to return back to the end of the interrupt routine) */
 	*sp-- = 0x0;			/* ebp */
 	*sp-- = 0x0; 			/* ebx */
@@ -130,7 +130,7 @@ static void setup_kernel_stack(i8 *usp) {
 	*sp-- = 0x0; 			/* edi */
 	++sp;
 	current_process->kernel_stack_top = (void *)sp;
-	current_process->context = (context_t *)sp;
+	current_process->context = (struct context *)sp;
 }
 
 i32 elf_load(struct ext2_inode *inode, 
@@ -138,7 +138,7 @@ i32 elf_load(struct ext2_inode *inode,
 	i8 *usp;
 	i32 i;
 	u32 last_addr;
-	elf_header_t elf_header;
+	struct elf_header elf_header;
 	page_directory_entry *code_pd_entry;
 	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
 	struct file fp;
@@ -148,8 +148,8 @@ i32 elf_load(struct ext2_inode *inode,
 	fp.f_count = 1;
 	fp.f_inode = inode;
 	fp.f_pos = 0;
-	if (ext2_file_read(inode, &fp, (i8 *)&elf_header, sizeof(elf_header_t))
-				!= sizeof(elf_header_t)) {
+	if (ext2_file_read(inode, &fp, (i8 *)&elf_header, sizeof(struct elf_header))
+				!= sizeof(struct elf_header)) {
 		return -ENOEXEC;
 	}
 	if (is_elf(&elf_header) != ET_EXEC) {
@@ -164,11 +164,11 @@ i32 elf_load(struct ext2_inode *inode,
 		u32 j, addr;
 		u32 blocks, flags;
 		void *code_phys_frame;
-		elf_program_header_t program_header;
+		struct elf_program_header program_header;
 
 		fp.f_pos = elf_header.phoff + elf_header.ph_size * i;
 		if (ext2_file_read(inode, &fp, (i8 *)&program_header, 
-			sizeof(elf_program_header_t)) != sizeof(elf_program_header_t)) {
+			sizeof(struct elf_program_header)) != sizeof(struct elf_program_header)) {
 			return -ENOEXEC;
 		}
 		dump_program_header(program_header);
@@ -203,7 +203,7 @@ i32 elf_load(struct ext2_inode *inode,
 	return 0;
 }
 
-static void dump_elf_header(elf_header_t *elf_h) {
+static void dump_elf_header(struct elf_header *elf_h) {
 	debug("magic_number - %x\r\n", elf_h->magic_number);
 	debug("magic_number - %x\r\n", elf_h->magic_number);
 	debug("elf_ascii[3] - %c, %c, %c\r\n", elf_h->elf_ascii[0], elf_h->elf_ascii[1], elf_h->elf_ascii[2]);
@@ -227,7 +227,7 @@ static void dump_elf_header(elf_header_t *elf_h) {
 	debug("strtab_idx - %x\r\n", elf_h->strtab_idx);
 }
 
-static void dump_program_header(elf_program_header_t ph) {
+static void dump_program_header(struct elf_program_header ph) {
 	debug("type - %x\r\n", ph.type);
 	debug("offset - %x\r\n", ph.offset);
 	debug("vaddr - %x\r\n", ph.vaddr);

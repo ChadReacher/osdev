@@ -10,18 +10,14 @@
 
 #define ALIGN(sz) ((sz / 0x10 + 1) * 0x10)
 
-struct _heap_block {
+struct heap_block {
 	u32 size;
-	struct _heap_block *next;
+	struct heap_block *next;
 	bool free;
 };
 
-typedef struct _heap_block heap_block;
-
 void heap_init();
 void *sbrk(u32 increment);
-heap_block *best_fit(u32 size);
-void split_block(heap_block *block, u32 size);
 void *malloc(u32 size);
 void free(void *ptr);
 void *realloc(void *ptr, u32 size);

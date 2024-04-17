@@ -22,23 +22,23 @@ typedef enum {
 	ZOMBIE
 } state_t;
 
-typedef struct {
+struct context {
 	u32 edi;
 	u32 esi;
 	u32 ebx;
 	u32 ebp;
 	u32 eip;
-} context_t;
+};
 
-typedef struct _process {
+struct proc {
 	i32 pid;
 	i32 timeslice;
 	state_t state;
 	i32 exit_code;
-	struct _process *parent;
+	struct proc *parent;
 	page_directory_t *directory;
-	registers_state *regs;
-	context_t *context;
+	struct registers_state *regs;
+	struct context *context;
 	void *kernel_stack_bottom;
 	void *kernel_stack_top;
 	u32 close_on_exec;
@@ -53,7 +53,7 @@ typedef struct _process {
 	sigaction_t signals[NSIG];
 	u32 *sigreturn;
 	sigset_t old_sigmask;
-	registers_state signal_old_regs;
+	struct registers_state signal_old_regs;
 	u32 sleep;
 	i32 alarm;
 	u16 uid, euid;
@@ -62,7 +62,7 @@ typedef struct _process {
 	i32 groups[NR_GROUPS];
 	i32 utime, stime, cutime, cstime;
 	i32 tty;
-} process_t;
+};
 
 void user_init();
 void enter_usermode();

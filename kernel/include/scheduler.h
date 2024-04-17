@@ -6,11 +6,11 @@
 
 void scheduler_init();
 void schedule();
-process_t *get_proc_by_id(i32 pid);
-void wake_up(process_t **p);
-void goto_sleep(process_t **p);
+struct proc *get_proc_by_id(i32 pid);
+void wake_up(struct proc **p);
+void goto_sleep(struct proc **p);
 int get_free_proc();
-i32 handle_signal(registers_state *regs);
-i32 send_signal(process_t *proc, i32 sig);
+i32 handle_signal(struct registers_state *regs);
+i32 send_signal(struct proc *proc, i32 sig);
 
 #endif

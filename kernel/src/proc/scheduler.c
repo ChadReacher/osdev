@@ -11,13 +11,13 @@
 extern u32 ticks;
 extern u32 next_pid;
 extern void irq_ret();
-extern void switch_to(context_t **old_context, context_t *new_context);
+extern void switch_to(struct context **old_context, struct context *new_context);
 
 i32 need_resched = 0;
-process_t *procs[NR_PROCS];
-process_t *current_process = NULL;
+struct proc *procs[NR_PROCS];
+struct proc *current_process = NULL;
 
-void task_switch(process_t *next_proc);
+void task_switch(struct proc *next_proc);
 
 static void cpu_idle() {
 	while (1){ 
@@ -25,7 +25,7 @@ static void cpu_idle() {
 	}
 }
 
-process_t *get_proc_by_id(i32 pid) {
+struct proc *get_proc_by_id(i32 pid) {
 	if (pid < 0 || pid > NR_PROCS) {
 		return NULL;
 	}
@@ -42,7 +42,7 @@ int get_free_proc() {
 	return -1;
 }
 
-void wake_up(process_t **p) {
+void wake_up(struct proc **p) {
 	if (p && *p) {
 		(**p).state = RUNNING;
 		*p = NULL;
@@ -50,8 +50,8 @@ void wake_up(process_t **p) {
 	}
 }
 
-void goto_sleep(process_t **p) {
-	process_t *tmp;
+void goto_sleep(struct proc **p) {
+	struct proc *tmp;
 	if (!p) {
 		return;
 	}
@@ -67,12 +67,12 @@ void goto_sleep(process_t **p) {
 
 void schedule() {
 	int i, count;
-	process_t *next_proc, *p;
+	struct proc *next_proc, *p;
 
 	debug("Queue of all processes:\r\n");
 	for (i = 0; i < NR_PROCS; ++i) {
 		char *state;
-		process_t *p = procs[i];
+		struct proc *p = procs[i];
 		if (!p) {
 			continue;
 		}
@@ -98,7 +98,7 @@ void schedule() {
 	}
 
 	for (i = 1; i < NR_PROCS; ++i) {
-		process_t *p = procs[i];
+		struct proc *p = procs[i];
 		if (!p) {
 			continue;
 		}
@@ -148,8 +148,8 @@ void schedule() {
 	}
 }
 
-void task_switch(process_t *next_proc) {
-	process_t *prev_proc = current_process;
+void task_switch(struct proc *next_proc) {
+	struct proc *prev_proc = current_process;
 	current_process = next_proc;
 
 	tss_set_stack((u32)current_process->kernel_stack_top);
@@ -160,8 +160,8 @@ void task_switch(process_t *next_proc) {
 }
 
 void create_idle_process() {
-	process_t *idle_process = procs[0] = malloc(sizeof(process_t));
-	memset(idle_process, 0, sizeof(process_t));
+	struct proc *idle_process = procs[0] = malloc(sizeof(struct proc));
+	memset(idle_process, 0, sizeof(struct proc));
 
 	idle_process->pid = next_pid++;
 	idle_process->timeslice = 20;
@@ -169,9 +169,9 @@ void create_idle_process() {
 	idle_process->directory = virtual_to_physical((void *)0xFFFFF000);
 	idle_process->kernel_stack_bottom = malloc(4096 *2);
 	memset(idle_process->kernel_stack_bottom, 0, 4096 * 2);
-	idle_process->regs = (registers_state *)
+	idle_process->regs = (struct registers_state *)
 		(ALIGN_DOWN((u32)idle_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(registers_state) + 4);
+		 - sizeof(struct registers_state) + 4);
 	idle_process->regs->eflags = 0x202;
 	idle_process->regs->cs = 0x8;
 	idle_process->regs->ds = 0x8;
@@ -179,29 +179,29 @@ void create_idle_process() {
 	idle_process->regs->fs = 0x8;
 	idle_process->regs->gs = 0x8;
 	idle_process->regs->eip = (u32)cpu_idle;
-	idle_process->context = (context_t *)
+	idle_process->context = (struct context *)
 		(ALIGN_DOWN((u32)idle_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(registers_state) - sizeof(context_t) + 4);
+		 - sizeof(struct registers_state) - sizeof(struct context) + 4);
 	idle_process->context->eip = (u32)irq_ret;
 	idle_process->kernel_stack_top = idle_process->context;
 }
 
 void scheduler_init() {
-	process_t *init_process;
+	struct proc *init_process;
 
 	create_idle_process();
 
-	init_process = current_process = procs[1] = malloc(sizeof(process_t));
-	memset(init_process, 0, sizeof(process_t));
+	init_process = current_process = procs[1] = malloc(sizeof(struct proc));
+	memset(init_process, 0, sizeof(struct proc));
 	init_process->pid = next_pid++;
 	init_process->timeslice = 20;
 	init_process->state = RUNNING;
 	init_process->kernel_stack_bottom = malloc(4096 * 2);
 	memset(init_process->kernel_stack_bottom, 0, 4096 * 2);
-	init_process->regs = (registers_state *)
+	init_process->regs = (struct registers_state *)
 		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(registers_state) + 4);
-	init_process->context = (context_t *)
+		 - sizeof(struct registers_state) + 4);
+	init_process->context = (struct context *)
 		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(registers_state) - sizeof(context_t) + 4);
+		 - sizeof(struct registers_state) - sizeof(struct context) + 4);
 }

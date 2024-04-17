@@ -1,7 +1,7 @@
 #include <gdt.h>
 
-gdt_entry_t gdt[GDT_ENTRIES];
-volatile gdtr_t gdtr;
+struct gdt_entry gdt[GDT_ENTRIES];
+volatile struct gdtr gdtr;
 
 void gdt_init() {
 	gdtr.size = sizeof(gdt) - 1;
@@ -26,7 +26,7 @@ void gdt_init() {
 }
 
 void gdt_set_entry(u32 idx, u32 base, u32 limit, u8 access_byte, u8 granularity) {
-	gdt_entry_t *entry = &gdt[idx];
+	struct gdt_entry *entry = &gdt[idx];
 	entry->base_low = base & 0xFFFF;
 	entry->base_middle = ((base >> 16) & 0xFF);
 	entry->base_high = ((base >> 24) & 0xFF);

@@ -5,11 +5,11 @@
 #include <process.h>
 #include <stdio.h>
 
-extern process_t *current_process;
+extern struct proc *current_process;
 
 page_directory_t *cur_page_dir = (page_directory_t *)0xFFFFF000;
 
-void pagefault_handler(registers_state *regs) {
+void pagefault_handler(struct registers_state *regs) {
 	u32 bad_address, err_code;
 	i8 not_present, rw, us;
 

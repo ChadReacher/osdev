@@ -5,7 +5,7 @@
 #include <process.h>
 #include <string.h>
 
-extern process_t *current_process;
+extern struct proc *current_process;
 struct ext2_super_block super_block;
 static void dump_super_block_info();
 

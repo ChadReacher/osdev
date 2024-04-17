@@ -74,21 +74,21 @@ extern void irq13();
 extern void irq14();
 extern void irq15();
 
-typedef struct {
+struct registers_state {
 	u32 gs, fs, es, ds;
 	u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
 	u32 int_number, err_code;
 	u32 eip, cs, eflags, useresp, ss;
-} registers_state;
+};
 
 void isr_init();
 void irq_init();
 void syscall_init();
-void isr_handler(registers_state *regs);
-void irq_handler(registers_state *regs);
-i32 syscall_handler(registers_state *regs);
+void isr_handler(struct registers_state *regs);
+void irq_handler(struct registers_state *regs);
+i32 syscall_handler(struct registers_state *regs);
 
-typedef void (*isr_t)(registers_state*);
+typedef void (*isr_t)(struct registers_state*);
 void register_interrupt_handler(u8 n, isr_t handler);
 
 #endif

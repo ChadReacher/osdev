@@ -19,7 +19,7 @@
 #define CMOS_REG_STATUS_B  0x0B
 #define CMOS_REG_STATUS_C  0x0C
 
-typedef struct {
+struct cmos_time {
 	u8 second;
 	u8 minute;
 	u8 hour;
@@ -28,10 +28,10 @@ typedef struct {
 	u8 month;
 	u16 year;
 	u8 century;
-} cmos_rtc_t;
+};
 
-cmos_rtc_t cmos_read_rtc();
-void cmos_rtc_handler(registers_state *regs);
+struct cmos_time cmos_read_rtc();
+void cmos_rtc_handler(struct registers_state *regs);
 void cmos_rtc_init();
 
 #endif

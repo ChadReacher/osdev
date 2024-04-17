@@ -153,7 +153,7 @@ struct ext2_inode {
 	u32 i_count;
 	i8  i_dirt;
 	i8  i_pipe;
-	struct _process *i_wait;
+	struct proc *i_wait;
 } __attribute__((packed));
 
 struct ext2_dir {

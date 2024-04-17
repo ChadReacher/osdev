@@ -9,7 +9,10 @@ void *heap_curr = NULL;
 void *heap_end = NULL;
 void *heap_max = NULL;
 
-static heap_block *block_list = NULL;
+static struct heap_block *block_list = NULL;
+
+static struct heap_block *best_fit(u32 size);
+static void split_block(struct heap_block *block, u32 size);
 
 void heap_init() {
 	u32 heap_blocks;
@@ -64,9 +67,9 @@ void *sbrk(u32 increment) {
 	return NULL;
 }
 
-heap_block *best_fit(u32 size) {
-	heap_block *current = block_list;
-	heap_block *best_current = NULL;
+static struct heap_block *best_fit(u32 size) {
+	struct heap_block *current = block_list;
+	struct heap_block *best_current = NULL;
 	while (current) {
 		if (current->free && current->size >= size) {
 			if (best_current == NULL || current->size < best_current->size) {
@@ -78,11 +81,11 @@ heap_block *best_fit(u32 size) {
 	return best_current;
 }
 
-void split_block(heap_block *block, u32 size) {
-	if (block->size > sizeof(heap_block) + size) {
-		heap_block *splited_block = (heap_block *)((u8*)block + sizeof(heap_block) + size);
+static void split_block(struct heap_block *block, u32 size) {
+	if (block->size > sizeof(struct heap_block) + size) {
+		struct heap_block *splited_block = (struct heap_block *)((u8*)block + sizeof(struct heap_block) + size);
 		splited_block->free = 1;
-		splited_block->size = block->size - size - sizeof(heap_block);
+		splited_block->size = block->size - size - sizeof(struct heap_block);
 		splited_block->next = block->next;
 		block->size = size;
 		block->next = splited_block;
@@ -97,18 +100,18 @@ void split_block(heap_block *block, u32 size) {
  */
 void *malloc(u32 size) {
 	u32 real_size;
-	heap_block *block, *last;
+	struct heap_block *block, *last;
 
 	if (size == 0) {
 		return NULL;
 	}
 
-	real_size = sizeof(heap_block) + size;
+	real_size = sizeof(struct heap_block) + size;
 	real_size = ALIGN(real_size);
 
 
 	if (block_list) {
-		heap_block* best_block = best_fit(size);
+		struct heap_block* best_block = best_fit(size);
 		if (best_block) {
 			best_block->free = 0;
 			split_block(best_block, size);
@@ -145,15 +148,15 @@ void *malloc(u32 size) {
 }
 
 void free(void *ptr) {
-	heap_block *block;
-	heap_block *prev_block;
-	heap_block *curr_block;
-	heap_block *next_block;
+	struct heap_block *block;
+	struct heap_block *prev_block;
+	struct heap_block *curr_block;
+	struct heap_block *next_block;
 	if (!ptr) {
 		return;
 	}
 
-	block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
+	block = (struct heap_block *)((u8 *)ptr - sizeof(struct heap_block));
 
 	block->free = 1;
 	
@@ -171,11 +174,11 @@ void free(void *ptr) {
 	}
 
 	if (next_block && next_block->free) {
-		curr_block->size = curr_block->size + sizeof(heap_block) + next_block->size;
+		curr_block->size = curr_block->size + sizeof(struct heap_block) + next_block->size;
 		curr_block->next = next_block->next;
 	}
 	if (prev_block && prev_block->free) {
-		prev_block->size = prev_block->size + sizeof(heap_block) + curr_block->size;
+		prev_block->size = prev_block->size + sizeof(struct heap_block) + curr_block->size;
 		prev_block->next = curr_block->next;
 		curr_block = prev_block;
 	}
@@ -183,8 +186,8 @@ void free(void *ptr) {
 
 void *realloc(void *ptr, u32 size) {
 	u32 real_size;
-	heap_block *old_block, *new_block, *last;
-	heap_block *block;
+	struct heap_block *old_block, *new_block, *last;
+	struct heap_block *block;
 	u32 old_size;
 
 	if (!ptr) {
@@ -194,9 +197,9 @@ void *realloc(void *ptr, u32 size) {
 		return NULL;
 	}
 
-	old_block = (heap_block *)((u8 *)ptr - sizeof(heap_block));
+	old_block = (struct heap_block *)((u8 *)ptr - sizeof(struct heap_block));
 	old_size = old_block->size;
-	real_size = sizeof(heap_block) + size;
+	real_size = sizeof(struct heap_block) + size;
 	
 	block = best_fit(size);
 	if (block) {
@@ -204,7 +207,7 @@ void *realloc(void *ptr, u32 size) {
 		split_block(block, size);
 		memcpy((void *)(block + 1), ptr, old_size);
 	} else {
-		new_block = (heap_block*)sbrk(real_size);
+		new_block = (struct heap_block*)sbrk(real_size);
 		if (!new_block) {
 			return NULL;
 		}

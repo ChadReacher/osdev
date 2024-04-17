@@ -1,8 +1,8 @@
 #include <idt.h>
 #include <panic.h>
 
-idt_entry_t idt[IDT_ENTRIES];
-volatile idtr_t idtr;
+struct idt_entry idt[IDT_ENTRIES];
+volatile struct idtr idtr;
 
 void idt_set(u8 index, u32 isr, u8 flags) {
 	idt[index].isr_address_low = ((u32)isr & 0xFFFF);
@@ -14,7 +14,7 @@ void idt_set(u8 index, u32 isr, u8 flags) {
 
 void idt_init() {
 	idtr.base = (u32) &idt;
-	idtr.limit = IDT_ENTRIES * sizeof(idt_entry_t) - 1;
+	idtr.limit = IDT_ENTRIES * sizeof(struct idt_entry) - 1;
 	__asm__ volatile ("lidt %0" : : "m" (idtr));
 	debug("IDT has been initialized\r\n");
 }

@@ -4,13 +4,13 @@
 #include "types.h"
 #include "isr.h"
 
-typedef struct phys_reg_desc {
+struct phys_reg_desc {
 	u32 phys_data_buf;
 	u16 transfer_size;
 	u16 mark_end;
-} __attribute__((packed)) phys_reg_desc_t;
+} __attribute__((packed));
 
-typedef struct ata_device {
+struct ata_device {
 	u16 data_reg;
 	u16 error_reg;
 	u16 sector_count;
@@ -28,10 +28,10 @@ typedef struct ata_device {
 	u32 bmr_status;
 	u32 bmr_prdt;
 
-	phys_reg_desc_t *prdt;
+	struct phys_reg_desc *prdt;
 	u8 *prdt_phys;
 	u8 *mem_buffer;
-} ata_device_t;
+};
 
 struct partition {
 	u8 boot_ind;

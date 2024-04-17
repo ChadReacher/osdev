@@ -25,8 +25,8 @@
 
 extern u32 startup_time;
 extern u32 ticks;
-extern process_t *procs[NR_PROCS];
-extern process_t *current_process;
+extern struct proc *procs[NR_PROCS];
+extern struct proc *current_process;
 extern u32 next_pid;
 extern struct file file_table[NR_FILE];
 extern struct tty_struct tty_table[];
@@ -262,14 +262,14 @@ i32 syscall_yield() {
 i32 syscall_fork() {
 	u32 i;
 	i32 idx;
-	process_t *child;
+	struct proc *child;
 
 	idx = get_free_proc();
 	if (idx < 0) { 
 		panic("No more procs\r\n");
 		return -ENOMEM;
 	}
-	child = procs[idx] = malloc(sizeof(process_t));
+	child = procs[idx] = malloc(sizeof(struct proc));
 	if (!child) {
 		return -EAGAIN;
 	}
@@ -284,13 +284,13 @@ i32 syscall_fork() {
 	}
 	child->kernel_stack_bottom = malloc(4096 *2);
 	memset(child->kernel_stack_bottom, 0, 4096 * 2);
-	child->regs = (registers_state *)
+	child->regs = (struct registers_state *)
 		(ALIGN_DOWN((u32)child->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(registers_state) + 4);
+		 - sizeof(struct registers_state) + 4);
 	*child->regs = *current_process->regs;
-	child->context = (context_t *)
+	child->context = (struct context *)
 		(ALIGN_DOWN((u32)child->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(registers_state) - sizeof(context_t) + 4);
+		 - sizeof(struct registers_state) - sizeof(struct context) + 4);
 	child->context->eip = (u32)irq_ret;
 	child->kernel_stack_top = child->context;
 	memcpy(child->fds, current_process->fds, NR_OPEN * sizeof(struct file *));	
@@ -317,7 +317,7 @@ i32 syscall_fork() {
 i32 kill_pgrp(i32 pgrp, i32 sig) {
 	i32 i, err, retval = -ESRCH;
 	i32 found = 0;
-	process_t *p;
+	struct proc *p;
 
 	if (sig < 0 || sig > 32 || pgrp <= 0) {
 		return -EINVAL;
@@ -339,7 +339,7 @@ i32 kill_pgrp(i32 pgrp, i32 sig) {
 }
 
 i32 syscall_kill(i32 pid, i32 sig) {
-	process_t *p;
+	struct proc *p;
 
 	if (pid == 0) {
 		return kill_pgrp(current_process->pgrp, sig);
@@ -361,7 +361,7 @@ i32 syscall_kill(i32 pid, i32 sig) {
 
 i32 is_orphaned_pgrp(i32 pgrp) {
 	i32 i;
-	process_t *p;
+	struct proc *p;
 
 	for (i = 0; i < NR_PROCS; ++i) {
 		p = procs[i];
@@ -383,7 +383,7 @@ i32 is_orphaned_pgrp(i32 pgrp) {
 
 static i32 has_stopped_jobs(i32 pgrp) {
 	i32 i;
-	process_t *p;
+	struct proc *p;
 
 	for (i = 0; i < NR_PROCS; ++i) {
 		p = procs[i];
@@ -438,7 +438,7 @@ void do_exit(i32 code) {
 
 	/* Pass current_process's children to INIT process */
 	for (i = 0; i < NR_PROCS; ++i) {
-		process_t *p = procs[i];
+		struct proc *p = procs[i];
 		if (!p) {
 			continue;
 		}
@@ -468,7 +468,7 @@ void syscall_exit(i32 exit_code) {
 
 i32 syscall_waitpid(i32 pid, i32 *stat_loc, i32 options) {
 	i32 i, flag;
-	process_t *p;
+	struct proc *p;
 	sigset_t oldsigmask;
 
 loop:
@@ -855,7 +855,7 @@ i32 syscall_setsid() {
 static i32 session_of_pgrp(i32 pgrp) {
 	u32 i;
 	for (i = 0; i < NR_PROCS; ++i) {
-		process_t *p = procs[i];
+		struct proc *p = procs[i];
 		if (!p) {
 			continue;
 		}
@@ -878,7 +878,7 @@ i32 syscall_setpgid(i32 pid, i32 pgid) {
 		return -EINVAL;
 	}
 	for (i = 0; i < NR_PROCS; ++i) {
-		process_t *p = procs[i];
+		struct proc *p = procs[i];
 		if (!p) {
 			continue;
 		}
