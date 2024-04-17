@@ -4,7 +4,7 @@
 #include <string.h>
 #include <port.h>
 
-enum state {
+enum {
 	NORMAL,
 	ESCAPE,
 	SQUARE,

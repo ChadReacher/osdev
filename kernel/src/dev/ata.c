@@ -7,7 +7,7 @@
 #include <blk_dev.h>
 #include <panic.h>
 
-static pci_device_t ata_dev;
+static union pci_device ata_dev;
 static struct hd_disk {
 	u32 start_sect;
 	u32 nr_sects;

@@ -15,12 +15,12 @@
 #define ALIGN_UP(val, a) (((val) + ((a) - 1)) & ~((a) - 1))
 #define ALIGN_DOWN(val, a) ((val) & ~((a) - 1))
 
-typedef enum {
+enum state {
 	RUNNING,
 	STOPPED,
 	INTERRUPTIBLE,
 	ZOMBIE
-} state_t;
+};
 
 struct context {
 	u32 edi;
@@ -33,7 +33,7 @@ struct context {
 struct proc {
 	i32 pid;
 	i32 timeslice;
-	state_t state;
+	enum state state;
 	i32 exit_code;
 	struct proc *parent;
 	page_directory_t *directory;

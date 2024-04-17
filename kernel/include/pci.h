@@ -38,7 +38,7 @@
 #define DEVICE_PER_BUS 32
 #define FUNCTION_PER_DEVICE 8
 
-typedef union pci_device {
+union pci_device {
 	u32 bits;
 	struct {
 		u32 always_zero		: 2;
@@ -49,17 +49,17 @@ typedef union pci_device {
 		u32 reserved		: 7;
 		u32	enable_bit		: 1;
 	} s;
-} pci_device_t;
+};
 
 void pci_init();
-u32 pci_read(pci_device_t dev, u32 field);
-void pci_write(pci_device_t dev, u32 field, u32 value);
-i32 get_device_type(pci_device_t dev);
-u32 get_secondary_bus(pci_device_t dev);
-u32 pci_reach_end(pci_device_t dev);
-pci_device_t pci_scan_function(u16 vendor_id, u16 device_id, u32 bus, u32 device, u32 function, i32 device_type);
-pci_device_t pci_scan_device(u16 vendor_id, u16 device_id, u32 bus, u32 device, i32 device_type);
-pci_device_t pci_scan_bus(u16 vendor_id, u16 device_id, u32 bus, i32 device_type);
-pci_device_t pci_get_device(u16 vendor_id, u16 device_id, i32 device_type);
+u32 pci_read(union pci_device dev, u32 field);
+void pci_write(union pci_device dev, u32 field, u32 value);
+i32 get_device_type(union pci_device dev);
+u32 get_secondary_bus(union pci_device dev);
+u32 pci_reach_end(union pci_device dev);
+union pci_device pci_scan_function(u16 vendor_id, u16 device_id, u32 bus, u32 device, u32 function, i32 device_type);
+union pci_device pci_scan_device(u16 vendor_id, u16 device_id, u32 bus, u32 device, i32 device_type);
+union pci_device pci_scan_bus(u16 vendor_id, u16 device_id, u32 bus, i32 device_type);
+union pci_device pci_get_device(u16 vendor_id, u16 device_id, i32 device_type);
 
 #endif

@@ -3,10 +3,10 @@
 #include <panic.h>
 
 u32 pci_size_map[100];
-pci_device_t dev_zero = {0};
+union pci_device dev_zero = {0};
 
 void pci_init() {
-	pci_device_t dev = {0};
+	union pci_device dev = {0};
 	u32 bus, device, function;
 
 	pci_size_map[PCI_VENDOR_ID] = 2;
@@ -52,14 +52,14 @@ void pci_init() {
 	debug("Found dev - 0x%x\r\n", dev.bits);
 }
 
-void pci_write(pci_device_t dev, u32 field, u32 value) {
+void pci_write(union pci_device dev, u32 field, u32 value) {
 	dev.s.field_num = (field & 0xFC) >> 2;
 	dev.s.enable_bit = 1;
 	port_outl(PCI_CONFIG_ADDRESS, dev.bits);
 	port_outl(PCI_CONFIG_DATA, value);
 }
 
-u32 pci_read(pci_device_t dev, u32 field) {
+u32 pci_read(union pci_device dev, u32 field) {
 	u32 field_size;
 
 	dev.s.enable_bit = 1;
@@ -80,23 +80,23 @@ u32 pci_read(pci_device_t dev, u32 field) {
 	return 0xFFFF;
 }
 
-i32 get_device_type(pci_device_t dev) {
+i32 get_device_type(union pci_device dev) {
 	i32 dev_type = pci_read(dev, PCI_CLASS) << 8;
 	dev_type |= pci_read(dev, PCI_SUBCLASS);
 	return dev_type;
 }
 
-u32 get_secondary_bus(pci_device_t dev) {
+u32 get_secondary_bus(union pci_device dev) {
 	return pci_read(dev, PCI_SECONDARY_BUS);
 }
 
-u32 pci_reach_end(pci_device_t dev) {
+u32 pci_reach_end(union pci_device dev) {
 	u32 header_type = pci_read(dev, PCI_HEADER_TYPE);
 	return !header_type;
 }
 
-pci_device_t pci_scan_function(u16 vendor_id, u16 device_id, u32 bus, u32 device, u32 function, i32 device_type) {
-	pci_device_t dev = {0};
+union pci_device pci_scan_function(u16 vendor_id, u16 device_id, u32 bus, u32 device, u32 function, i32 device_type) {
+	union pci_device dev = {0};
 	dev.s.function_num = function;
 	dev.s.device_num = device;
 	dev.s.bus_num = bus;
@@ -115,10 +115,10 @@ pci_device_t pci_scan_function(u16 vendor_id, u16 device_id, u32 bus, u32 device
 	return dev_zero;
 }
 
-pci_device_t pci_scan_device(u16 vendor_id, u16 device_id, u32 bus, u32 device, i32 device_type) {
+union pci_device pci_scan_device(u16 vendor_id, u16 device_id, u32 bus, u32 device, i32 device_type) {
 	u32 function;
-	pci_device_t dev = {0};
-	pci_device_t t;
+	union pci_device dev = {0};
+	union pci_device t;
 
 	dev.s.bus_num = bus;
 	dev.s.device_num = device;
@@ -147,10 +147,10 @@ pci_device_t pci_scan_device(u16 vendor_id, u16 device_id, u32 bus, u32 device, 
 	return dev_zero;
 }
 
-pci_device_t pci_scan_bus(u16 vendor_id, u16 device_id, u32 bus, i32 device_type) {
+union pci_device pci_scan_bus(u16 vendor_id, u16 device_id, u32 bus, i32 device_type) {
 	u32 device;
 	for (device = 0; device < DEVICE_PER_BUS; ++device) {
-		pci_device_t dev = pci_scan_device(vendor_id, device_id, bus, device, device_type);
+		union pci_device dev = pci_scan_device(vendor_id, device_id, bus, device, device_type);
 		if (dev.bits) {
 			return dev;
 		}
@@ -158,9 +158,9 @@ pci_device_t pci_scan_bus(u16 vendor_id, u16 device_id, u32 bus, i32 device_type
 	return dev_zero;
 }
 
-pci_device_t pci_get_device(u16 vendor_id, u16 device_id, i32 device_type) {	
+union pci_device pci_get_device(u16 vendor_id, u16 device_id, i32 device_type) {	
 	u32 function;
-	pci_device_t dev = pci_scan_bus(vendor_id, device_id, 0, device_type);
+	union pci_device dev = pci_scan_bus(vendor_id, device_id, 0, device_type);
 	if (dev.bits) {
 		return dev;
 	}
@@ -170,7 +170,7 @@ pci_device_t pci_get_device(u16 vendor_id, u16 device_id, i32 device_type) {
 	}
 
 	for (function = 1; function < FUNCTION_PER_DEVICE; ++function) {
-		pci_device_t dev = {0};
+		union pci_device dev = {0};
 		dev.s.function_num = function;
 		if (pci_read(dev, PCI_VENDOR_ID) == PCI_NONE) {
 			break;
