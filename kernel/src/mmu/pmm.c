@@ -195,27 +195,27 @@ void print_physical_memory_info() {
 	debug("Physical memory info: \r\n");
 	debug("Total number of entries: %d\r\n", num_entries);
 	for (i = 0; i < num_entries; ++i) {
-		serial_printf("Region: %x | Base: %x | Length: %x | Type(%d): ", 
+		debug("Region: %x | Base: %x | Length: %x | Type(%d): ", 
 				i, entry->base_address_low, 
 				entry->length_low, entry->type);
 		switch (entry->type) {
 			case 1:
-				serial_printf("Available Memory");
+				debug("Available Memory");
 				break;
 			case 2:
-				serial_printf("Reserved Memory");
+				debug("Reserved Memory");
 				break;
 			case 3:
-				serial_printf("ACPI Reclaim Memory");
+				debug("ACPI Reclaim Memory");
 				break;
 			case 4:
-				serial_printf("ACPI NVS Memory");
+				debug("ACPI NVS Memory");
 				break;
 			default:
-				serial_printf("Undefined Memory");
+				debug("Undefined Memory");
 				break;
 		}
-		serial_printf("\r\n");
+		debug("\r\n");
 		++entry; 
 	}
 	--entry;

@@ -20,7 +20,7 @@ struct proc *current_process = NULL;
 void task_switch(struct proc *next_proc);
 
 static void cpu_idle() {
-	while (1){ 
+	while (1) { 
 		__asm__ volatile ("hlt");
 	}
 }

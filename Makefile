@@ -57,13 +57,13 @@ libc:
 run:
 	qemu-system-i386\
 		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
-	    -drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
+	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
 		-rtc base=localtime,clock=host,driftfix=slew
 
 log:
 	qemu-system-i386\
-		-drive format=raw,file=build/boot.img,if=ide,index=0,media=disk\
-		-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
+		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
+	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
 		-rtc base=localtime,clock=host,driftfix=slew\
 		-d int -no-reboot\
 		-chardev stdio,id=char0,logfile=serial.log,signal=off\
