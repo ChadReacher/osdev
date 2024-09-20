@@ -5,7 +5,7 @@
 #include <paging.h>
 #include <isr.h>
 #include <signal.h>
-#include "ext2.h" 
+#include <vfs.h> 
 
 #define NR_OPEN 20
 #define NR_FILE 32
@@ -43,8 +43,8 @@ struct proc {
 	void *kernel_stack_top;
 	u32 close_on_exec;
 	struct file *fds[NR_OPEN];
-	struct ext2_inode *root;
-	struct ext2_inode *pwd;
+	struct vfs_inode *root;
+	struct vfs_inode *pwd;
 	char *str_pwd;
 	u32 brk;
 	u32 umask;

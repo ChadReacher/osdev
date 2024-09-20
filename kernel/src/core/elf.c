@@ -132,7 +132,7 @@ static void setup_kernel_stack(i8 *usp) {
 	current_process->context = (struct context *)sp;
 }
 
-i32 elf_load(struct ext2_inode *inode, 
+i32 elf_load(struct vfs_inode *inode, 
 		i32 argc, i8 **argv, i32 envc, i8 **envp) {
 	i8 *usp;
 	i32 i;
@@ -142,15 +142,18 @@ i32 elf_load(struct ext2_inode *inode,
 	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
 	struct file fp;
 
+    fp.f_ops = inode->i_f_ops;
 	fp.f_mode = inode->i_mode;
 	fp.f_flags = 0;
 	fp.f_count = 1;
 	fp.f_inode = inode;
 	fp.f_pos = 0;
-	if (ext2_file_read(inode, &fp, (i8 *)&elf_header, sizeof(struct elf_header))
-				!= sizeof(struct elf_header)) {
-		return -ENOEXEC;
-	}
+    if (fp.f_ops && fp.f_ops->read) {
+        i32 err = fp.f_ops->read(fp.f_inode, &fp, (i8 *)&elf_header, sizeof(struct elf_header));
+        if (err != sizeof(struct elf_header)) {
+				return -ENOEXEC;
+        }
+    }
 	if (is_elf(&elf_header) != ET_EXEC) {
 		return -ENOEXEC;
 	}
@@ -166,10 +169,12 @@ i32 elf_load(struct ext2_inode *inode,
 		struct elf_program_header program_header;
 
 		fp.f_pos = elf_header.phoff + elf_header.ph_size * i;
-		if (ext2_file_read(inode, &fp, (i8 *)&program_header, 
-			sizeof(struct elf_program_header)) != sizeof(struct elf_program_header)) {
-			return -ENOEXEC;
-		}
+        if (fp.f_ops && fp.f_ops->read) {
+            i32 err = fp.f_ops->read(fp.f_inode, &fp, (i8 *)&program_header, sizeof(program_header));
+            if (err != sizeof(program_header)) {
+	    			return -ENOEXEC;
+            }
+        }
 		dump_program_header(program_header);
 
 		flags = PAGING_FLAG_PRESENT | PAGING_FLAG_USER;
@@ -190,8 +195,9 @@ i32 elf_load(struct ext2_inode *inode,
 			map_page((void *)phys_code_page, (void *)addr, flags);
 		}
 		fp.f_pos = program_header.offset;
-		ext2_file_read(inode, &fp, (i8 *)program_header.vaddr,
-				program_header.filesz);
+        if (fp.f_ops && fp.f_ops->read) {
+            fp.f_ops->read(fp.f_inode, &fp, (i8 *)program_header.vaddr, program_header.filesz);
+        }
 		memset((void *)(program_header.vaddr + program_header.filesz),
 				0, program_header.memsz - program_header.filesz);
 		last_addr = program_header.vaddr + program_header.memsz;

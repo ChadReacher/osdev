@@ -1,7 +1,39 @@
 Plans for working on OS:
-Also implement pipe, fifo
-* Add bootinfo structure and pass it from bootloader to kernel
+
+Filesystem:
+  * Implement VFS
+  * Implement second file system
+  * Implement pipe as file system
+  * Support symbolink links in Ext2
+  * Implement FIFO
+
+Scheduling:
+  * Make the kernel preemptive?
+  * What about signals? Improve signal management?
+
+Memory management:
+  * Refactor?
+  * Improve?
+  * Introduce zones in virtual memory
+
+Core:
+  * Introduce users
+  * Introduce password authentication
+  * Introduce dynamic libraries
+  * Introduce dynamic loader
+  * Add bootinfo structure and pass it from bootloader to kernel
+
+Devices:
+  * Implement several TTYs
+  * Implement block cache
+  * Implement devfs?
+
 * Networking
 * Threads
 * timer events
-ADD mkdir -p build directory to Makefile 
+* ADD mkdir -p build directory to Makefile 
+* Add doxygen or another style for comments for functions
+* Add documentation
+
+
+* Revise ext2_rename algorithm

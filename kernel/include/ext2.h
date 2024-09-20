@@ -3,7 +3,6 @@
 
 #include "types.h"
 #include "syscall.h"
-#include "process.h"
 
 #define ROOT_DEV 0x306
 
@@ -18,7 +17,7 @@
 
 #define EXT2_NAME_LEN 255
 #define EXT2_SUPER_MAGIC 0xEF53
-#define NR_INODE 32
+#define EXT2_ROOT_INO 2
 
 #define EXT2_S_IFSOCK 0xC000
 #define EXT2_S_IFLNK  0xA000
@@ -111,9 +110,9 @@ struct ext2_super_block {
 	u8  s_unused[760];
 
 	/* In-memory fields */
-	u16 s_dev;
-	u32 s_block_size;
-	u32 s_total_groups;
+	//u16 s_dev;
+	//u32 s_block_size; s_block_size = 1024 << p->s_log_block_size;
+	//u32 s_total_groups; s_total_groups = s_blocks_count / s_blocks_per_group;
 } __attribute__((packed));
 
 struct ext2_blk_grp_desc {
@@ -134,26 +133,26 @@ struct ext2_inode {
 	u32 i_atime;
 	u32 i_ctime;
 	u32 i_mtime;
-	u32 i_dtime;
+	u32 i_dtime; // not used
 	u16 i_gid;
 	u16 i_links_count;
 	u32 i_blocks;
 	u32 i_flags;
-	u32 i_osd1;
-	u32 i_block[15];
-	u32 i_generation;
-	u32 i_file_acl;
-	u32 i_dir_acl;
-	u32 i_faddr;
-	u8  osd2[12];
+	u32 i_osd1; // not used
+	u32 i_block[15]; // TODO: move 15 to #define
+	u32 i_generation; // not used
+	u32 i_file_acl; // not used
+	u32 i_dir_acl; // not used
+	u32 i_faddr; // not used
+	u8  osd2[12]; // not used
 
 	/* In-memory fields */
-	u16 i_dev;
-	u32 i_num;
-	u32 i_count;
-	i8  i_dirt;
-	i8  i_pipe;
-	struct proc *i_wait;
+	//u16 i_dev;
+	//u32 i_num;
+	//u32 i_count;
+	//i8  i_dirt;
+	//i8  i_pipe;
+	//struct proc *i_wait;
 } __attribute__((packed));
 
 struct ext2_dir {
@@ -163,53 +162,45 @@ struct ext2_dir {
 	i8  name[EXT2_NAME_LEN];
 } __attribute__((packed));
 
-struct file {
-	u16 f_mode;
-	u16 f_flags;
-	u16 f_count;
-	struct ext2_inode *f_inode;
-	i32 f_pos;
-};
+struct vfs_inode;
+struct file;
+struct vfs_superblock;
 
-extern struct ext2_super_block super_block;
+i32 ext2_create(struct vfs_inode *dir, const i8 *name, i32 mode, struct vfs_inode **result);
+i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_base, struct vfs_inode *new_dir, const i8 *new_base);
+i32 ext2_file_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
+i32 ext2_file_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
+i32 ext2_bmap(struct vfs_inode *inode, u32 offset);
+i32 ext2_create_block(struct vfs_inode *inode, u32 offset);
+i32 ext2_unlink(struct vfs_inode *dir, const char *basename);
+i32 ext2_link(struct vfs_inode *dir, const i8 *basename, struct vfs_inode *inode);
+i32 ext2_rmdir(struct vfs_inode *dir, const char *basename);
+i32 ext2_mkdir(struct vfs_inode *dir, const char *basename, i32 mode);
 
-void mount_root(void);
-struct ext2_inode *iget(u16 dev, u32 nr);
-void iput(struct ext2_inode *inode);
-i32 namei(const i8 *pathname, struct ext2_inode ** res);
-i32 open_namei(i8 *pathname, i32 oflags, i32 mode,
-		struct ext2_inode **res_inode);
-i32 ext2_create(struct ext2_inode *dir, const i8 *name, i32 mode,
-		struct ext2_inode **result);
-i32 ext2_rename(struct ext2_inode *old_dir, const i8 *old_base,
-		struct ext2_inode *new_dir, const i8 *new_base);
-i32 ext2_bmap(struct ext2_inode *inode, u32 offset);
-i32 ext2_create_block(struct ext2_inode *inode, u32 offset);
-i32 ext2_file_read(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
-i32 ext2_file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
+//struct ext2_inode *get_pipe_inode();
 
-struct ext2_inode *get_pipe_inode();
 
-i32 dir_namei(const i8 *pathname, const i8 **name,
-		struct ext2_inode **res_inode);
-i32 check_permission(struct ext2_inode *inode, i32 mask);
-struct buffer *ext2_find_entry(struct ext2_inode *dir, const i8 *name,
-		struct ext2_dir **res_dir, struct ext2_dir **prev_dir);
-i32 ext2_add_entry(struct ext2_inode *dir, const i8 *name,
-		struct buffer **res_buf, struct ext2_dir **result);
-i32 ext2_readdir(struct ext2_inode *inode, struct file *fp,
-		struct dirent *dent);
+struct buffer *ext2_find_entry(struct vfs_inode *dir, const i8 *name, struct ext2_dir **res_dir, struct ext2_dir **prev_dir);
+i32 ext2_add_entry(struct vfs_inode *dir, const i8 *name, struct buffer **res_buf, struct ext2_dir **result);
+i32 ext2_readdir(struct vfs_inode *inode, struct file *fp, struct dirent *dent);
+
+void read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb);
+void write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb);
 
 
 void free_block(u16 dev, u32 block);
 u32 alloc_block(u16 dev);
-void free_inode(struct ext2_inode *inode);
-struct ext2_inode *alloc_inode(u16 dev);
+void free_inode(struct vfs_inode *inode);
+struct vfs_inode *alloc_inode(u16 dev);
 
-void ext2_truncate(struct ext2_inode *inode);
+i32 ext2_truncate(struct vfs_inode *inode);
+i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res);
+i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf);
 
-void read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group);
-void write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group);
-struct ext2_inode *get_empty_inode();
+i32 ext2_read_super(struct vfs_superblock *vsb);
+
+void ext2_read_inode(struct vfs_inode *inode);
+void ext2_write_inode(struct vfs_inode *inode);
+void ext2_free_inode(struct vfs_inode *inode);
 
 #endif

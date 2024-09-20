@@ -1,15 +1,20 @@
 CFLAGS += -c -I ./include -I ../libk
 
-SUBDIRS := $(shell ls -F src | grep "\/" )
-DIRS := $(SUBDIRS)
-SOURCE_FILES := $(foreach d, $(DIRS), $(wildcard src/$(d)*.c) )
+#SUBDIRS := $(shell ls -FR src | grep "\/" )
+#DIRS := $(SUBDIRS)
+#SOURCE_FILES := $(foreach d, $(DIRS), $(wildcard src/$(d)*.c) )
+SOURCE_FILES := $(shell find src -name '*.c' | grep -v 'src/kernel.c')
 OBJECTS = $(patsubst %.c, %.o, $(SOURCE_FILES))
 DEPENDENCIES = $(patsubst %.c, %.d, $(SOURCE_FILES))
+# TODO: update the linker script to insert kernel_entry before main kernel code
 KERNEL_DEPS = ../build/kernel_entry.o src/kernel.o \
 			$(OBJECTS) ../build/interrupt.o ../build/gdt_helper.o ../build/tss_helper.o\
 			../build/context_switch.o ../build/libk.a
 
 kernel: $(DEPENDENCIES) $(KERNEL_DEPS)
+	echo $(SUBDIRS)
+	echo $(DIRS)
+	@echo $(OBJECTS)
 	$(LD) -Tlinker.ld $(KERNEL_DEPS) -o ../build/kernel.elf
 	$(OBJCOPY) -O binary ../build/kernel.elf ../build/kernel.bin
 

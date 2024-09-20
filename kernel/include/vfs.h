@@ -2,88 +2,100 @@
 #define VFS_H
 
 #include "types.h"
-#include "generic_tree.h"
+#include "ext2.h"
 
-#define FS_FILE			0x01
-#define FS_DIRECTORY	0x02
-#define FS_CHARDEVICE	0x03
-#define FS_BLOCKDEVICE	0x04
-#define FS_PIPE			0x05
-#define FS_SYMLINK		0x06
-#define FS_MOUNTPOINT	0x08
+#define NR_FILESYSTEMS 1
+#define NR_SUPERBLOCKS 3
+#define NR_INODES 32
 
-typedef struct {
-	char name[256];
-	u32 inode;
-} dirent;
+struct vfs_inode;
+struct vfs_superblock;
+struct file;
 
-struct vfs_node;
+// These functions takes ownership of passed 'struct vfs_inode'
+// i.e they eat one 'i_count'
+struct vfs_inode_ops {
+    i32 (*unlink) (struct vfs_inode *dir, const char *basename);
+    i32 (*link) (struct vfs_inode *dir, const char *basename, struct vfs_inode *inode);
+    i32 (*rmdir) (struct vfs_inode *dir, const char *basename);
+	i32 (*mkdir) (struct vfs_inode *dir, const char *basename, i32 mode);
+    i32 (*rename) (struct vfs_inode *old_dir, const char *old_base, struct vfs_inode *new_dir, const char *new_base);
+	i32 (*truncate) (struct vfs_inode *inode);
+	i32 (*lookup) (struct vfs_inode *inode, const char *name, struct vfs_inode **res);
+	i32 (*create) (struct vfs_inode *dir, const i8 *name, i32 mode, struct vfs_inode **res);
+};
 
-typedef u32 (*read_callback)(struct vfs_node *node, u32 offset, u32 size, i8* buf);
-typedef u32 (*write_callback)(struct vfs_node *node, u32 offset, u32 size, i8* buf);
-typedef u32 (*open_callback)(struct vfs_node *node, u32 flags);
-typedef u32 (*close_callback)(struct vfs_node *node);
-typedef void (*create_callback)(struct vfs_node *node, i8 *name, u16 permission);
-typedef void (*mkdir_callback)(struct vfs_node *node, i8 *name, u16 permission);
-typedef dirent * (*readdir_callback)(struct vfs_node *node, u32 index);
-typedef struct vfs_node * (*finddir_callback)(struct vfs_node* node, i8 *name);
-typedef i32 (*unlink_callback)(struct vfs_node *node, i8 *name);
-typedef void (*trunc_callback)(struct vfs_node *node);
+struct file_ops {
+    i32 (*read) (struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
+    i32 (*write) (struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
+	i32 (*readdir) (struct vfs_inode *inode, struct file *fp, struct dirent *dent);
+};
 
-typedef struct vfs_node {
-	i8 name[256];
-	u32 permission_mask;
-	u32 flags;
-	u32 uid;
-	u32 gid;
-	u32 inode;
-	u32 length;
-	u32 atime;
-    u32 mtime;
-	u32 ctime;
+struct vfs_inode {
+	u32 i_mode;
+	u32 i_uid;
+	u32 i_gid;
+	u32 i_size;
+	u32 i_atime;
+	u32 i_ctime;
+	u32 i_mtime;
+	u32 i_links_count;
+	u32 i_blocks;
+	u32 i_flags;
+	u32 i_dev;
+	u32 i_num;
+	u32 i_count;
+	u32 i_dirt;
+    struct vfs_superblock *i_sb;
+    struct vfs_inode_ops *i_ops;
+    struct file_ops *i_f_ops;
+    union {
+		struct ext2_inode i_ext2;
+		//struct msdos_inode *msdos;
+    } u;
+};
 
-	read_callback read;
-	write_callback write;
-	open_callback open;
-	close_callback close;
-	create_callback create;
-	mkdir_callback mkdir;
-	unlink_callback unlink;
-	trunc_callback trunc;
-	readdir_callback readdir;
-	finddir_callback finddir;
-	void *device;
-} vfs_node_t;
+struct fs_ops {
+	void (*read_inode)(struct vfs_inode *vnode);
+	void (*write_inode)(struct vfs_inode *vnode);
+	void (*free_inode)(struct vfs_inode *vnode);
+};
 
-#define FDS_NUM 32
-#define FD_STDIN 0
-#define FD_STDOUT 1
-#define FD_STDERR 2
+struct vfs_superblock {
+	u32 s_dev;
+    u32 s_block_size;
+    struct vfs_inode *s_root;
+    struct fs_ops *fs_ops;
+    union {
+        struct ext2_super_block ext2_sb;
+        //struct msdos_super_block msdos_sb;
+    } u;
+};
 
-typedef struct {
-	vfs_node_t *vfs_node;
-	u32 offset;
-	i32 flags;
-	bool used;
-} file;
+struct filesystem {
+	char *name;
+	i32 (*read_super)(struct vfs_superblock *vsb);
+};
 
-void vfs_init();
-vfs_node_t *vfs_get_node(i8 *path);
-u32 vfs_read(vfs_node_t *node, u32 offset, u32 size, i8 *buf);
-u32 vfs_write(vfs_node_t *node, u32 offset, u32 size, i8 *buf);
-void vfs_open(vfs_node_t *node, u32 flags);
-void vfs_close(vfs_node_t *node);
-void vfs_create(i8 *name, u16 permission);
-void vfs_mkdir(i8 *name, u16 permission);
-dirent *vfs_readdir(vfs_node_t *vfs_node, u32 index);
-vfs_node_t *vfs_finddir(vfs_node_t *node, i8 *name);
-i32 vfs_unlink(i8 *name);
-void vfs_trunc(vfs_node_t *vfs_node);
 
-void vfs_mount(i8 *path, vfs_node_t *vfs_node);
-void vfs_print_node(tree_node_t *node);
-void vfs_print();
+struct file {
+	u16 f_mode;
+	u16 f_flags;
+	u16 f_count;
+	struct vfs_inode *f_inode;
+    struct file_ops *f_ops; 
+	i32 f_pos;
+};
 
-i8 *canonilize_path(i8 *full_path);
+void mount_root(void);
+struct vfs_superblock *get_vfs_super(u32 dev);
+
+struct vfs_inode *vfs_iget(u16 dev, u32 nr);
+void vfs_iput(struct vfs_inode *inode);
+i32 vfs_dirnamei(const i8 *pathname, const i8 **res_basename, struct vfs_inode **res_inode);
+i32 vfs_namei(const i8 *pathname, struct vfs_inode **res);
+i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_inode);
+i32 check_permission(struct vfs_inode *inode, i32 mask);
+struct vfs_inode *get_empty_inode();
 
 #endif

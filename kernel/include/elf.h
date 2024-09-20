@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "ext2.h"
+#include "vfs.h"
 
 #define ELF_MAGIC_NUMBER 0x7F
 
@@ -63,7 +64,7 @@ struct elf_section_header {
 	u32 entsize;
 } __attribute__((packed));
 
-i32 elf_load(struct ext2_inode *inode, 
+i32 elf_load(struct vfs_inode *inode, 
 		i32 argc, i8 **argv, i32 envc, i8 **envp);
 
 #endif

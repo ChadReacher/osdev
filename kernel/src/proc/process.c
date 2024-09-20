@@ -9,7 +9,7 @@
 #include <scheduler.h>
 #include <string.h>
 #include <elf.h>
-#include <ext2.h>
+#include <vfs.h>
 
 extern struct proc *procs[NR_PROCS];
 extern void enter_usermode_asm(u32 useresp);
@@ -29,20 +29,20 @@ void enter_usermode() {
 }
 
 void user_init() {
-	struct ext2_inode *inode;
+	struct vfs_inode *inode;
 	i32 err, i, argc = 0, envc = 1;
 	i8 **argv, **envp;
 	void *kernel_page_dir;
 	struct proc *init_process = procs[1];
 
-	err = namei("/bin/init", &inode);
+	err = vfs_namei("/bin/init", &inode);
 	if (err) {
 		panic("could not find '/bin/init' executable\n");
-	} else if (!EXT2_S_ISREG(inode->i_mode)) {
-		iput(inode);
+	} else if (!S_ISREG(inode->i_mode)) {
+		vfs_iput(inode);
 		return;
 	} else if (!check_permission(inode, MAY_READ | MAY_EXEC)) {
-		iput(inode);
+		vfs_iput(inode);
 		return;
 	}
 	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
@@ -60,7 +60,7 @@ void user_init() {
 	kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
 	__asm__ volatile ("movl %%eax, %%cr3" : : "a"(init_process->directory));
 	if ((err = elf_load(inode, argc, argv, envc, envp))) {
-		iput(inode);
+		vfs_iput(inode);
 		panic("could not load '/bin/init' executable\n");
 		return;
 	}
@@ -72,7 +72,7 @@ void user_init() {
 		}
 	}
 	init_process->close_on_exec = 0;
-	iput(inode);
+	vfs_iput(inode);
 }
 
 i32 get_new_fd() {

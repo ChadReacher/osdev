@@ -1,5 +1,4 @@
 #include <syscall.h>
-#include <ext2.h>
 #include <paging.h>
 #include <string.h>
 #include <errno.h>
@@ -9,24 +8,26 @@
 #include <elf.h>
 #include <idt.h>
 #include <tss.h>
+#include <vfs.h>
 
 i32 syscall_close(i32 fd);
 
 #define ARG_MAX 64
 i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
-	struct ext2_inode *inode;
+	struct vfs_inode *inode;
 	i32 err, i;
 	i8 **argv, **envp, **arg_p, **env_p;
 	i32 argc = 0, envc = 0;
+	debug("[sys_exec]: pathname - %s\r\n", pathname);
 
-	err = namei(pathname, &inode);
+	err = vfs_namei(pathname, &inode);
 	if (err) {
 		return err;
-	} else if (!EXT2_S_ISREG(inode->i_mode)) {
-		iput(inode);
+	} else if (!S_ISREG(inode->i_mode)) {
+		vfs_iput(inode);
 		return -EACCES;
 	} else if (!check_permission(inode, MAY_READ | MAY_EXEC)) {
-		iput(inode);
+		vfs_iput(inode);
 		return -EACCES;
 	}
 
@@ -42,7 +43,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		}
 	}
 	if (argc > ARG_MAX || envc > ARG_MAX) {
-		iput(inode);
+		vfs_iput(inode);
 		return -E2BIG;
 	}
 	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
@@ -67,9 +68,10 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		}
 		free(argv);
 		free(envp);
-		iput(inode);
+		vfs_iput(inode);
 		return err;
 	}
+	// TODO[fs]: introduce macros for them
 	if (inode->i_mode & EXT2_S_ISUID) {
 		current_process->euid = inode->i_uid;
 	}
@@ -88,7 +90,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		}
 	}
 	current_process->close_on_exec = 0;
-	iput(inode);
+	vfs_iput(inode);
 
 	tss_set_stack((u32)current_process->kernel_stack_top);
 	return 0;

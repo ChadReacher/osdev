@@ -2,28 +2,29 @@
 #include <blk_dev.h>
 #include <timer.h>
 #include <heap.h>
+#include <vfs.h>
 
 /* TODO: For now we assume truncate to size 0 */
-static void trunc_direct(struct ext2_inode *inode) {
+static void trunc_direct(struct vfs_inode *inode) {
 	u32 i;
 	for (i = 0; i < 12; ++i) {
-		if (!inode->i_block[i]) {
+		if (!inode->u.i_ext2.i_block[i]) {
 			continue;
 		}
-		free_block(inode->i_dev, inode->i_block[i]);
-		inode->i_block[i] = 0;
+		free_block(inode->i_dev, inode->u.i_ext2.i_block[i]);
+		inode->u.i_ext2.i_block[i] = 0;
 		inode->i_blocks -= 2;
 	}
 }
 
-static void trunc_indirect(struct ext2_inode *inode) {
+static void trunc_indirect(struct vfs_inode *inode) {
 	struct buffer *buf;
 	u32 i, *blocks;
 
-	if (!inode->i_block[12]) {
+	if (!inode->u.i_ext2.i_block[12]) {
 		return;
 	}
-	buf = read_blk(inode->i_dev, inode->i_block[12]);
+	buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[12]);
 	blocks = (u32 *)buf->b_data;
 	for (i = 0; i < 256; ++i) {
 		if (!blocks[i]) {
@@ -34,22 +35,22 @@ static void trunc_indirect(struct ext2_inode *inode) {
 		inode->i_blocks -= 2;
 	}
 	write_blk(buf);
-	free_block(inode->i_dev, inode->i_block[12]);
-	inode->i_block[12] = 0;
+	free_block(inode->i_dev, inode->u.i_ext2.i_block[12]);
+	inode->u.i_ext2.i_block[12] = 0;
 	inode->i_blocks -= 2;
 	free(buf->b_data);
 	free(buf);
 }
 
-static void trunc_doubly_indirect(struct ext2_inode *inode) {
+static void trunc_doubly_indirect(struct vfs_inode *inode) {
 	u32 i, j;
 	struct buffer *buf, *buf2;
 	u32 *indirect, *blocks;
 
-	if (!inode->i_block[13]) {
+	if (!inode->u.i_ext2.i_block[13]) {
 		return;
 	}
-	buf = read_blk(inode->i_dev, inode->i_block[13]);
+	buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[13]);
 	indirect = (u32 *)buf->b_data;
 	for (i = 0; i < 256; ++i) {
 		if (!indirect[i]) {
@@ -75,22 +76,22 @@ static void trunc_doubly_indirect(struct ext2_inode *inode) {
 		free(buf2);
 	}
 	write_blk(buf);
-	free_block(inode->i_dev, inode->i_block[13]);
-	inode->i_block[13] = 0;
+	free_block(inode->i_dev, inode->u.i_ext2.i_block[13]);
+	inode->u.i_ext2.i_block[13] = 0;
 	inode->i_blocks -= 2;
 	free(buf->b_data);
 	free(buf);
 }
 
-static void trunc_triply_indirect(struct ext2_inode *inode) {
+static void trunc_triply_indirect(struct vfs_inode *inode) {
 	struct buffer *buf, *buf2, *buf3;
 	u32 *dindirect, *indirect, *blocks;
 	u32 i, j, k;
 
-	if (!inode->i_block[14]) {
+	if (!inode->u.i_ext2.i_block[14]) {
 		return;
 	}
-	buf = read_blk(inode->i_dev, inode->i_block[14]);
+	buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[14]);
 	dindirect = (u32 *)buf->b_data;
 	for (i = 0; i < 256; ++i) {
 		if (!dindirect[i]) {
@@ -129,15 +130,15 @@ static void trunc_triply_indirect(struct ext2_inode *inode) {
 		free(buf2);
 	}
 	write_blk(buf);
-	free_block(inode->i_dev, inode->i_block[14]);
-	inode->i_block[14] = 0;
+	free_block(inode->i_dev, inode->u.i_ext2.i_block[14]);
+	inode->u.i_ext2.i_block[14] = 0;
 	inode->i_blocks -= 2;
 
 	free(buf->b_data);
 	free(buf);
 }
 
-void ext2_truncate(struct ext2_inode *inode) {
+i32 ext2_truncate(struct vfs_inode *inode) {
 	trunc_direct(inode);
 	trunc_indirect(inode);
 	trunc_doubly_indirect(inode);
@@ -145,5 +146,6 @@ void ext2_truncate(struct ext2_inode *inode) {
 	inode->i_size = 0;
 	inode->i_dirt = 1;
 	inode->i_mtime = inode->i_ctime = get_current_time();
+	return 0;
 }
 

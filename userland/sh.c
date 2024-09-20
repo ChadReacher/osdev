@@ -505,10 +505,10 @@ void run_job(struct job *job) {
 			}
 		}
 		if (p->next != NULL) {
-			pipe(fd);
-			status = run_proc(job, p, ifd, fd[1], EXEC_PIPELINE);
-			close(fd[1]);
-			ifd = fd[0];
+			//pipe(fd);
+			//status = run_proc(job, p, ifd, fd[1], EXEC_PIPELINE);
+			//close(fd[1]);
+			//ifd = fd[0];
 		} else {
 			int ofd = 1;
 			if (p->opath != NULL) {

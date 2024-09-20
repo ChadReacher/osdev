@@ -10,7 +10,7 @@ export PATH="$PREFIX/bin:$PATH"
 
 
 sudo apt install build-essential libgmp3-dev libmpc-dev libmpfr-dev texinfo
-rm -rf /tmp/toolchain && mkdir /tmp/toolchain
+mkdir /tmp/toolchain
 
 cd /tmp/toolchain
 curl -O https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.xz
