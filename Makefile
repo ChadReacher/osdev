@@ -57,8 +57,11 @@ libc:
 run:
 	qemu-system-i386\
 		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
-	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
-		-rtc base=localtime,clock=host,driftfix=slew
+		-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
+		-rtc base=localtime,clock=host,driftfix=slew \
+		-device rtl8139,netdev=mynet0,mac=52:55:00:d1:55:01 \
+		-netdev tap,id=mynet0,ifname=tap0,script=no,downscript=no \
+		-object filter-dump,id=f1,netdev=mynet0,file=dump.pcap
 
 log:
 	qemu-system-i386\
@@ -72,9 +75,12 @@ debug:
 	qemu-system-i386\
 		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
 	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
-		-rtc base=localtime,clock=host,driftfix=slew\
+		-rtc base=localtime,clock=host,driftfix=slew \
+		-device rtl8139,netdev=mynet0,mac=52:55:00:d1:55:01 \
+		-netdev tap,id=mynet0,ifname=tap0,script=no,downscript=no \
+		-object filter-dump,id=f1,netdev=mynet0,file=dump.pcap \
 		-boot a -s -S &\
-		gdb
+		gdb -iex "set add-auto-load-safe-path /home/sean/osdev/"
 
 clean:
 	rm -rf build/* userland/hdd/*

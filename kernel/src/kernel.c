@@ -21,6 +21,7 @@
 #include <ext2.h>
 #include <elf.h>
 #include <bcache.h>
+#include <rtl8139.h>
 
 void kernel_start(void) {
 	serial_init();
@@ -40,11 +41,28 @@ void kernel_start(void) {
 	bcache_init();
 	pci_init();
 	ata_init();
-	scheduler_init();
+	__asm__ ("sti");
+	rtl8139_init();
+
+	/* Test sending Ethernet frame */
+	/*u8 dest_mac[6] = { 0x06, 0xff, 0xbf, 0x93, 0xe8, 0x88 };
+#define X 1500
+	u8 *frame = malloc(X);
+	int i;
+	for (i = 0; i < X; ++i) {
+		frame[i] = ('0' + (i % 9));
+	}
+	frame[1498] = 'X';
+	frame[1499] = 'Y';
+	ethernet_send_frame(dest_mac, 0x0800, frame, X);
+	free(frame);*/
+
+	/*scheduler_init();
 	mount_root();
 	user_init();
 	enter_usermode();
+	panic("End of kernel\r\n");*/
 
-	panic("End of kernel\r\n");
+	debug("END OF KERNEL............\r\n");
 	for (;;);
 }
