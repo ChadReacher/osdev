@@ -43,13 +43,11 @@ void pci_init() {
 				dev.s.function_num = function;
 				if (vendor_id != 0xFFFF && device_id != 0xFFFF) {
 					debug("Found a PCI device with device_id = 0x%x and vendor_id = 0x%x\r\n", device_id, vendor_id);
-					debug("Class - 0x%x, Subclass - 0x%x\r\n", class, subclass);
+					debug("Class - 0x%x, Subclass - 0x%x, Bus - 0x%x, Device - 0x%x, Function - 0x%x\r\n", class, subclass, bus, device, function);
 				}
 			}
 		}
 	}
-	dev = pci_get_device(0x8086, 0x7010, -1);
-	debug("Found dev - 0x%x\r\n", dev.bits);
 }
 
 void pci_write(union pci_device dev, u32 field, u32 value) {

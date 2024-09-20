@@ -77,6 +77,10 @@ i32 find_first_free_blocks(u32 num_blocks) {
 	}
 	return -1;
 }
+
+extern u32 _kernel_start_;
+extern u32 _kernel_end_;
+
 void pmm_init() {
 	u32 num_mmap_entries;
 	struct phys_mmap_entry *mmap_entry;
@@ -91,7 +95,11 @@ void pmm_init() {
 	/* Get total amount of bytes */
 	total_memory_bytes = mmap_entry->base_address_low + mmap_entry->length_low - 1;
 
-	/* Initialize physical memory manager at 0x30000  */
+    debug("_kernel_start_ - 0x%x\r\n", &_kernel_start_);
+    debug("_kernel_end_ - 0x%x\r\n", &_kernel_end_);
+    debug("kernel sie - 0x%x\r\n", (u32)(&_kernel_end_) - (u32)(&_kernel_start_));
+
+	/* Initialize physical memory manager at the 0xC0030000 */
 	/* to all available memory. By default all memory is used/reserved. */
 	_pmm_init(0xC0030000, total_memory_bytes); 
 

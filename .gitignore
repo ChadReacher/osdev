@@ -1,1 +1,4 @@
 build/*
+kernel/**/*.o
+kernel/**/*.d
+userland/hdd
