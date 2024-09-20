@@ -4,3 +4,4 @@ Also implement pipe, fifo
 * Networking
 * Threads
 * timer events
+ADD mkdir -p build directory to Makefile 

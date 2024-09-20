@@ -7,18 +7,18 @@ export PATH="$PREFIX/bin:$PATH"
 
 set -e
 
-sudo apt install build-essential libgmp3-dev libmpc-dev libmpfr-dev texinfo
+#sudo apt install build-essential libgmp3-dev libmpc-dev libmpfr-dev texinfo
 
-mkdir /tmp/src
-cd /tmp/src
-curl -O https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.xz
-tar xf binutils-2.41.tar.xz
-mkdir binutils-build
+#mkdir /tmp/toolchain
+cd /tmp/toolchain
+#curl -O https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.xz
+#tar xf binutils-2.41.tar.xz
+#mkdir binutils-build
 cd binutils-build
 ../binutils-2.41/configure --target=$TARGET --prefix="$PREFIX" --enable-interwork --enable-multilib --disable-nls --disable-werror 2>&1 | tee configure.log
 make all install 2>&1 | tee make.log
 
-cd /tmp/src
+cd /tmp/toolchain
 curl -O https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz
 tar xf gcc-13.2.0.tar.gz
 mkdir gcc-build

@@ -40,7 +40,7 @@ user: libc
 	sudo mknod userland/hdd/dev/tty0 c 0x04 0x00
 	dd if=/dev/zero of=build/disk.img bs=1024 count=4096
 	sudo losetup -fP build/disk.img
-	losetup
+	sudo losetup
 	sudo ./disk_part.sh
 	sudo mkfs.ext2 -b 1024 -g 1024 -r 0 -d userland/hdd/ /dev/loop0p1 
 	sudo dumpe2fs /dev/loop0p1
