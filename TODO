@@ -1,7 +1,27 @@
 Plans for working on OS:
-Also implement pipe, fifo
+* Networking:
+ - TCP/IP stack:
+   - Physical layer:		RTL8139 driver
+     - Introduce macros for registers names and bit names; 
+     - Test transmitting frames
+     - Write documentation?
+   - Link layer:		Ethernet(DONE), ARP(DONE, Refactor, Introduce timeout)
+     - Remove malloc() calls, use stack memory;
+   - Internet layer:		IPv4, ICMP
+   - Transport layer:		UDP, TCP
+   - Application layer:		DHCP, DNS, HTTP
+ - Network sockets (POSIX)
+ - Userspace 'ping' utility
+ - HTTP server
+ - HTTP client
+
+* Implement second file system
+* Implement virtual file system
+* Introduce mount, umount system calls
+* Also implement pipe, fifo
 * Add bootinfo structure and pass it from bootloader to kernel
-* Networking
 * Threads
 * timer events
 ADD mkdir -p build directory to Makefile 
+Prepare .gdbinit:
+  * echo "set auto-load safe-path /" >> ~/.gdbinit
