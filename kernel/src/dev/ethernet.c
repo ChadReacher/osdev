@@ -3,6 +3,7 @@
 #include <string.h>
 #include <heap.h>
 #include <rtl8139.h>
+#include <arp.h>
 
 extern u8 my_mac[6];
 
@@ -45,7 +46,7 @@ void ethernet_receive_frame(void *data, u32 data_len) {
     }
 
     if (ether_frame->ethernet_type == ETHER_TYPE_ARP) {
-        /*arp_receive_packet(payload);*/
+        arp_receive_packet(payload);
     } else if (ether_frame->ethernet_type == ETHER_TYPE_IP) {
         /*ipv4_receive_packet(payload, payload_len);*/
     } else {
