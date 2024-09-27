@@ -4,7 +4,7 @@ Plans for working on OS:
    - [DONE] Physical layer:		RTL8139 driver
      - [DONE] Introduce macros for registers names and bit names; 
      - [DONE] Test transmitting frames
-   - Link layer:		Ethernet(DONE), ARP(DONE, Refactor)
+   - Link layer:		Ethernet(DONE), ARP(DONE)
      - Remove malloc() calls, use stack memory;
    - Internet layer:		IPv4, ICMP
    - Transport layer:		UDP, TCP
