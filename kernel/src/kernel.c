@@ -56,6 +56,9 @@ void _start() {
 	ethernet_send_frame(dest_mac, 0x0800, frame, X);
 	free(frame);*/
 
+	u8 dst_ip[4] = { 192, 168, 0, 115 };
+	arp_send_packet(dst_ip);
+
 	/*scheduler_init();
 	mount_root();
 	user_init();
