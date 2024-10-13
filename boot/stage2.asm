@@ -184,43 +184,60 @@ entry_32bit:
 	mov bl, byte [kernel_size_in_sectors]
 	mov edi, 0x10000
 
+	; Select primary drive
 	mov dx, 0x1F6
-	mov al, 0xA0
+	mov al, 0xE0
 	out dx, al
 
 	; Number of sectors to read
 	mov dx, 0x1F2
 	mov al, byte [kernel_size_in_sectors]
 	out dx, al
-	dec bl
 
-	; Start with # sector
+	; Low 8 bits of LBA
 	mov dx, 0x1F3
-	mov al, 10
+	mov al, 9
 	out dx, al
 
+	; Next 8 bits of LBA
 	mov dx, 0x1F4
 	xor al, al
 	out dx, al
 
+	; Next 8 bits of LBA
 	mov dx, 0x1F5
 	xor al, al
 	out dx, al
 
+	; Send 'READ SECTORS' command
 	mov dx, 0x1F7
 	mov al, 0x20
 	out dx, al
 
-kernel_loop:
+	mov ecx, 4
+.lp1:
 	in al, dx
+	test al, 0x80
+	jne .retry
 	test al, 8
-	je kernel_loop
+	jne .data_ready
+.retry:
+	dec ecx
+	jg .lp1
 
+;kernel_loop:
+.pior_l:
+	in al, dx
+	test al, 0x80
+	jne .pior_l
+	test al, 0x21
+	jne .fail
+.data_ready:
 	mov cx, 256
 	mov dx, 0x1F0
 	rep insw
 
-	mov dx, 0x3F6
+	mov dx, 0x1F7
 	in al, dx
 	in al, dx
 	in al, dx
@@ -231,13 +248,18 @@ kernel_loop:
 	 
 	dec bl
 	mov dx, 0x1F7
-	jmp kernel_loop
+	jmp .pior_l
+
+.fail:
+	mov eax, 0x11223344
+	hlt
+	jmp $ 
 
 jump_to_kernel:
 	jmp 0x10000						; Jump to memory where we have loaded the kernel
 
 drive_num: db 0
-kernel_size_in_sectors: db 230
+kernel_size_in_sectors: dw 250
 
 bits 16
 enable_a20:

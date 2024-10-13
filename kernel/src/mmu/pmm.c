@@ -98,10 +98,9 @@ void pmm_init() {
     debug("_kernel_start_ - 0x%x\r\n", &_kernel_start_);
     debug("_kernel_end_ - 0x%x\r\n", &_kernel_end_);
     debug("kernel sie - 0x%x\r\n", (u32)(&_kernel_end_) - (u32)(&_kernel_start_));
-
-	/* Initialize physical memory manager at the 0xC0030000 */
+	/* Initialize physical memory manager at 0x40000  */
 	/* to all available memory. By default all memory is used/reserved. */
-	_pmm_init(0xC0030000, total_memory_bytes); 
+	_pmm_init(0xC0040000, total_memory_bytes); 
 
 	/* Get back to start of the list to available memory as free to use */
 	mmap_entry = (struct phys_mmap_entry *)BIOS_MEMORY_MAP;
@@ -118,7 +117,7 @@ void pmm_init() {
 	mark_memory_as_used(0x10000, 0x25000);
 	
 	/* Mark physical memory map itself as used */
-	mark_memory_as_used(30000, total_blocks / BLOCKS_PER_BYTE);
+	mark_memory_as_used(40000, total_blocks / BLOCKS_PER_BYTE);
 	
 	mark_memory_as_used(0x26000, 1);
 
