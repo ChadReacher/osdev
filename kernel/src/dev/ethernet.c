@@ -4,6 +4,7 @@
 #include <heap.h>
 #include <rtl8139.h>
 #include <arp.h>
+#include <ipv4.h>
 
 extern u8 my_mac[6];
 
@@ -11,7 +12,6 @@ void ethernet_receive_frame(void *data, u32 data_len) {
     bool is_my_frame, is_broadcast;
     struct ethernet_header *ether_frame = (struct ethernet_header *)data;
     void *payload = (u8 *)data + sizeof(struct ethernet_header);
-    u32 payload_len = data_len - sizeof(struct ethernet_header);
 
     debug("Receive ethernet frame\r\n");
     ether_frame->ethernet_type = NTOHS(ether_frame->ethernet_type);
@@ -48,7 +48,7 @@ void ethernet_receive_frame(void *data, u32 data_len) {
     if (ether_frame->ethernet_type == ETHER_TYPE_ARP) {
         arp_receive_packet(payload);
     } else if (ether_frame->ethernet_type == ETHER_TYPE_IP) {
-        /*ipv4_receive_packet(payload, payload_len);*/
+        ipv4_receive_packet(payload);
     } else {
         debug("Unsupported ethernet type - 0x%x\r\n", 
 				ether_frame->ethernet_type);
@@ -75,4 +75,6 @@ i32 ethernet_send_frame(u8 *dest_mac, u16 ethernet_type, u8 *payload, u32 plen) 
 	    (plen < ETHER_MIN_PAYLOAD_LEN ? ETHER_MIN_PAYLOAD_LEN : plen);
 
     rtl8139_transmit_data(frame, frame_len);
+
+    return 0;
 }
