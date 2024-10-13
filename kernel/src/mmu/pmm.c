@@ -133,7 +133,6 @@ void pmm_init(void) {
     u32 ram_mb = initial_ram / (1 * MIB);
     debug("Initial RAM size = %d MiB (%#x bytes)\r\n", ram_mb, initial_ram);
 
-    kernel_layout_dump();
 
     const u32 kstart = (u32)(&_text_start_);
     const u32 kend = (u32)(&_bss_end_);
