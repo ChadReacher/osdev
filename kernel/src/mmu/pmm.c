@@ -117,7 +117,11 @@ void pmm_init(void) {
 	mark_memory_as_used(0x100000, 0x50000);
 	
 	/* Mark physical memory map itself as used */
+<<<<<<< HEAD
 	mark_memory_as_used(0x70000, total_blocks / BLOCKS_PER_BYTE);
+=======
+	mark_memory_as_used(40000, total_blocks / BLOCKS_PER_BYTE);
+>>>>>>> 8136f75 (Introduce the Internet Layer)
 	
 	//mark_memory_as_used(0x26000, 1);
 

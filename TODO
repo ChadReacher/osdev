@@ -1,12 +1,20 @@
 Plans for working on OS:
 * Networking:
  - TCP/IP stack:
+
    - [DONE] Physical layer:		RTL8139 driver
      - [DONE] Introduce macros for registers names and bit names; 
      - [DONE] Test transmitting frames
-   - Link layer:		Ethernet(DONE), ARP(DONE, Refactor)
-     - Remove malloc() calls, use stack memory;
+
+   - [DONE] Link layer:		Ethernet(DONE), ARP(DONE)
+     sudo sh -c 'echo test_ether | xxd -r -p | socat - INTERFACE:tap0'
+     - [DONE] Remove malloc() calls, use stack memory;
+
    - Internet layer:		IPv4, ICMP
+     ping -c 1 -s 3100 192.168.0.116
+     [DONE] What if the IP address from the other network subnet?
+     Add timeout support? (Revise the timer implementation?)
+
    - Transport layer:		UDP, TCP
    - Application layer:		DHCP, DNS, HTTP
  - Network sockets (POSIX)

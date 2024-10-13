@@ -57,8 +57,15 @@ void kernel_start(void) {
 	ethernet_send_frame(dest_mac, 0x0800, frame, X);
 	free(frame);*/
 
-	u8 dst_ip[4] = { 192, 168, 0, 115 };
-	arp_send_packet(dst_ip);
+	/*u8 dst_ip[4] = { 192, 168, 0, 115 };
+	arp_send_packet(dst_ip);*/
+
+	/*u8 dst_ip[4] = { 142, 250, 186, 206 };
+	u32 dest_ip = dst_ip[0] | (dst_ip[1] << 8) | (dst_ip[2] << 16) | (dst_ip[3] << 24);
+	icmpv4_send_packet(dest_ip);*/
+
+	u32 dest_ip = 0x7300A8C0;
+	udp_transmit_datagram(13130, dest_ip, 12120);
 
 	/*scheduler_init();
 	mount_root();
