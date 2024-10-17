@@ -3,6 +3,7 @@
 #include <ethernet.h>
 #include <arp.h>
 #include <icmpv4.h>
+#include <udp.h> 
 #include <heap.h>
 #include <string.h>
 
@@ -221,7 +222,7 @@ void ipv4_receive_packet(void *packet) {
         /*tcp_receive_fragment(packet, packet_len);*/
     } else if (ipv4_header->proto == IPV4_PROTO_UDP) { 
         debug("received UDP datagram\r\n");
-        /*udp_receive_datagram(packet, packet_len);*/
+        udp_receive_datagram(packet, plen);
     } else {
         debug("Unknown IPv4 payload type...\r\n");
     }

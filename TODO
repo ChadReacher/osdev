@@ -16,6 +16,9 @@ Plans for working on OS:
      Add timeout support? (Revise the timer implementation?)
 
    - Transport layer:		UDP, TCP
+     UDP server: nc -l -u 192.168.0.115 -p 2002
+     UDP client: echo 'Sky is blue' | nc -u 192.168.0.115 3232
+
    - Application layer:		DHCP, DNS, HTTP
  - Network sockets (POSIX)
  - Userspace 'ping' utility
