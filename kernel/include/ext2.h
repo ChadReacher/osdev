@@ -186,8 +186,8 @@ struct buffer *ext2_find_entry(struct vfs_inode *dir, const i8 *name, struct ext
 i32 ext2_add_entry(struct vfs_inode *dir, const i8 *name, struct buffer **res_buf, struct ext2_dir **result);
 i32 ext2_readdir(struct vfs_inode *inode, struct file *fp, struct dirent *dent);
 
-void read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb);
-void write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb);
+i32 read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb);
+i32 write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb);
 
 
 void free_block(u16 dev, u32 block);
