@@ -148,7 +148,7 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
 				vfs_iput(inode);
                 return -ENOENT;
             }
-            return inode->i_ops->truncate(inode);
+            inode->i_ops->truncate(inode);
 		} else {
 			vfs_iput(inode);
 			return -EACCES;

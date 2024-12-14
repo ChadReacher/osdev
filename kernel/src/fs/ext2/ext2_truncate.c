@@ -6,11 +6,15 @@
 
 /* TODO: For now we assume truncate to size 0 */
 static void trunc_direct(struct vfs_inode *inode) {
+	struct buffer *buf;
 	u32 i;
 	for (i = 0; i < 12; ++i) {
 		if (!inode->u.i_ext2.i_block[i]) {
 			continue;
 		}
+		buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[i]);
+		memset(buf->b_data, 0, 1024);
+		write_blk(buf);
 		free_block(inode->i_dev, inode->u.i_ext2.i_block[i]);
 		inode->u.i_ext2.i_block[i] = 0;
 		inode->i_blocks -= 2;

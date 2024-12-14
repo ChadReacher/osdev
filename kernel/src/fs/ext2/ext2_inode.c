@@ -7,6 +7,7 @@
 
 extern struct file_ops ext2_file_ops;
 
+
 struct vfs_inode_ops ext2_inode_file_ops = {
 	NULL,
 	NULL,

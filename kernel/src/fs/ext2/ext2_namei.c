@@ -9,6 +9,9 @@
 #include <fcntl.h>
 #include <vfs.h>
 
+extern struct file_ops ext2_file_ops;
+extern struct vfs_inode_ops ext2_inode_file_ops;
+
 
 static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 	struct buffer *buf;
@@ -252,6 +255,8 @@ i32 ext2_create(struct vfs_inode *dir, const i8 *name, i32 mode,
 		return -ENOSPC;
 	}
 	inode->i_mode = EXT2_S_IFREG | (mode & 0777 & ~current_process->umask);
+	inode->i_ops = &ext2_inode_file_ops;
+	inode->i_f_ops = &ext2_file_ops;
 	inode->i_dirt = 1;
 	if ((err = ext2_add_entry(dir, name, &buf, &de))) {
 		--inode->i_links_count;

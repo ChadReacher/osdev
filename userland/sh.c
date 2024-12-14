@@ -518,6 +518,9 @@ void run_job(struct job *job) {
 				}
 			}
 			status = run_proc(job, p, ifd, ofd, job->mode);
+			if (ofd != 1) {
+				close(ofd);
+			}
 		}
 	}
 
