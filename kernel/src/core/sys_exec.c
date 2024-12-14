@@ -71,11 +71,10 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		vfs_iput(inode);
 		return err;
 	}
-	// TODO[fs]: introduce macros for them
-	if (inode->i_mode & EXT2_S_ISUID) {
+	if (inode->i_mode & S_ISUID) {
 		current_process->euid = inode->i_uid;
 	}
-	if (inode->i_mode & EXT2_S_ISGID) {
+	if (inode->i_mode & S_ISGID) {
 		current_process->egid = inode->i_gid;
 	}
 	for (i = 0; i < NSIG; ++i) {

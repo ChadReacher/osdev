@@ -1,7 +1,6 @@
 #include <syscall.h>
 #include <stdio.h>
 #include <panic.h>
-#include <vfs.h>
 #include <fcntl.h>
 #include <string.h>
 #include <keyboard.h>
