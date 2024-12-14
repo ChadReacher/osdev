@@ -133,7 +133,6 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
 		return -EEXIST;
 	}
 
-    // TODO: Check if it is an dir, not via ext2 but via VFS
 	if (S_ISDIR(inode->i_mode) && (oflags & (O_WRONLY | O_RDWR))) {
         vfs_iput(dir);
         vfs_iput(inode);
@@ -143,7 +142,6 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
 	inode->i_atime = get_current_time();
     inode->i_dirt = 1;
 
-    // TODO: same here: check if is regular file via VFS tools not ext2
 	if (S_ISREG(inode->i_mode) && oflags & O_TRUNC) {
 		if (oflags & (O_WRONLY | O_RDWR)) {
             if (!inode->i_ops || !inode->i_ops->truncate) {

@@ -19,6 +19,8 @@
 #define EXT2_SUPER_MAGIC 0xEF53
 #define EXT2_ROOT_INO 2
 
+#define EXT2_N_BLOCKS 15
+
 #define EXT2_S_IFSOCK 0xC000
 #define EXT2_S_IFLNK  0xA000
 #define EXT2_S_IFREG  0x8000
@@ -139,7 +141,7 @@ struct ext2_inode {
 	u32 i_blocks;
 	u32 i_flags;
 	u32 i_osd1; // not used
-	u32 i_block[15]; // TODO: move 15 to #define
+	u32 i_block[EXT2_N_BLOCKS];
 	u32 i_generation; // not used
 	u32 i_file_acl; // not used
 	u32 i_dir_acl; // not used

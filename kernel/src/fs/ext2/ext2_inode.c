@@ -172,8 +172,7 @@ void ext2_read_inode(struct vfs_inode *vnode) {
 	vnode->u.i_ext2.i_dir_acl = raw_inode.i_dir_acl;
 	vnode->u.i_ext2.i_faddr = raw_inode.i_faddr;
 
-	// TODO: Move 15 to #define, move all the left private data to 'vnode->u'
-	for (i32 i = 0; i < 15; ++i) {
+	for (i32 i = 0; i < EXT2_N_BLOCKS; ++i) {
 		vnode->u.i_ext2.i_block[i] = raw_inode.i_block[i];
 	}
 	for (i32 i = 0; i < 12; ++i) {
@@ -237,8 +236,7 @@ void ext2_write_inode(struct vfs_inode *vnode) {
 	raw_inode.i_dir_acl = vnode->u.i_ext2.i_dir_acl;
 	raw_inode.i_faddr = vnode->u.i_ext2.i_faddr;
 
-	// TODO: Move 15 to #define, move all the left private data to 'vnode->u'
-	for (i32 i = 0; i < 15; ++i) {
+	for (i32 i = 0; i < EXT2_N_BLOCKS; ++i) {
 		raw_inode.i_block[i] = vnode->u.i_ext2.i_block[i];
 	}
 	for (i32 i = 0; i < 12; ++i) {
