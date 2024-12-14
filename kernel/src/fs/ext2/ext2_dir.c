@@ -288,7 +288,6 @@ static i32 is_empty_dir(struct vfs_inode *inode) {
 	return 1;
 }
 
-// TODO[fs]: introduce meaningful error codes
 i32 ext2_rmdir(struct vfs_inode *dir, const char *basename) {
 	i32 retval;
 	struct buffer *buf;
@@ -297,18 +296,20 @@ i32 ext2_rmdir(struct vfs_inode *dir, const char *basename) {
 
 	inode = NULL;
 	buf = ext2_find_entry(dir, basename, &de, NULL);
-	retval = -ENOENT;
 	if (!buf) {
+		retval = -ENOENT;
 		goto end;
 	}
-	retval = -EPERM;
 	if (!(inode = vfs_iget(dir->i_dev, de->inode))) {
+		retval = -ENOENT;
 		goto end;
 	}
 	if (inode->i_dev != dir->i_dev) {
+		retval = -EXDEV;
 		goto end;
 	}
 	if (inode == dir) {
+		retval = -EPERM;
 		goto end;
 	}
 	if (!EXT2_S_ISDIR(inode->i_mode)) {
