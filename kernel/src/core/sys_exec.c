@@ -18,7 +18,6 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	i32 err, i;
 	i8 **argv, **envp, **arg_p, **env_p;
 	i32 argc = 0, envc = 0;
-	debug("[sys_exec]: pathname - %s\r\n", pathname);
 
 	err = vfs_namei(pathname, &inode);
 	if (err) {

@@ -81,18 +81,17 @@ void vfs_iput(struct vfs_inode *inode) {
 		debug("vfs_iput failed: inode #%d is already free\r\n", inode->i_num);
 		return;
 	}
-    // TODO[fs]: pipe, rewrite
-	//if (inode->i_pipe) {
-	//	wake_up(&inode->i_wait);
-	//	if (--inode->i_count) {
-	//		return;
-	//	}
-	//	free((void *)inode->i_block[0]);
-	//	inode->i_count = 0;
-	//	inode->i_dirt = 0;
-	//	inode->i_pipe = 0;
-	//	inode->i_block[0] = inode->i_block[1] = inode->i_block[2] = 0;
-	//}
+	if (inode->i_pipe) {
+		wake_up(&inode->i_wait);
+		if (--inode->i_count) {
+			return;
+		}
+		free((void *)inode->u.i_pipe.i_buf);
+		inode->i_count = 0;
+		inode->i_dirt = 0;
+		inode->i_pipe = 0;
+		inode->u.i_pipe.i_head = inode->u.i_pipe.i_tail = 0;
+	}
 	--inode->i_count;
 	if (!inode->i_count) {
 		if (!inode->i_links_count) {

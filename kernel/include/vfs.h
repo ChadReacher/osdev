@@ -3,6 +3,8 @@
 
 #include "types.h"
 #include "ext2.h"
+#include "pipe.h"
+#include "process.h"
 
 
 #define S_IFMT   0170000
@@ -66,11 +68,14 @@ struct vfs_inode {
 	u32 i_num;
 	u32 i_count;
 	u32 i_dirt;
+	u32 i_pipe;
+	struct proc *i_wait;
     struct vfs_superblock *i_sb;
     struct vfs_inode_ops *i_ops;
     struct file_ops *i_f_ops;
     union {
 		struct ext2_inode i_ext2;
+		struct pipe_inode i_pipe;
 		//struct msdos_inode *msdos;
     } u;
 };

@@ -118,10 +118,6 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 		return -EBADF;
 	}
 	inode = f->f_inode;
-    // TODO[fs]: skip pipe for now
-	//if (inode->i_pipe) {
-	//	return (f->f_mode & 1 ? read_pipe(inode, buf, count) : -1);
-	//}
 	if (S_ISCHR(inode->i_mode)) {
 		return char_read(inode->u.i_ext2.i_block[0], buf, count);
 	}
@@ -129,6 +125,7 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 		return block_read(inode->i_dev, &f->f_pos, buf, count);
 	}
 	if (S_ISDIR(inode->i_mode) || S_ISREG(inode->i_mode)) {
+		// TOOD: why do we need this code?
 		if (count + f->f_pos > inode->i_size) {
 			count = inode->i_size - f->f_pos;
 		}
@@ -161,14 +158,10 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 	if (S_ISBLK(inode->i_mode)) {
 		return block_write(inode->i_dev, &f->f_pos, buf, count);
 	}
-	if (f->f_ops && f->f_ops->read) {
+	if (f->f_ops && f->f_ops->write) {
 		return f->f_ops->write(inode, f, buf, count);
 	}
 	return -EINVAL;
-// TODO[fs]: pipe, skip for now
-//	if (inode->i_pipe) {
-//		return (f->f_mode & 2 ? write_pipe(inode, buf, count) : -1);
-//	}
 }
 
 #define IS_SEEKABLE(x) ((x)>=1 && (x)<=3)
@@ -181,10 +174,9 @@ i32 syscall_lseek(i32 fd, i32 offset, i32 whence) {
 			!IS_SEEKABLE(MAJOR(file->f_inode->i_dev))) {
 		return -EBADF;
 	}
-	// TODO[fs]: fix for pipe
-	//if (file->f_inode->i_pipe) {
-	//	return -ESPIPE;
-	//}
+	if (file->f_inode->i_pipe) {
+		return -ESPIPE;
+	}
 
 	switch (whence) {
 		case SEEK_SET:
@@ -444,6 +436,7 @@ void do_exit(i32 code) {
 }
 
 void syscall_exit(i32 exit_code) {
+	debug("[sys_exit] pid - %d\r\n", current_process->pid);
 	do_exit((exit_code & 0xFF) << 8);
 }
 
@@ -1193,61 +1186,61 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
     return dir->i_ops->mkdir(dir, basename, mode);
 }
 
-// TODO[fs]: pipe, implement later
 i32 syscall_pipe(i32 fidles[2]) {
-	(void)fidles;
-    return 0;
+	struct vfs_inode *inode;
+	struct file *f[2];
+	i32 fd[2];
+	i32 i, j;
+
+	j = 0;
+	for (i = 0; j < 2 && i < NR_FILE; ++i) {
+		if (!file_table[i].f_count) {
+			f[j] = file_table + i;
+			++f[j]->f_count;
+			++j;
+		}
+	}
+	if (j == 1) {
+		f[0]->f_count = 0;
+	}
+	if (j < 2) {
+		return -1;
+	}
+	j = 0;
+	for (i = 3; j < 2 && i < NR_OPEN; ++i) {
+		if (!current_process->fds[i]) {
+			fd[j] = i;
+			current_process->fds[i] = f[j];
+			++j;
+		}
+	}
+	if (j == 1) {
+		current_process->fds[fd[0]] = NULL;
+	}
+	if (j < 2) {
+		f[0]->f_count=f[1]->f_count = 0;
+		return -1;
+	}
+
+	if (!(inode = get_pipe_inode())) {
+		current_process->fds[fd[0]] = current_process->fds[fd[1]] = NULL;
+		f[0]->f_count=f[1]->f_count = 0;
+		return -1;
+	}
+	f[0]->f_inode = f[1]->f_inode = inode;
+	f[0]->f_pos = f[1]->f_pos = 0;
+
+
+	f[0]->f_mode = 1; /* read */
+	f[0]->f_ops = &pipe_read_ops;
+	f[1]->f_mode = 2; /* write */
+	f[1]->f_ops = &pipe_write_ops;
+
+
+	fidles[0] = fd[0];
+	fidles[1] = fd[1];
+	return 0;
 }
-//i32 syscall_pipe(i32 fidles[2]) {
-//	struct ext2_inode *inode;
-//	struct file *f[2];
-//	i32 fd[2];
-//	i32 i, j;
-//
-//	j = 0;
-//	for (i = 0; j < 2 && i < NR_FILE; ++i) {
-//		if (!file_table[i].f_count) {
-//			f[j] = file_table + i;
-//			++f[j]->f_count;
-//			++j;
-//		}
-//	}
-//	if (j == 1) {
-//		f[0]->f_count = 0;
-//	}
-//	if (j < 2) {
-//		return -1;
-//	}
-//	j = 0;
-//	for (i = 3; j < 2 && i < NR_OPEN; ++i) {
-//		if (!current_process->fds[i]) {
-//			fd[j] = i;
-//			current_process->fds[i] = f[j];
-//			++j;
-//		}
-//	}
-//	if (j == 1) {
-//		current_process->fds[fd[0]] = NULL;
-//	}
-//	if (j < 2) {
-//		f[0]->f_count=f[1]->f_count = 0;
-//		return -1;
-//	}
-//	if (!(inode = get_pipe_inode())) {
-//		current_process->fds[fd[0]] = 
-//			current_process->fds[fd[1]] = NULL;
-//		f[0]->f_count=f[1]->f_count = 0;
-//		return -1;
-//	}
-//	f[0]->f_mode = 1; /* read */
-//	f[1]->f_mode = 2; /* write */
-//	f[0]->f_inode = f[1]->f_inode = inode;
-//	f[0]->f_pos = f[1]->f_pos = 0;
-//
-//	fidles[0] = fd[0];
-//	fidles[1] = fd[1];
-//	return 0;
-//}
 
 i32 syscall_tcsetpgrp(i32 fildes, i32 pgrp_id) {
 	struct file *f;

@@ -102,25 +102,6 @@ i32 write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superb
 	return 0;
 }
 
-
-// TODO[fs]: pipe, rewrite!!!
-//struct ext2_inode *get_pipe_inode() {
-//	struct ext2_inode *inode;
-//
-//	if (!(inode = get_empty_inode())) {
-//		return NULL;
-//	}
-//	inode->i_dev = super_block.s_dev;
-//	/* Data */
-//	inode->i_block[0] = (u32)malloc(4096); 
-//	/* [1] - nread, [2] - nwrite */
-//	inode->i_block[1] = inode->i_block[2] = 0;
-//	inode->i_count = 2;
-//	inode->i_pipe = 1;
-//	return inode;
-//}
-
-
 void ext2_read_inode(struct vfs_inode *vnode) {
 	struct buffer *buf;
 	struct ext2_blk_grp_desc bgd;
