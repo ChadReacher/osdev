@@ -35,7 +35,7 @@ void user_init() {
 	void *kernel_page_dir;
 	struct proc *init_process = procs[1];
 
-	err = vfs_namei("/bin/init", &inode);
+	err = vfs_namei("/bin/init", NULL, 1, &inode);
 	if (err) {
 		panic("could not find '/bin/init' executable\n");
 	} else if (!S_ISREG(inode->i_mode)) {

@@ -415,4 +415,137 @@ i32 ext2_mkdir(struct vfs_inode *dir, const char *basename, i32 mode) {
 	return 0;
 }
 
+i32 ext2_symlink(struct vfs_inode *dir, const i8 *name, const i8*symname) {
+	i32 err;
+    struct vfs_inode *inode;
+	struct buffer *buf;
+	struct ext2_dir *de;
 
+	inode = alloc_inode(dir->i_dev);
+	if (!inode) {
+		vfs_iput(dir);
+		return -ENOSPC;
+	}
+	inode->i_dirt = 1;
+	inode->i_mode = EXT2_S_IFLNK | 0777;
+	inode->i_mtime = inode->i_atime = get_current_time();
+	extern struct vfs_inode_ops ext2_inode_symlink_ops;
+	inode->i_ops = &ext2_inode_symlink_ops;
+	if (!(inode->u.i_ext2.i_block[0] = alloc_block(inode->i_dev))) {
+		vfs_iput(dir);
+		--inode->i_links_count;
+        inode->i_dirt = 1;
+		vfs_iput(inode);
+		return -ENOSPC;
+	}
+    buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[0]);
+    if (!buf) {
+		vfs_iput(dir);
+		--inode->i_links_count;
+        inode->i_dirt = 1;
+		vfs_iput(inode);
+		return -EIO;
+    }
+    i32 i = 0;
+    for (i = 0; i < strlen(symname); ++i) {
+        buf->b_data[i] = symname[i];
+    }
+    buf->b_data[i] = '\0';
+    write_blk(buf);
+	free(buf->b_data);
+	free(buf);
+
+	inode->i_size = i;
+	inode->i_dirt = 1;
+
+	buf = ext2_find_entry(dir, name, &de, NULL);
+	if (buf) {
+		free(buf->b_data);
+		free(buf);
+		vfs_iput(dir);
+		--inode->i_links_count;
+        inode->i_dirt = 1;
+		vfs_iput(inode);
+		return -EEXIST;
+	}
+	err = ext2_add_entry(dir, name, &buf, &de);
+	if (err) {
+		free(buf->b_data);
+		free(buf);
+		vfs_iput(dir);
+		--inode->i_links_count;
+        inode->i_dirt = 1;
+		vfs_iput(inode);
+		return err;
+	}
+	de->inode = inode->i_num;
+	write_blk(buf);
+	free(buf->b_data);
+	free(buf);
+    vfs_iput(inode);
+    vfs_iput(dir);
+    return 0;
+}
+
+i32 ext2_readlink(struct vfs_inode *inode, i8 *buf, i32 bufsiz) {
+	struct buffer *bbuf;
+
+	if (!EXT2_S_ISLNK(inode->i_mode)) {
+		return -EINVAL;
+	}
+    bbuf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[0]);
+	vfs_iput(inode);
+	if (!bbuf) {
+		return 0;
+	}
+	i32 i;
+	for (i = 0; i < bufsiz; ++i) {
+		buf[i] = bbuf->b_data[i];
+	}
+	free(bbuf->b_data);
+	free(bbuf);
+
+	return i;
+}
+
+struct vfs_inode *ext2_follow_link(struct vfs_inode *inode, struct vfs_inode *base) {
+	i8 *name;
+	struct buffer *buf;
+	if (!base) {
+		base = current_process->root;
+		++base->i_count;
+	}
+	if (!inode) {
+		vfs_iput(base);
+		return NULL;
+	}	
+	if (!S_ISLNK(inode->i_mode)) {
+		vfs_iput(base);
+		return inode;
+	}
+	if (current_process->symlink_count > MAX_LINK_COUNT) {
+		vfs_iput(inode);
+		vfs_iput(base);
+		return NULL; 
+	}
+	if (!inode->u.i_ext2.i_block[0]) {
+		vfs_iput(inode);
+		vfs_iput(base);
+		return NULL;
+	}
+	if (!(buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[0]))) {
+		vfs_iput(inode);
+		vfs_iput(base);
+		return NULL;
+	}
+	vfs_iput(inode);
+	name = buf->b_data;
+	++current_process->symlink_count;
+	if (vfs_namei(name, base, 1, &inode) != 0) {
+		inode = NULL;
+	}
+	--current_process->symlink_count;
+	free(buf->b_data);
+	free(buf);
+	return inode;
+}

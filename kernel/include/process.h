@@ -46,6 +46,7 @@ struct proc {
 	struct vfs_inode *root;
 	struct vfs_inode *pwd;
 	char *str_pwd;
+	u32 symlink_count;
 	u32 brk;
 	u32 umask;
 	sigset_t sigpending;

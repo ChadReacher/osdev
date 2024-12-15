@@ -16,7 +16,10 @@ struct vfs_inode_ops ext2_inode_file_ops = {
 	NULL,
 	ext2_truncate,
 	NULL,
-	NULL
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 };
 struct vfs_inode_ops ext2_inode_dir_ops = {
 	ext2_unlink,
@@ -27,6 +30,9 @@ struct vfs_inode_ops ext2_inode_dir_ops = {
 	NULL,
 	ext2_lookup,
 	ext2_create,
+    ext2_symlink,
+	NULL,
+	NULL,
 };
 struct vfs_inode_ops ext2_inode_chr_ops = {
 	NULL,
@@ -36,8 +42,12 @@ struct vfs_inode_ops ext2_inode_chr_ops = {
 	NULL,
 	NULL,
 	NULL,
-	NULL
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 };
+
 struct vfs_inode_ops ext2_inode_blk_ops = {
 	NULL,
 	NULL,
@@ -46,8 +56,26 @@ struct vfs_inode_ops ext2_inode_blk_ops = {
 	NULL,
 	NULL,
 	NULL,
-	NULL
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 };
+
+struct vfs_inode_ops ext2_inode_symlink_ops = {
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	ext2_readlink,
+	ext2_follow_link,
+};
+
 struct vfs_inode_ops ext2_inode_fifo_ops = {
 	NULL,
 	NULL,
@@ -56,7 +84,10 @@ struct vfs_inode_ops ext2_inode_fifo_ops = {
 	NULL,
 	NULL,
 	NULL,
-	NULL
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 };
 
 i32 read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb) {
@@ -159,15 +190,17 @@ void ext2_read_inode(struct vfs_inode *vnode) {
 	}
 
     // TODO: next step?
-	if (EXT2_S_ISREG(vnode->i_mode)) {
+	if (S_ISREG(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_file_ops;
-    } else if (EXT2_S_ISDIR(vnode->i_mode)) {
+    } else if (S_ISDIR(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_dir_ops;
-    } else if (EXT2_S_ISCHR(vnode->i_mode)) {
+    } else if (S_ISCHR(vnode->i_mode)) {
 		//vnode->i_ops = ext2_inode__chrdev_ops;
-    } else if (EXT2_S_ISBLK(vnode->i_mode)) {
+    } else if (S_ISBLK(vnode->i_mode)) {
 		//vnode->i_ops = ext2_inode__blkdev_ops;
-    } else if (EXT2_S_ISFIFO(vnode->i_mode)) {
+    } else if (S_ISLNK(vnode->i_mode)) {
+		vnode->i_ops = &ext2_inode_symlink_ops;
+	}  else if (S_ISFIFO(vnode->i_mode)) {
 		//vnode->i_ops = ext2_inode__pipe_ops;
 	}
 

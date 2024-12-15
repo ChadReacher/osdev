@@ -15,8 +15,8 @@
 #define S_IFDIR  0040000
 #define S_IFCHR  0020000
 #define S_IFIFO  0010000
-#define S_ISUID  0006000
-#define S_ISGID  0004000
+#define S_ISUID  0004000
+#define S_ISGID  0006000
 
 #define S_ISSOCK(m) (((m) & S_IFMT) == S_IFSOCK)
 #define S_ISLNK(m) (((m) & S_IFMT) == S_IFLNK)
@@ -29,6 +29,7 @@
 #define NR_FILESYSTEMS 1
 #define NR_SUPERBLOCKS 3
 #define NR_INODES 32
+#define MAX_LINK_COUNT 5
 
 struct vfs_inode;
 struct vfs_superblock;
@@ -45,6 +46,9 @@ struct vfs_inode_ops {
 	i32 (*truncate) (struct vfs_inode *inode);
 	i32 (*lookup) (struct vfs_inode *inode, const char *name, struct vfs_inode **res);
 	i32 (*create) (struct vfs_inode *dir, const i8 *name, i32 mode, struct vfs_inode **res);
+    i32 (*symlink) (struct vfs_inode *dir, const i8 *name, const i8 *newname);
+    i32 (*readlink) (struct vfs_inode *inode, i8 *buf, i32 bufsiz);
+    struct vfs_inode *(*followlink) (struct vfs_inode *inode, struct vfs_inode *base);
 };
 
 struct file_ops {
@@ -117,8 +121,8 @@ struct vfs_superblock *get_vfs_super(u32 dev);
 
 struct vfs_inode *vfs_iget(u16 dev, u32 nr);
 void vfs_iput(struct vfs_inode *inode);
-i32 vfs_dirnamei(const i8 *pathname, const i8 **res_basename, struct vfs_inode **res_inode);
-i32 vfs_namei(const i8 *pathname, struct vfs_inode **res);
+i32 vfs_dirnamei(const i8 *pathname, struct vfs_inode *base, const i8 **res_basename, struct vfs_inode **res_inode);
+i32 vfs_namei(const i8 *pathname, struct vfs_inode *base, i32 follow_links, struct vfs_inode **res);
 i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_inode);
 i32 check_permission(struct vfs_inode *inode, i32 mask);
 struct vfs_inode *get_empty_inode();

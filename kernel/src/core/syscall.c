@@ -125,7 +125,7 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 		return block_read(inode->i_dev, &f->f_pos, buf, count);
 	}
 	if (S_ISDIR(inode->i_mode) || S_ISREG(inode->i_mode)) {
-		// TOOD: why do we need this code?
+		// TODO: why do we need this code?
 		if (count + f->f_pos > inode->i_size) {
 			count = inode->i_size - f->f_pos;
 		}
@@ -208,7 +208,7 @@ i32 syscall_unlink(i8 *filename) {
 	i32 err;
 	struct vfs_inode *dir;
 
-	err = vfs_dirnamei(filename, &basename, &dir);
+	err = vfs_dirnamei(filename, NULL, &basename, &dir);
 	if (err) {
 		return err;
 	}
@@ -573,7 +573,7 @@ i32 syscall_stat(i8 *path, struct stat *statbuf) {
 	i32 err;
 	struct vfs_inode *inode;
 
-	if ((err = vfs_namei(path, &inode))) {
+	if ((err = vfs_namei(path, NULL, 1, &inode))) {
 		return err;
 	}
 	statbuf->st_dev = inode->i_dev;
@@ -623,7 +623,7 @@ i32 syscall_chdir(i8 *path) {
 	i32 err;
 	struct vfs_inode *inode;
 
-	if ((err = vfs_namei(path, &inode))) {
+	if ((err = vfs_namei(path, NULL, 1, &inode))) {
 		return err;
 	}
 	if (!S_ISDIR(inode->i_mode)) {
@@ -916,7 +916,7 @@ i32 syscall_link(i8 *path1, i8 *path2) {
 	const i8 *basename;
 	struct vfs_inode *inode, *dir;
 
-	err = vfs_namei(path1, &inode);
+	err = vfs_namei(path1, NULL, 1, &inode);
 	if (err) {
 		return err;
 	}
@@ -924,7 +924,7 @@ i32 syscall_link(i8 *path1, i8 *path2) {
 		vfs_iput(inode);
 		return -EPERM;
 	}
-	err = vfs_dirnamei(path2, &basename, &dir);
+	err = vfs_dirnamei(path2, NULL, &basename, &dir);
 	if (err) {
 		vfs_iput(inode);
 		return err;
@@ -957,7 +957,7 @@ i32 syscall_rename(i8 *oldname, i8 *newname) {
 	const i8 *old_base, *new_base;
 	i32 error;
 
-	error = vfs_dirnamei(oldname, &old_base, &old_dir);
+	error = vfs_dirnamei(oldname, NULL, &old_base, &old_dir);
 	if (error) {
 		return error;
 	}
@@ -970,7 +970,7 @@ i32 syscall_rename(i8 *oldname, i8 *newname) {
 		vfs_iput(old_dir);
 		return -EPERM;
 	}
-	error = vfs_dirnamei(newname, &new_base, &new_dir);
+	error = vfs_dirnamei(newname, NULL, &new_base, &new_dir);
 	if (error) {
 		return error;
 	}
@@ -1031,7 +1031,7 @@ i32 syscall_access(i8 *path, i32 amode) {
 	i32 err, res, i_mode;
 
 	amode &= 0007;
-	if ((err = vfs_namei(path, &inode))) {
+	if ((err = vfs_namei(path, NULL, 1, &inode))) {
 		return err;
 	}
 	i_mode = res = inode->i_mode & 0777;
@@ -1057,7 +1057,7 @@ i32 syscall_chmod(i8 *path, i32 mode) {
 	i32 err;
 	struct vfs_inode *inode;
 
-	if ((err = vfs_namei(path, &inode))) {
+	if ((err = vfs_namei(path, NULL, 1, &inode))) {
 		return err;
 	}
 	if ((current_process->euid != inode->i_uid) && current_process->uid != 0) {
@@ -1075,7 +1075,7 @@ i32 syscall_chown(i8 *path, i32 owner, i32 group) {
 	i32 err;
 	struct vfs_inode *inode;
 
-	if ((err = vfs_namei(path, &inode))) {
+	if ((err = vfs_namei(path, NULL, 1, &inode))) {
 		return err;
 	}
 	if (current_process->euid != inode->i_uid && current_process->uid != 0) {
@@ -1094,7 +1094,7 @@ i32 syscall_utime(i8 *path, struct utimbuf *times) {
 	i32 err;
 	u32 actime, modtime;
 
-	if ((err = vfs_namei(path, &inode))) {
+	if ((err = vfs_namei(path, NULL, 1, &inode))) {
 		return err;
 	}
 	if (times) {
@@ -1149,7 +1149,7 @@ i32 syscall_rmdir(i8 *path) {
 	const i8 *basename;
 	struct vfs_inode *dir;
 
-	if ((retval = vfs_dirnamei(path, &basename, &dir))) {
+	if ((retval = vfs_dirnamei(path, NULL, &basename, &dir))) {
 		return retval;
 	}
 	if (*basename == '\0') {
@@ -1172,7 +1172,7 @@ i32 syscall_mkdir(i8 *path, i32 mode) {
 	const i8 *basename;
 	struct vfs_inode *dir;
 
-	if ((err = vfs_dirnamei(path, &basename, &dir))) {
+	if ((err = vfs_dirnamei(path, NULL, &basename, &dir))) {
 		return err;
 	}
 	if (*basename == '\0') {
@@ -1272,4 +1272,69 @@ i32 syscall_tcgetpgrp(i32 fildes) {
 		return -ENOTTY;
 	}
 	return tty_table[current_process->tty].pgrp;
+}
+
+i32 syscall_symlink(i8 *path1, i8 *path2) {
+	const i8 *basename;
+	i32 err;
+	struct vfs_inode *dir;
+
+	err = vfs_dirnamei(path2, NULL, &basename, &dir);
+	if (err) {
+		return err;
+	}
+	if (*basename == '\0') {
+		vfs_iput(dir);
+		return -ENOENT;
+	}
+	if (!check_permission(dir, MAY_WRITE)) {
+		vfs_iput(dir);
+		return -EPERM;
+	}
+	if (!dir->i_ops || !dir->i_ops->symlink) {
+		vfs_iput(dir);
+		return -ENOENT;
+	}
+    return dir->i_ops->symlink(dir, basename, path1);
+}
+
+i32 syscall_readlink(i8 *pathname, i8 *buf, i32 bufsiz) {
+	i32 err;
+	struct vfs_inode *inode;
+
+	if (bufsiz <= 0) {
+		return -EINVAL;
+	}
+	if ((err = vfs_namei(pathname, NULL, 0, &inode))) {
+		return err;
+	}
+	if (!inode->i_ops || !inode->i_ops->readlink) {
+		vfs_iput(inode);
+		return -EINVAL;
+	}
+    return inode->i_ops->readlink(inode, buf, bufsiz);
+}
+
+i32 syscall_lstat(i8 *path, struct stat *statbuf) {
+	i32 err;
+	struct vfs_inode *inode;
+
+	if ((err = vfs_namei(path, NULL, 0, &inode))) {
+		return err;
+	}
+	statbuf->st_dev = inode->i_dev;
+	statbuf->st_ino = inode->i_num;
+	statbuf->st_mode = inode->i_mode;
+	statbuf->st_nlink = inode->i_links_count;
+	statbuf->st_uid = inode->i_uid;
+	statbuf->st_gid = inode->i_gid;
+	statbuf->st_rdev = 0;
+	statbuf->st_size = inode->i_size;
+	statbuf->st_atime = inode->i_atime;
+	statbuf->st_mtime = inode->i_mtime;
+	statbuf->st_ctime = inode->i_ctime;
+	statbuf->st_blksize = inode->i_sb->s_block_size;
+	statbuf->st_blocks = inode->i_blocks;
+	vfs_iput(inode);
+	return 0;
 }

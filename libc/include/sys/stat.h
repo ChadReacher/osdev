@@ -3,7 +3,6 @@
 
 #include <sys/types.h>
 
-/*
 #define S_IFMT	 0170000
 #define S_IFSOCK 0140000
 #define S_IFLNK  0120000
@@ -20,6 +19,7 @@
 #define S_ISCHR(m)		(((m) & S_IFMT) == S_IFCHR)
 #define S_ISBLK(m)		(((m) & S_IFMT) == S_IFBLK)
 #define S_ISREG(m)		(((m) & S_IFMT) == S_IFREG)
+#define S_ISLNK(m)      (((m) & S_IFMT) == S_IFLNK)
 #define S_ISFIFO(m)		(((m) & S_IFMT) == S_IFIFO)
 
 #define S_IRWXU 00700
@@ -36,7 +36,6 @@
 #define S_IROTH 00004
 #define S_IWOTH 00002
 #define S_IXOTH 00001
-*/
 
 struct stat {
 	u32 st_dev;
@@ -56,5 +55,6 @@ struct stat {
 
 extern i32 stat(const i8 *filename, struct stat *stat_buf);
 extern i32 fstat(i32 fd, struct stat *stat_buf);
+extern i32 lstat(const i8 *filename, struct stat *stat_buf);
 
 #endif

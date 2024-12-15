@@ -25,7 +25,7 @@ i32 main(i32 argc, i8 *argv[]) {
 		memset(buf, 0, BUFSZ);
 		fd = open(argv[i], O_RDONLY, 0);
 		if (fd < 0) {
-			printf("could not open: %s\n", argv[i]);
+			perror("cat: couldn't open file");
 			continue;
 		}
 		while ((r = read(fd, buf, BUFSZ)) > 0) {

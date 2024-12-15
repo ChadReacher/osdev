@@ -305,6 +305,9 @@ i8 *strerror(i32 errnum) {
 		case ENOTEMPTY:
 			s = "Directory not empty";
 			break;
+		case ELOOP:
+			s = "Too many levels of symbolic links";
+			break;
 		default:
 			s = "Unknown error";
 			break;

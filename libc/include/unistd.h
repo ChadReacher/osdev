@@ -77,6 +77,9 @@
 #define __NR_pipe			51
 #define __NR_tcsetpgrp		52
 #define __NR_tcgetpgrp		53
+#define __NR_symlink		54
+#define __NR_readlink		55
+#define __NR_lstat			56
 
 #define syscall0(type, name) \
 type name(void) { \
@@ -186,6 +189,8 @@ i32 getpgrp();
 i32 setsid();
 i32 setpgid(i32 pid, i32 pgid);
 i32 link(i8 *path1, i8 *path2);
+i32 symlink(i8 *path1, i8 *path2);
+i32 readlink(const i8 *pathname, i8 *buf, i32 bufsiz);
 i32 rename(i8 *old, i8 *new);
 i32 access(i8 *path, i32 amode);
 i32 dup2(u32 oldfd, u32 newfd);

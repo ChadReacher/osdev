@@ -36,7 +36,7 @@
 #define S_IXOTH 0x0001
 
 
-u32 open(const i8 *filename, u32 oflags, u32 mode);
+i32 open(const i8 *filename, u32 oflags, u32 mode);
 u32 creat(i8 *path, u32 mode);
 
 #endif

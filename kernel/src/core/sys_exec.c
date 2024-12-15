@@ -19,7 +19,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	i8 **argv, **envp, **arg_p, **env_p;
 	i32 argc = 0, envc = 0;
 
-	err = vfs_namei(pathname, &inode);
+	err = vfs_namei(pathname, NULL, 1, &inode);
 	if (err) {
 		return err;
 	} else if (!S_ISREG(inode->i_mode)) {

@@ -373,7 +373,7 @@ i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf) {
 	struct ext2_dir *de, *pde;
 	i32 curr_off = 0;
 	pde = NULL;
-	de = (struct ext2_dir *)old_buf->b_data;
+	de = (struct ext2_dir *)(old_buf->b_data);
 	while (curr_off < 1024) {
 		if (de == dir) {
 			if (pde) {

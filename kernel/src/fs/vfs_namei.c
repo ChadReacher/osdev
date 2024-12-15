@@ -12,7 +12,7 @@
  * res_basename - the name of the last directory in the path
  * res_inode    - the VFS inode of the last directory in the path
  */
-i32 vfs_dirnamei(const i8 *pathname, const i8 **res_basename,
+i32 vfs_dirnamei(const i8 *pathname, struct vfs_inode *base, const i8 **res_basename,
              struct vfs_inode **res_inode) {
 	i32 error;
 	const i8 *basename = NULL;
@@ -21,49 +21,63 @@ i32 vfs_dirnamei(const i8 *pathname, const i8 **res_basename,
 
 	saved_pathname = pathname_dup = strdup(pathname);
 	if (pathname_dup[0] == '/') {
-		inode = current_process->root;
+		vfs_iput(base);
+		base = current_process->root;
 		++pathname_dup;
+		++base->i_count;
 	} else {
-		inode = current_process->pwd;
+		if (!base) {
+			base = current_process->pwd;
+			++base->i_count;
+		}
 	}
-	++inode->i_count;
 
 	while ((tmp = strsep(&pathname_dup, "/")) != NULL) {
 		basename = tmp;
 		if (!pathname_dup || *pathname_dup == '\0') {
 			break;
 		}
-		if (!inode->i_ops || !inode->i_ops->lookup) {
-			vfs_iput(inode);
+		if (!base->i_ops || !base->i_ops->lookup) {
+			vfs_iput(base);
 			free(saved_pathname);
 			return -ENOENT;	
 		}
-		++inode->i_count; /* lookup eats one 'i_count' */
-	    error = inode->i_ops->lookup(inode, tmp, &inode);
+		++base->i_count; /* lookup eats one 'i_count' */
+	    error = base->i_ops->lookup(base, tmp, &inode);
 		if (error) {
-			vfs_iput(inode);
+			vfs_iput(base);
 			free(saved_pathname);
 			return error;
 		}
+		if (!inode->i_ops || !inode->i_ops->followlink) {
+			base = inode;
+			continue;
+		}
+		base = inode->i_ops->followlink(inode, base);
+		if (base == NULL) {
+			vfs_iput(base);
+			free(saved_pathname);
+			return -ENOENT;
+		}
 	}
 	if (basename == NULL) {
-		vfs_iput(inode);
+		vfs_iput(base);
 		free(saved_pathname);
 		return -ENOENT;
 	}
 	*res_basename = strdup(basename);
-	*res_inode = inode;
+	*res_inode = base;
 	free(saved_pathname);
 	return 0;
 }
 
 /* vfs_namei - converts a path name to VFS inode */
-i32 vfs_namei(const i8 *pathname, struct vfs_inode **res) {
+i32 vfs_namei(const i8 *pathname, struct vfs_inode *base, i32 follow_links, struct vfs_inode **res) {
     i32 err;
     const i8 *basename;
     struct vfs_inode *dir, *inode;
 
-	err = vfs_dirnamei(pathname, &basename, &dir);
+	err = vfs_dirnamei(pathname, base, &basename, &dir);
     if (err != 0) {
         return err;
     }
@@ -77,7 +91,16 @@ i32 vfs_namei(const i8 *pathname, struct vfs_inode **res) {
 		vfs_iput(dir);
         return err;
     }
-    vfs_iput(dir);
+
+	if (follow_links && inode->i_ops && inode->i_ops->followlink) {
+		inode = inode->i_ops->followlink(inode, base);
+		if (inode == NULL) {
+			vfs_iput(dir);
+			return -ENOENT;
+    	}
+	} else {
+		vfs_iput(dir);
+	}
     inode->i_atime = get_current_time();
     inode->i_dirt = 1;
     *res = inode;
@@ -90,7 +113,7 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
     const i8 *basename;
     struct vfs_inode *dir, *inode;
 
-    err = vfs_dirnamei(pathname, &basename, &dir);
+    err = vfs_dirnamei(pathname, NULL, &basename, &dir);
 	if (err != 0) {
 		return err;
 	}
@@ -127,6 +150,16 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
         }
         return dir->i_ops->create(dir, basename, mode, res_inode);
 	}
+
+	if (inode->i_ops && inode->i_ops->followlink) {
+		inode = inode->i_ops->followlink(inode, dir);
+		if (inode == NULL) {
+			vfs_iput(dir);
+			return -ELOOP;
+    	}
+	}
+
+
 	if ((oflags & O_EXCL) && (oflags & O_CREAT)) {
 		vfs_iput(dir);
 		vfs_iput(inode);

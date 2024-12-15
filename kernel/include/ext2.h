@@ -33,6 +33,7 @@
 #define EXT2_S_ISDIR(m) (((m) & EXT2_S_IFDIR) == EXT2_S_IFDIR)
 #define EXT2_S_ISCHR(m) (((m) & EXT2_S_IFCHR) == EXT2_S_IFCHR)
 #define EXT2_S_ISBLK(m) (((m) & EXT2_S_IFBLK) == EXT2_S_IFBLK)
+#define EXT2_S_ISLNK(m) (((m) & EXT2_S_IFLNK) == EXT2_S_IFLNK)
 #define EXT2_S_ISFIFO(m) (((m) & EXT2_S_IFIFO) == EXT2_S_IFIFO)
 
 #define EXT2_S_ISUID 0x0800
@@ -176,6 +177,9 @@ i32 ext2_bmap(struct vfs_inode *inode, u32 offset);
 i32 ext2_create_block(struct vfs_inode *inode, u32 offset);
 i32 ext2_unlink(struct vfs_inode *dir, const char *basename);
 i32 ext2_link(struct vfs_inode *dir, const i8 *basename, struct vfs_inode *inode);
+i32 ext2_symlink(struct vfs_inode *dir, const i8 *name, const i8*symname);
+i32 ext2_readlink(struct vfs_inode *inode, i8 *buf, i32 bufsiz);
+struct vfs_inode *ext2_follow_link(struct vfs_inode *inode, struct vfs_inode *base);
 i32 ext2_rmdir(struct vfs_inode *dir, const char *basename);
 i32 ext2_mkdir(struct vfs_inode *dir, const char *basename, i32 mode);
 

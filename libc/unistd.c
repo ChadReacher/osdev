@@ -27,6 +27,8 @@ u32 umask(u32 mode) {
 
 syscall2(i32, link, i8 *, path1, i8 *, path2)
 
+syscall2(i32, symlink, i8 *, path1, i8 *, path2)
+
 syscall2(i32, rename, i8 *, old, i8 *, new)
 
 syscall3(i32, execve, const i8 *, pathname, i8 **, argv, i8 **, envp)
@@ -197,6 +199,8 @@ i32 lseek(i32 fd, i32 offset, i32 whence) {
 	return ret;
 }
 
+syscall3(i32, readlink, const i8 *, pathname, i8 *, buf, i32, bufsiz)
+
 i32 unlink(const i8 *pathname) {
 	i32 ret;
 
@@ -275,35 +279,13 @@ i8 *getcwd(i8 *buf, u32 size) {
 	return NULL;
 }
 
-i32 stat(const i8 *pathname, struct stat *statbuf) {
-	i32 ret;
+syscall2(i32, stat, const i8 *, pathname, struct stat *, statbuf)
 
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_stat), "b"(pathname), "c"(statbuf));
+syscall2(i32, fstat, i32, fd, struct stat *, statbuf)
 
-	return ret;
-}
+syscall2(i32, lstat, const i8 *, pathname, struct stat *, statbuf)
 
-i32 fstat(i32 fd, struct stat *statbuf) {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_fstat), "b"(fd), "c"(statbuf));
-
-	return ret;
-}
-
-i32 chdir(const i8 *path) {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_chdir), "b"(path));
-
-	return ret;
-}
+syscall1(i32, chdir, const i8*, path)
 
 i32 access(i8 *pathname, i32 mode) {
 	i32 ret;
