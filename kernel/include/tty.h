@@ -45,9 +45,11 @@ struct tty_struct {
  * VEOL  - 003 */
 #define INIT_C_CC "\003\034\177\025\004\0\1\021\032\023\0"
 
+extern struct file_ops tty_ops;
 
-i32 tty_read(u16 channel, i8 *buf, i32 count);
-i32 tty_write(u16 channel, i8 *buf, i32 count);
+i32 tty_open(struct vfs_inode *inode, struct file *fp);
+i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
+i32 tty_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 void do_cook(struct tty_struct *tty);
 i8 ttyq_getchar(struct tty_queue *q);
 

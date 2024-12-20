@@ -173,6 +173,8 @@ i32 ext2_create(struct vfs_inode *dir, const i8 *name, i32 mode, struct vfs_inod
 i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_base, struct vfs_inode *new_dir, const i8 *new_base);
 i32 ext2_file_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 i32 ext2_file_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
+i32 ext2_chr_open(struct vfs_inode *inode, struct file *fp);
+
 i32 ext2_bmap(struct vfs_inode *inode, u32 offset);
 i32 ext2_create_block(struct vfs_inode *inode, u32 offset);
 i32 ext2_unlink(struct vfs_inode *dir, const char *basename);
@@ -182,9 +184,6 @@ i32 ext2_readlink(struct vfs_inode *inode, i8 *buf, i32 bufsiz);
 struct vfs_inode *ext2_follow_link(struct vfs_inode *inode, struct vfs_inode *base);
 i32 ext2_rmdir(struct vfs_inode *dir, const char *basename);
 i32 ext2_mkdir(struct vfs_inode *dir, const char *basename, i32 mode);
-
-//struct ext2_inode *get_pipe_inode();
-
 
 struct buffer *ext2_find_entry(struct vfs_inode *dir, const i8 *name, struct ext2_dir **res_dir, struct ext2_dir **prev_dir);
 i32 ext2_add_entry(struct vfs_inode *dir, const i8 *name, struct buffer **res_buf, struct ext2_dir **result);

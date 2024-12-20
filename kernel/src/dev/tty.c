@@ -5,6 +5,7 @@
 #include <panic.h>
 #include <errno.h>
 #include <signal.h> 
+#include <chr_dev.h>
 
 void console_write(struct tty_struct *tty);
 i32 is_orphaned_pgrp(i32 pgrp);
@@ -23,6 +24,13 @@ static void ttyq_putchar(struct tty_queue *q, i8 c) {
 	q->head = (q->head + 1) & (TTY_QUEUE_BUF_SZ - 1);
 }
 
+struct file_ops tty_ops = {
+	tty_open,
+	tty_read,
+    tty_write,
+	NULL,
+};
+
 struct tty_struct tty_table[] = {
 	{
 		{
@@ -40,6 +48,23 @@ struct tty_struct tty_table[] = {
 		{ 0, 0, 0, NULL, ""} /* cooked */
 	},
 };
+
+i32 tty_open(struct vfs_inode *inode, struct file *fp) {
+	u16 major, minor;
+	major = MAJOR(inode->i_rdev);
+	minor = MINOR(inode->i_rdev);
+	if (major == 4) {
+		if (current_process->leader && current_process->tty < 0) {
+			current_process->tty = minor;
+			tty_table[current_process->tty].pgrp = current_process->pgrp;
+		}
+	} else if (major == 5) {
+		if (current_process->tty < 0) {
+			return -EPERM;
+		}
+	}
+	return 0;
+}
 
 void interruptible_sleep_on(struct proc **p) {
 	struct proc *tmp;
@@ -72,12 +97,16 @@ void sleep_if_full(struct tty_queue *q) {
 	}
 }
 
-i32 tty_read(u16 minor, i8 *buf, i32 count) {
+i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
 	struct tty_struct *tty;
 	i8 c, *b = buf;
 
+	if (current_process->tty < 0) {
+		return -EPERM;
+	}
+	i32 minor = MINOR(inode->i_rdev);
 	if (minor > 1 || count < 0) {
-		return -1;
+		return -EINVAL;
 	}
 	tty = &tty_table[minor];
 	while (count > 0) {
@@ -113,17 +142,19 @@ i32 tty_read(u16 minor, i8 *buf, i32 count) {
 	return b - buf;
 }
 
-i32 tty_write(u16 channel, i8 *buf, i32 count) {
+i32 tty_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
 	static i32 cr_flag = 0;
 	struct tty_struct *tty;
 	i8 c, *b = buf;
 
-	if (channel > 1 || count < 0) {
-		return -1;
+	
+	i32 minor = MINOR(inode->i_rdev);
+	if (minor > 1 || count < 0) {
+		return -EINVAL;
 	}
-	tty = tty_table + channel;
+	tty = tty_table + minor;
 	if ((tty->termios.c_lflag & TOSTOP) && 
-			current_process->tty == (i32)channel &&
+			current_process->tty == (i32)minor &&
 			current_process->pgrp != tty->pgrp) {
 		if (is_orphaned_pgrp(tty->pgrp)) {
 			return -EIO;

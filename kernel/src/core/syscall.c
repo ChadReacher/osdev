@@ -56,31 +56,21 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 		f->f_count = 0;
 		return res;
 	}
-    // TODO[fs]: [chardev] implement functions for char devs
-	if (S_ISCHR(inode->i_mode)) {
-		u16 major, minor;
-		major = (inode->u.i_ext2.i_block[0] >> 8) & 0xFF;
-		minor = inode->u.i_ext2.i_block[0] & 0xFF;
-		if (major == 4) {
-			if (current_process->leader && current_process->tty < 0) {
-				current_process->tty = minor;
-				tty_table[current_process->tty].pgrp = current_process->pgrp;
-			}
-		} else if (major == 5) {
-			if (current_process->tty < 0) {
-				vfs_iput(inode);
-				current_process->fds[fd] = NULL;
-				f->f_count = 0;
-				return -EPERM;
-			}
-		}
-	}
 	f->f_mode = mode;
 	f->f_flags = oflags;
 	f->f_count = 1;
 	f->f_inode = inode;
 	f->f_pos = 0;
     f->f_ops = inode->i_f_ops;
+	if (f->f_ops && f->f_ops->open) {
+		res = f->f_ops->open(inode, f);
+		if (res != 0) {
+			vfs_iput(inode);
+			current_process->fds[fd] = NULL;
+			--f->f_count;
+			return res;
+		}
+	}
 	return fd;
 }
 
@@ -118,9 +108,6 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 		return -EBADF;
 	}
 	inode = f->f_inode;
-	if (S_ISCHR(inode->i_mode)) {
-		return char_read(inode->u.i_ext2.i_block[0], buf, count);
-	}
 	if (S_ISBLK(inode->i_mode)) {
 		return block_read(inode->i_dev, &f->f_pos, buf, count);
 	}
@@ -152,9 +139,6 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 	}
 
 	inode = f->f_inode;
-	if (S_ISCHR(inode->i_mode)) {
-		return char_write(inode->u.i_ext2.i_block[0], buf, count);
-	}
 	if (S_ISBLK(inode->i_mode)) {
 		return block_write(inode->i_dev, &f->f_pos, buf, count);
 	}

@@ -6,6 +6,7 @@
 #include <vfs.h>
 
 extern struct file_ops ext2_file_ops;
+extern struct file_ops ext2_chr_ops;
 
 
 struct vfs_inode_ops ext2_inode_file_ops = {
@@ -21,6 +22,7 @@ struct vfs_inode_ops ext2_inode_file_ops = {
 	NULL,
 	NULL,
 };
+
 struct vfs_inode_ops ext2_inode_dir_ops = {
 	ext2_unlink,
 	ext2_link,
@@ -34,7 +36,8 @@ struct vfs_inode_ops ext2_inode_dir_ops = {
 	NULL,
 	NULL,
 };
-struct vfs_inode_ops ext2_inode_chr_ops = {
+
+struct vfs_inode_ops ext2_inode_chrdev_ops = {
 	NULL,
 	NULL,
 	NULL,
@@ -48,7 +51,7 @@ struct vfs_inode_ops ext2_inode_chr_ops = {
 	NULL,
 };
 
-struct vfs_inode_ops ext2_inode_blk_ops = {
+struct vfs_inode_ops ext2_inode_blkdev_ops = {
 	NULL,
 	NULL,
 	NULL,
@@ -182,6 +185,9 @@ void ext2_read_inode(struct vfs_inode *vnode) {
 	vnode->u.i_ext2.i_dir_acl = raw_inode.i_dir_acl;
 	vnode->u.i_ext2.i_faddr = raw_inode.i_faddr;
 
+	if (S_ISCHR(vnode->i_mode) || S_ISBLK(vnode->i_mode)) {
+		vnode->i_rdev = raw_inode.i_block[0];
+	}
 	for (i32 i = 0; i < EXT2_N_BLOCKS; ++i) {
 		vnode->u.i_ext2.i_block[i] = raw_inode.i_block[i];
 	}
@@ -192,19 +198,23 @@ void ext2_read_inode(struct vfs_inode *vnode) {
     // TODO: next step?
 	if (S_ISREG(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_file_ops;
+		vnode->i_f_ops = &ext2_file_ops;
     } else if (S_ISDIR(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_dir_ops;
+		vnode->i_f_ops = &ext2_file_ops;
     } else if (S_ISCHR(vnode->i_mode)) {
-		//vnode->i_ops = ext2_inode__chrdev_ops;
+		vnode->i_ops = &ext2_inode_chrdev_ops;
+		vnode->i_f_ops = &ext2_chr_ops;
     } else if (S_ISBLK(vnode->i_mode)) {
 		//vnode->i_ops = ext2_inode__blkdev_ops;
+		//vnode->i_f_ops = &ext2_blk_ops;
     } else if (S_ISLNK(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_symlink_ops;
+		vnode->i_f_ops = &ext2_file_ops;
 	}  else if (S_ISFIFO(vnode->i_mode)) {
-		//vnode->i_ops = ext2_inode__pipe_ops;
+		//vnode->i_ops = ext2_inode_fifo_ops;
+		//vnode->i_f_ops = &ext2_fifo_ops;
 	}
-
-	vnode->i_f_ops = &ext2_file_ops;
 }
 
 void ext2_write_inode(struct vfs_inode *vnode) {

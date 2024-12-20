@@ -52,6 +52,7 @@ struct vfs_inode_ops {
 };
 
 struct file_ops {
+    i32 (*open) (struct vfs_inode *inode, struct file *fp);
     i32 (*read) (struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
     i32 (*write) (struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 	i32 (*readdir) (struct vfs_inode *inode, struct file *fp, struct dirent *dent);
@@ -69,6 +70,7 @@ struct vfs_inode {
 	u32 i_blocks;
 	u32 i_flags;
 	u32 i_dev;
+	u32 i_rdev;
 	u32 i_num;
 	u32 i_count;
 	u32 i_dirt;

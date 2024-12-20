@@ -11,12 +11,14 @@ static i32 pipe_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 coun
 static i32 pipe_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 
 struct file_ops pipe_read_ops = {
+	NULL,
 	pipe_read,
     bad_pipe_write,
-	NULL
+	NULL,
 };
 
 struct file_ops pipe_write_ops = {
+	NULL,
 	bad_pipe_read,
     pipe_write,
 	NULL

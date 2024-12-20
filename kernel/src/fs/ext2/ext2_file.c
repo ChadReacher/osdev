@@ -9,9 +9,10 @@
 #include <vfs.h>
 
 struct file_ops ext2_file_ops = {
+	NULL,
 	ext2_file_read,
     ext2_file_write,
-	ext2_readdir
+	ext2_readdir,
 };
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
