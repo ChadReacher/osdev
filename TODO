@@ -1,8 +1,8 @@
 Filesystem:
   * [DONE] Implement pipe as file system
-  * Implement VFS
+  * [DONE] Implement VFS
     - Research, get more knowledge about working with devices: character- and block-devices
-  * Support symbolink links in Ext2
+  * [DONE] Support symbolink links in Ext2
   * Implement second file system:
     - Implement MSDOS/FAT32(16)
     - Implement mount() syscall
@@ -41,8 +41,8 @@ Misc:
 
 Plan:
 * [DONE] Implement pipe as file system
-* Support symlinks for ext2
-* Finish implementing VFS (character and block device operations)
+* [DONE] Support symlinks for ext2
+* [DONE] Finish implementing VFS (character and block device operations)
 * ...
 * Improve/revise/simplify/rewrite scheduling algorithm
 * Improve/revise signals implementation
@@ -53,6 +53,7 @@ Plan:
 * ...
 * Implement Unix domain sockets
 * Implement networking sockets
+* ...
 * Implement MSDOS/FAT32(16) file system
 * Implement mount() syscall
 * Implement umount() syscall
@@ -60,84 +61,3 @@ Plan:
 
 Open questions/TODOs:
 * Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
-* [DONE] Fix 'ls' output especially stat(2) usage - done with a new system call - lstat.
-
-File system operations/syscalls:
-* open
-* unlink
-* chdir
-* link
-* rename
-* stat
-* access
-* rmdir
-* mkdir
-* symlink
-* readlink
-
-* chroot ???
-* mknod ???
-
-cat
-link
-ls
-mkdir
-mv
-readlink
-rmdir
-symlink
-
-'symlink'
-Symlinks:
-You can define symlinks with an either absolute or relative path.
-
-Absolute path:
-'hi' is non-existent component of the path.
-Link         -> File
-/usr/fin/abc -> /usr/dir/def
-/usr/fin/abc -> /hi/dir/def
-/usr/fin/abc -> /usr/hi/def
-/usr/fin/abc -> /usr/dir/hi
-/usr/fin/abc -> /usr/dir/../dir/def
-/usr/fin/abc -> /usr/../usr/dir/def
-
-Relative path:
-/usr/dir/abc -> def
-/usr/dir/abc -> ./def
-/usr/dir/abc -> ../def
-/usr/dir/abc -> ../../def
-/usr/dir/abc -> ../../../def
-/usr/dir/abc -> ../../../../def
-/usr/dir/abc -> ../dir/def
-
-Everything works the same for directories.
-
-[DONE] Think about invalid symlinks - symlinks which point to non-existent files.
-[DONE] Think about symlink loop.
-[DONE] THink about symlink total length count.
-
-root@localhost:/# mkdir /usr/dir
-root@localhost:/# mv /usr/bye /usr/dir/def
-root@localhost:/# symlink def /usr/dir/abc
-root@localhost:/# cat /usr/dir/abc
-could not open: /usr/dir/abc
-root@localhost:/# cd /usr/dir
-root@localhost:/usr/dir# cat abc
-del
-
-Symbolink links loop:
-root@localhost:/# symlink one two
-root@localhost:/# symlink two one
-
-Just check the behavior:
-root@localhost:/# symlink /dir1/sdir1 /dir2/sdirlink1
-root@localhost:/# cd /dir2/sdirlink1
-root@localhost:/# pwd
-/dir1/sdir1
-root@localhost:/# cd ..
-root@localhost:/# pwd
-/dir1
-root@localhost:/# cd /
-root@localhost:/# cd /dir2/sdirlink1/..
-root@localhost:/# pwd
-/dir1

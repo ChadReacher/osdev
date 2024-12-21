@@ -197,7 +197,6 @@ void ext2_read_inode(struct vfs_inode *vnode) {
         vnode->u.i_ext2.osd2[i] = raw_inode.osd2[i];
 	}
 
-    // TODO: next step?
 	if (S_ISREG(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_file_ops;
 		vnode->i_f_ops = &ext2_file_ops;

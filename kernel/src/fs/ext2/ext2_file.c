@@ -22,6 +22,9 @@ i32 ext2_file_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count)
 	struct buffer *lbuf;
 	i32 left, block, inblock, chars;
 
+	if (count + fp->f_pos > inode->i_size) {
+		count = inode->i_size - fp->f_pos;
+	}
 	if ((left = count) <= 0) {
 		return 0;
 	}

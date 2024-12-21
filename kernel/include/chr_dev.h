@@ -6,6 +6,8 @@
 #define READ 0
 #define WRITE 1
 
+#define NRCHRDEV 7
+
 #define MAJOR(a) ((unsigned)(a)>>8)
 #define MINOR(a) ((a)&0xFF)
 

@@ -46,8 +46,10 @@ struct tty_struct {
 #define INIT_C_CC "\003\034\177\025\004\0\1\021\032\023\0"
 
 extern struct file_ops tty_ops;
+extern struct file_ops ttyx_ops;
 
 i32 tty_open(struct vfs_inode *inode, struct file *fp);
+i32 ttyx_open(struct vfs_inode *inode, struct file *fp);
 i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 i32 tty_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 void do_cook(struct tty_struct *tty);

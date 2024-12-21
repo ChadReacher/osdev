@@ -15,8 +15,7 @@ i32 ext2_chr_open(struct vfs_inode *inode, struct file *fp) {
 	i32 i;
 
 	i = MAJOR(inode->i_rdev);
-	// TODO: move 7 to define
-	if (i > 7) {
+	if (i > NRCHRDEV) {
 		return 0;
 	}
 	fp->f_ops = chr_dev_ops[i];

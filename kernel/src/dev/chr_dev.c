@@ -9,7 +9,7 @@ struct file_ops *chr_dev_ops[] = {
 	NULL,     /* dev mem */
 	NULL,     /* dev fd */
 	NULL,	  /* dev hd */
-	&tty_ops,  /* dev ttyx */ // TODO: change to ttyx?
-	NULL,	  /* dev tty */   // TODO: implement here real tty?
+	&ttyx_ops,  /* dev ttyx */
+	&tty_ops,	  /* dev tty */
 	NULL,     /* dev lp */
 };

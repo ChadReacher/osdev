@@ -37,7 +37,6 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 	struct file *f;
 	struct vfs_inode *inode;
 
-	debug("[sys_open]: filename - %s\r\n", filename);
 	mode &= 0777 & ~current_process->umask;
 	fd = get_new_fd();
 	if (fd > NR_OPEN) {
@@ -75,7 +74,6 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 }
 
 i32 syscall_close(i32 fd) {
-	debug("[sys_close]: fd - %d\r\n", fd);
 	struct file *f;
 	if (fd > NR_OPEN) {
 		return -EBADF;
@@ -99,7 +97,6 @@ i32 syscall_close(i32 fd) {
 i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 	struct file *f;
 	struct vfs_inode *inode;
-	debug("[sys_read]: fd - %d\r\n", fd);
 
 	if (count == 0) {
 		return 0;
@@ -108,15 +105,6 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 		return -EBADF;
 	}
 	inode = f->f_inode;
-	if (S_ISREG(inode->i_mode)) {
-		// TODO: why do we need this code?
-		if (count + f->f_pos > inode->i_size) {
-			count = inode->i_size - f->f_pos;
-		}
-		if (count <= 0) {
-			return 0;
-		}
-	}
 	if (f->f_ops && f->f_ops->read) {
 		return f->f_ops->read(inode, f, buf, count);
 	}
@@ -126,7 +114,6 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 	struct file *f;
 	struct vfs_inode *inode;
-	debug("[sys_write]: fd - %d\r\n", fd);
 
 	if (count == 0) {
 		return 0;
@@ -414,7 +401,6 @@ void do_exit(i32 code) {
 }
 
 void syscall_exit(i32 exit_code) {
-	debug("[sys_exit] pid - %d\r\n", current_process->pid);
 	do_exit((exit_code & 0xFF) << 8);
 }
 

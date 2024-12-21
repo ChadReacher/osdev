@@ -15,8 +15,7 @@ i32 ext2_blk_open(struct vfs_inode *inode, struct file *fp) {
 	i32 i;
 
 	i = MAJOR(inode->i_rdev);
-	// TODO: move 7 to define
-	if (i > 7) {
+	if (i > NRBLKDEV) {
 		return 0;
 	}
 	fp->f_ops = blk_dev_ops[i];

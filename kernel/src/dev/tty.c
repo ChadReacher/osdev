@@ -31,6 +31,13 @@ struct file_ops tty_ops = {
 	NULL,
 };
 
+struct file_ops ttyx_ops = {
+	ttyx_open,
+	tty_read,
+    tty_write,
+	NULL,
+};
+
 struct tty_struct tty_table[] = {
 	{
 		{
@@ -53,15 +60,21 @@ i32 tty_open(struct vfs_inode *inode, struct file *fp) {
 	u16 major, minor;
 	major = MAJOR(inode->i_rdev);
 	minor = MINOR(inode->i_rdev);
-	if (major == 4) {
-		if (current_process->leader && current_process->tty < 0) {
-			current_process->tty = minor;
-			tty_table[current_process->tty].pgrp = current_process->pgrp;
-		}
-	} else if (major == 5) {
-		if (current_process->tty < 0) {
-			return -EPERM;
-		}
+
+	if (current_process->tty < 0) {
+		return -EPERM;
+	}
+	return 0;
+}
+
+i32 ttyx_open(struct vfs_inode *inode, struct file *fp) {
+	u16 major, minor;
+	major = MAJOR(inode->i_rdev);
+	minor = MINOR(inode->i_rdev);
+
+	if (current_process->leader && current_process->tty < 0) {
+		current_process->tty = minor;
+		tty_table[current_process->tty].pgrp = current_process->pgrp;
 	}
 	return 0;
 }
@@ -147,7 +160,6 @@ i32 tty_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
 	struct tty_struct *tty;
 	i8 c, *b = buf;
 
-	
 	i32 minor = MINOR(inode->i_rdev);
 	if (minor > 1 || count < 0) {
 		return -EINVAL;
