@@ -174,6 +174,7 @@ i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_base, struct vfs_inode 
 i32 ext2_file_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 i32 ext2_file_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 i32 ext2_chr_open(struct vfs_inode *inode, struct file *fp);
+i32 ext2_blk_open(struct vfs_inode *inode, struct file *fp);
 
 i32 ext2_bmap(struct vfs_inode *inode, u32 offset);
 i32 ext2_create_block(struct vfs_inode *inode, u32 offset);

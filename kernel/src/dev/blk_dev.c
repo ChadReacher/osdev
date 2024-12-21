@@ -3,10 +3,28 @@
 #include <heap.h>
 #include <string.h>
 #include <panic.h>
+#include <vfs.h>
 
-i32 block_write(u16 dev, i32 *pos, i8 *buf, u32 count) {
-	u32 block = *pos / BLOCK_SIZE;
-	u32 offset = *pos % BLOCK_SIZE;
+struct file_ops ata_ops = {
+	NULL,
+	block_read,
+	block_write,
+	NULL,
+};
+
+struct file_ops *blk_dev_ops[] = {
+	NULL,     /* no dev */
+	NULL,     /* dev mem */
+	NULL,     /* dev fd */
+	&ata_ops,	  /* dev hd */
+	NULL,     /* dev ttyx */
+	NULL,	  /* dev tty */
+	NULL,     /* dev lp */
+};
+
+i32 block_write(struct vfs_inode *inode, struct file *fp, i8 *buf, u32 count) {
+	u32 block = fp->f_pos / BLOCK_SIZE;
+	u32 offset = fp->f_pos % BLOCK_SIZE;
 	u32 chars;
 	struct buffer *ret_buf;
 	i8 *p;
@@ -17,7 +35,7 @@ i32 block_write(u16 dev, i32 *pos, i8 *buf, u32 count) {
 		if (chars > count) {
 			chars = count;
 		}
-		ret_buf = read_blk(dev, block);
+		ret_buf = read_blk(inode->i_rdev, block);
 		if (ret_buf == NULL) {
 			return written;
 		}
@@ -26,7 +44,7 @@ i32 block_write(u16 dev, i32 *pos, i8 *buf, u32 count) {
 		write_blk(ret_buf);
 		offset = 0;
 		++block;
-		*pos += chars;
+		fp->f_pos += chars;
 		written += chars;
 		count -= chars;
 		buf += chars;
@@ -36,9 +54,9 @@ i32 block_write(u16 dev, i32 *pos, i8 *buf, u32 count) {
 	return written;
 }
 
-i32 block_read(u16 dev, i32 *pos, i8 *buf, u32 count) {
-	u32 block = *pos / BLOCK_SIZE;
-	u32 offset = *pos % BLOCK_SIZE;
+i32 block_read(struct vfs_inode *inode, struct file *fp, i8 *buf, u32 count) {
+	u32 block = fp->f_pos / BLOCK_SIZE;
+	u32 offset = fp->f_pos % BLOCK_SIZE;
 	u32 chars;
 	struct buffer *ret_buf; 
 	i8 *p;
@@ -49,14 +67,14 @@ i32 block_read(u16 dev, i32 *pos, i8 *buf, u32 count) {
 		if (chars > count) {
 			chars = count;
 		}
-		ret_buf = read_blk(dev, block);
+		ret_buf = read_blk(inode->i_rdev, block);
 		if (ret_buf == NULL) {
 			return read;
 		}
 		p = ret_buf->b_data + offset;
 		offset = 0;
 		++block;
-		*pos += chars;
+		fp->f_pos += chars;
 		read += chars;
 		count -= chars;
 		memcpy(buf, p, chars);
@@ -111,15 +129,3 @@ void write_blk(struct buffer *buf) {
 	}
 	blk_addr(WRITE, buf->b_dev, buf->b_block, &buf->b_data);
 }
-
-/*
-void rw_block(u32 rw, u16 dev, u32 block, i8 **buf) {
-	blk_fn blk_addr;
-	u16 major;
-	if ((major=MAJOR(dev)) >= NRBLKDEV || !(blk_addr=blk_dev[major])) {
-		panic("nonexistent block device");
-	}
-	blk_addr(rw, dev, block, buf);
-}
-*/
-

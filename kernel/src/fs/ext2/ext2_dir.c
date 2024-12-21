@@ -8,6 +8,13 @@
 #include <panic.h>
 #include <process.h> 
 
+struct file_ops ext2_dir_ops = {
+	NULL,
+	NULL,
+	NULL,
+	ext2_readdir,
+};
+
 i32 ext2_unlink(struct vfs_inode *dir, const char *basename) {
 	struct buffer *buf;
 	struct vfs_inode *inode;

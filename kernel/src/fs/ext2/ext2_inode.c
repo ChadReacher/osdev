@@ -6,7 +6,9 @@
 #include <vfs.h>
 
 extern struct file_ops ext2_file_ops;
+extern struct file_ops ext2_dir_ops;
 extern struct file_ops ext2_chr_ops;
+extern struct file_ops ext2_blk_ops;
 
 
 struct vfs_inode_ops ext2_inode_file_ops = {
@@ -201,13 +203,13 @@ void ext2_read_inode(struct vfs_inode *vnode) {
 		vnode->i_f_ops = &ext2_file_ops;
     } else if (S_ISDIR(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_dir_ops;
-		vnode->i_f_ops = &ext2_file_ops;
+		vnode->i_f_ops = &ext2_dir_ops;
     } else if (S_ISCHR(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_chrdev_ops;
 		vnode->i_f_ops = &ext2_chr_ops;
     } else if (S_ISBLK(vnode->i_mode)) {
-		//vnode->i_ops = ext2_inode__blkdev_ops;
-		//vnode->i_f_ops = &ext2_blk_ops;
+		vnode->i_ops = &ext2_inode_blkdev_ops;
+		vnode->i_f_ops = &ext2_blk_ops;
     } else if (S_ISLNK(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_symlink_ops;
 		vnode->i_f_ops = &ext2_file_ops;

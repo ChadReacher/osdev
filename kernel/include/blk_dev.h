@@ -2,6 +2,7 @@
 #define BLK_DEV
 
 #include <types.h>
+#include <vfs.h>
 
 #define READ 0
 #define WRITE 1
@@ -19,8 +20,8 @@ struct buffer {
 	i8 *b_data;
 };
 
-i32 block_write(u16 dev, i32 *pos, i8 *buf, u32 count);
-i32 block_read(u16 dev, i32 *pos, i8 *buf, u32 count);
+i32 block_write(struct vfs_inode *inode, struct file *fp, i8 *buf, u32 count);
+i32 block_read(struct vfs_inode *inode, struct file *fp, i8 *buf, u32 count);
 
 struct buffer *read_blk(u16 dev, u32 block);
 void write_blk(struct buffer *buf);

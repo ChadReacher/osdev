@@ -108,10 +108,7 @@ i32 syscall_read(i32 fd, i8 *buf, i32 count) {
 		return -EBADF;
 	}
 	inode = f->f_inode;
-	if (S_ISBLK(inode->i_mode)) {
-		return block_read(inode->i_dev, &f->f_pos, buf, count);
-	}
-	if (S_ISDIR(inode->i_mode) || S_ISREG(inode->i_mode)) {
+	if (S_ISREG(inode->i_mode)) {
 		// TODO: why do we need this code?
 		if (count + f->f_pos > inode->i_size) {
 			count = inode->i_size - f->f_pos;
@@ -139,9 +136,6 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
 	}
 
 	inode = f->f_inode;
-	if (S_ISBLK(inode->i_mode)) {
-		return block_write(inode->i_dev, &f->f_pos, buf, count);
-	}
 	if (f->f_ops && f->f_ops->write) {
 		return f->f_ops->write(inode, f, buf, count);
 	}
@@ -155,7 +149,7 @@ i32 syscall_lseek(i32 fd, i32 offset, i32 whence) {
 
 	if (fd > NR_OPEN || !(file = current_process->fds[fd]) ||
 			!(file->f_inode) ||
-			!IS_SEEKABLE(MAJOR(file->f_inode->i_dev))) {
+			!IS_SEEKABLE(MAJOR(file->f_inode->i_rdev))) {
 		return -EBADF;
 	}
 	if (file->f_inode->i_pipe) {
