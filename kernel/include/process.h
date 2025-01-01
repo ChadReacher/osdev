@@ -70,6 +70,9 @@ void enter_usermode();
 i32 get_new_fd();
 struct file *get_empty_file();
 
+void process_wakeup(struct proc **p);
+void process_sleep(struct proc **p);
+
 extern struct proc *current_process;
 
 #endif

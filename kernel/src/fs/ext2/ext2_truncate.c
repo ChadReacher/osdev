@@ -4,7 +4,6 @@
 #include <heap.h>
 #include <vfs.h>
 
-/* TODO: For now we assume truncate to size 0 */
 static void trunc_direct(struct vfs_inode *inode) {
 	struct buffer *buf;
 	u32 i;
@@ -142,6 +141,7 @@ static void trunc_triply_indirect(struct vfs_inode *inode) {
 	free(buf);
 }
 
+/* TODO: For now we assume truncate to size 0 */
 i32 ext2_truncate(struct vfs_inode *inode) {
 	trunc_direct(inode);
 	trunc_indirect(inode);

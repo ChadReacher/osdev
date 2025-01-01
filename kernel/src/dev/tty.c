@@ -79,34 +79,12 @@ i32 ttyx_open(struct vfs_inode *inode, struct file *fp) {
 	return 0;
 }
 
-void interruptible_sleep_on(struct proc **p) {
-	struct proc *tmp;
-	if (!p) {
-		return;
-	}
-	tmp = *p;
-	*p = current_process;
-repeat:
-	current_process->state = INTERRUPTIBLE;
-	schedule();
-	if (*p && *p != current_process) {
-		debug("i'm here!!!!!!!!!!!!!!!!!\r\n");
-		(**p).state = RUNNING;
-		goto repeat;
-	}
-	*p = NULL;
-	if (tmp) {
-		debug("LET's ASSIGN RUNNING STATE\r\n");
-		tmp->state = RUNNING;
-	}
-}
-
 void sleep_if_full(struct tty_queue *q) {
 	if (!IS_FULL(*q)) {
 		return;
 	}
 	while (!current_process->sigpending && LEFT_CHARS(*q) < 128) {
-		interruptible_sleep_on(&q->process);
+		process_sleep(&q->process);
 	}
 }
 
@@ -128,7 +106,7 @@ i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
 		}
 		if (EMPTY(tty->cooked) || ((tty->termios.c_lflag & ICANON) &&
 				!tty->cooked.count && !IS_FULL(tty->input))) {
-			interruptible_sleep_on(&tty->cooked.process);
+			process_sleep(&tty->cooked.process);
 			continue;
 		}
 		do {
@@ -318,6 +296,6 @@ void do_cook(struct tty_struct *tty) {
 		}
 		ttyq_putchar(&tty->cooked, c);
 	}
-	wake_up(&tty->cooked.process);
+	process_wakeup(&tty->cooked.process);
 }
 

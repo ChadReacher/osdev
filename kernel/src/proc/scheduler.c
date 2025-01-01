@@ -42,29 +42,6 @@ int get_free_proc() {
 	return -1;
 }
 
-void wake_up(struct proc **p) {
-	if (p && *p) {
-		(**p).state = RUNNING;
-		*p = NULL;
-		need_resched = 1;
-	}
-}
-
-void goto_sleep(struct proc **p) {
-	struct proc *tmp;
-	if (!p) {
-		return;
-	}
-	tmp = *p;
-	*p = current_process;
-	current_process->state = INTERRUPTIBLE;
-	schedule();
-	debug("after sleep\n");
-	if (tmp) {
-		tmp->state = RUNNING;
-	}
-}
-
 static void dump_procs() {
 	int i;
 	debug("Queue of all processes:\r\n");

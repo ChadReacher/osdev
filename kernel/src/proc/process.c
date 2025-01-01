@@ -13,9 +13,27 @@
 
 extern struct proc *procs[NR_PROCS];
 extern void enter_usermode_asm(u32 useresp);
+extern int need_resched;
 
 struct file file_table[NR_FILE];
 u32 next_pid = 0;
+
+void process_sleep(struct proc **p ) {
+	if (!p) {
+		return;
+	}
+	*p = current_process;
+	current_process->state = INTERRUPTIBLE;
+	schedule();
+}
+
+void process_wakeup(struct proc **p) {
+	if (p && *p) {
+		(**p).state = RUNNING;
+		*p = NULL;
+		need_resched = 1;
+	}
+}
 
 void enter_usermode() {
 	current_process = procs[1];

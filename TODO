@@ -44,12 +44,12 @@ Plan:
 * [DONE] Support symlinks for ext2
 * [DONE] Finish implementing VFS (character and block device operations)
 * ...
-* Improve/revise/simplify/rewrite scheduling algorithm
-* Improve/revise signals implementation
-* ...
-* Introduce memory zones? mmap(2) syscall?
+* [DONE] Improve/revise/simplify/rewrite scheduling algorithm
+* [DONE] Improve/revise signals implementation
 * ...
 * Introduce block cache?
+* ...
+* Introduce memory zones? mmap(2) syscall?
 * ...
 * Implement Unix domain sockets
 * Implement networking sockets
@@ -57,7 +57,12 @@ Plan:
 * Implement MSDOS/FAT32(16) file system
 * Implement mount() syscall
 * Implement umount() syscall
+* ...
+* Implement SMP
+* Implement threads
+* Implement async routines
 
 
 Open questions/TODOs:
 * Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
+* Do we need 'need_resched'. For now, it is used only in 'process_wakeup' routine. It means that we enable the scheduler to work when we we wake up a process.

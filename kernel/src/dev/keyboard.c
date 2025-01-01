@@ -55,15 +55,13 @@ static u8 shift_map[128] = {
 
 static void put_queue(i8 ch) {
 	u32 new_head;
-	struct tty_queue *qp = &tty_table[0].input;
+	struct tty_queue *qp = &(tty_table[0].input);
 
 	qp->buf[qp->head] = ch;
 	if ((new_head = (qp->head + 1) & (TTY_QUEUE_BUF_SZ - 1)) != qp->tail) {
 		qp->head = new_head;
 	}
-	if (qp->process != NULL) {
-		qp->process->state = RUNNING;
-	}
+	process_wakeup(&qp->process);
 }
 
 static i8 ext_key = 0;
@@ -79,7 +77,6 @@ static void keyboard_handler() {
 	scancode = port_inb(KEYBOARD_DATA_PORT);
 	/* scancode is extended byte? */
 	if (scancode == 0xE0) {
-		debug("extkey\r\n");
 		ext_key = 1;
 		return;
 	}
@@ -88,7 +85,6 @@ static void keyboard_handler() {
 	if (scancode & 0x80) {
 		switch (scancode & 0x7F) {
 			case KEY_LALT:
-				debug("alt\r\n");
 				if (!ext_key) {
 					alt_mode = 0;
 				} else {
@@ -96,12 +92,10 @@ static void keyboard_handler() {
 				}
 				break;
 			case KEY_LCTRL:
-				debug("ctrl\r\n");
 				ctrl_mode = 0;
 				break;
 			case KEY_LSHIFT:
 			case KEY_RSHIFT:
-				debug("shift\r\n");
 				if (!ext_key) {
 					shift_mode = 0;
 				}
@@ -109,7 +103,6 @@ static void keyboard_handler() {
 			case KEY_CAPSLOCK:
 			case KEY_NUMBERLOCK:
 			case KEY_SCROLLLOCK:
-				debug("capslock or numberlock or scrolllock\r\n");
 				leds = 0;
 				break;
 		}
@@ -143,10 +136,6 @@ static void keyboard_handler() {
 			ext_key = 0;
 			return;
 	}
-	debug("begin --------\r\n");
-	debug("scancode - %x, %x\r\n", scancode, scancode & 0x7F);
-	debug("end   --------\r\n");
-
 
 	if (alt_mode) {
 		key = 0;
@@ -169,5 +158,5 @@ static void keyboard_handler() {
 
 void keyboard_init() {
 	register_interrupt_handler(IRQ1, keyboard_handler);
-	debug("%s", "Keyboard has been initialized\r\n");
+	debug("Keyboard has been initialized\r\n");
 }

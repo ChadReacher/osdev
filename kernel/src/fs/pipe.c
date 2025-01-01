@@ -45,12 +45,12 @@ static i32 pipe_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 coun
 	i8 *b = buf;
 	
 	while (PIPE_EMPTY(inode)) {
-		wake_up(&inode->i_wait);
+		process_wakeup(&inode->i_wait);
 		// there are no writers
 		if (inode->i_count != 2) {
 			return 0;
 		}
-		goto_sleep(&inode->i_wait);
+		process_sleep(&inode->i_wait);
 	}
 	while (count > 0 && !(PIPE_EMPTY(inode))) {
 		--count;
@@ -66,7 +66,7 @@ static i32 pipe_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 cou
 	(void)fp;
 	i8 *b = buf;
 
-	wake_up(&inode->i_wait);
+	process_wakeup(&inode->i_wait);
 	// there are no readers
 	if (inode->i_count != 2) {
 		sigaddset(&current_process->sigpending, SIGPIPE);
@@ -74,20 +74,20 @@ static i32 pipe_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 cou
 	}
 	while (count-- > 0) {
 		while (PIPE_FULL(inode)) {
-			wake_up(&inode->i_wait);
+			process_wakeup(&inode->i_wait);
 			if (inode->i_count != 2) {
 				sigaddset(&current_process->sigpending, SIGPIPE);
 				return -1;
 			}
-			goto_sleep(&inode->i_wait);
+			process_sleep(&inode->i_wait);
 		}
 		(inode->u.i_pipe.i_buf)[PIPE_HEAD(inode)] = *b;
 		++b;
 		++PIPE_HEAD(inode);
 		PIPE_HEAD(inode) &= (4096 - 1);
-		wake_up(&inode->i_wait);
+		process_wakeup(&inode->i_wait);
 	}
-	wake_up(&inode->i_wait);
+	process_wakeup(&inode->i_wait);
 	return b - buf;
 }
 

@@ -82,7 +82,7 @@ void vfs_iput(struct vfs_inode *inode) {
 		return;
 	}
 	if (inode->i_pipe) {
-		wake_up(&inode->i_wait);
+		process_wakeup(&inode->i_wait);
 		if (--inode->i_count) {
 			return;
 		}
