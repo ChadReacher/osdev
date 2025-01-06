@@ -11,7 +11,7 @@ Filesystem:
   * Implement sockets
 
 Scheduling:
-  * What about signals? Improve signal management?
+  * [DONE] What about signals? Improve signal management?
   * Make the kernel preemptive?
 
 Memory management:
@@ -25,6 +25,7 @@ Core:
   * Introduce dynamic libraries
   * Introduce dynamic loader
   * Add bootinfo structure and pass it from bootloader to kernel
+  * Write code to load kernel which size is bigger than 250 sectors
 
 Devices:
   * Implement several TTYs
@@ -38,6 +39,11 @@ Misc:
   * Add documentation
   * Improve user infrastructure
   * Improve build infrastructure
+  * Introduce safe power off
+  * Resource scarce OS testing (too many processes, not enough space, etc.)
+  * Introduce threads
+  * Introduce asynchronous functions
+  * Introduce even-driven architecture
 
 Plan:
 * [DONE] Implement pipe as file system
@@ -47,7 +53,8 @@ Plan:
 * [DONE] Improve/revise/simplify/rewrite scheduling algorithm
 * [DONE] Improve/revise signals implementation
 * ...
-* Introduce block cache?
+* [DONE] Introduce block cache
+* Implement truncate(2) syscall
 * ...
 * Introduce memory zones? mmap(2) syscall?
 * ...

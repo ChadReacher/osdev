@@ -63,6 +63,7 @@ void user_init() {
 		vfs_iput(inode);
 		return;
 	}
+        
 	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
 	envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
 	envp[0] = strdup("PATH=/bin");
@@ -90,6 +91,7 @@ void user_init() {
 		}
 	}
 	init_process->close_on_exec = 0;
+        
 	vfs_iput(inode);
 }
 

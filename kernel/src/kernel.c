@@ -1,5 +1,4 @@
 #include <types.h>
-#include <stdio.h>
 #include <serial.h>
 #include <panic.h>
 #include <gdt.h>
@@ -21,8 +20,9 @@
 #include <ata.h>
 #include <ext2.h>
 #include <elf.h>
+#include <bcache.h>
 
-void _start() {
+void kernel_start(void) {
 	serial_init();
 	gdt_init();
 	isr_init();
@@ -37,6 +37,7 @@ void _start() {
 	paging_init();
 	console_init();
 	heap_init();
+	bcache_init();
 	pci_init();
 	ata_init();
 	scheduler_init();

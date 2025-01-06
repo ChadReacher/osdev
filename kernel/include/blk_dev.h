@@ -14,16 +14,10 @@
 #define MAJOR(a) ((unsigned)(a)>>8)
 #define MINOR(a) ((a)&0xFF)
 
-struct buffer {
-	u16 b_dev;
-	u32 b_block;
-	i8 *b_data;
-};
+i32 block_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
+i32 block_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 
-i32 block_write(struct vfs_inode *inode, struct file *fp, i8 *buf, u32 count);
-i32 block_read(struct vfs_inode *inode, struct file *fp, i8 *buf, u32 count);
-
-struct buffer *read_blk(u16 dev, u32 block);
-void write_blk(struct buffer *buf);
+void blk_dev_read(struct buffer *buf);
+void blk_dev_write(struct buffer *buf);
 
 #endif

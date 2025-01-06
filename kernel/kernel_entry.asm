@@ -1,12 +1,14 @@
 bits 32
-extern _start
+section .setup
+extern kernel_start
 
-STACK_SIZE				equ 0x4000
-
-KERNEL_VIRTUAL_ADDR		equ 0xC0010000
-
+STACK_SIZE			equ (4096 * 2)
 KERNEL_VIRTUAL_BASE		equ 0xC0000000
 KERNEL_PAGE_NUMBER		equ (KERNEL_VIRTUAL_BASE >> 22)
+
+global _start
+_start:
+
 
 ; Early paging initialization
 
@@ -30,9 +32,9 @@ KERNEL_PAGE_NUMBER		equ (KERNEL_VIRTUAL_BASE >> 22)
 
 
 ; Setup page table no. 0
-; Identity-map for the first 4MB of memory
+; It is an Identity map for the first 4MB of memory
 mov ecx, 0						; Current page table entry number
-mov edx, (boot_page_table - KERNEL_VIRTUAL_BASE)		; Pointer to page table entry
+mov edx, (boot_page_table - KERNEL_VIRTUAL_BASE)                                 ; Pointer to page table entry
 .page_table_loop:
 	cmp ecx, 1024				; Have we already fill all page table?
 	je page_table_end			; If so, go to the end
@@ -41,39 +43,42 @@ mov edx, (boot_page_table - KERNEL_VIRTUAL_BASE)		; Pointer to page table entry
 	or eax, 0x3					; Set presence bit
 	mov [edx], eax				; Place created entry to the page table
 	inc ecx						; Get next page table entry number
-	add edx, 4					; Move to the next page table entry
-								; (One entry is 4 bytes)
+	add edx, 4					; Move to the next page table entry (One entry is 4 bytes)
 	jmp .page_table_loop
 
 page_table_end:
-	; Setup boot page directory
-	; Identity-map the first 4MB of memory and
-	; virtual kernel page points to the first 4MB of memory
+        ; Setup two global virtual memory mappings:
+        ;  * [0, 4MB) -> [0, 4MB)
+        ;  * [KERNEL_VIRTUAL_BASE, KERNEL_VIRTUAL_BASE+4MB) -> [0, 4MB)
 
-	; we are assumed we are at virtual address, so
-	; we need to subtract to get a physical address
+	; The directory and page tables are in the '.data'
+        ; which is linked at the virtual address specified in the linker script.
+	; We need to subtract to get a physical address.
 	mov edx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
 
-	mov eax, [edx]
-	or eax, 0x3							; Set present bit and R/W
+        ; Set necessary bits
+        mov eax, boot_page_table
 	sub eax, KERNEL_VIRTUAL_BASE
+	or eax, 0x3                     ; Set present bit and R/W
 	mov [edx], eax
 
 	add edx, 4 * KERNEL_PAGE_NUMBER		; Move to the kernel page entry number
 
-	mov eax, [edx]
-	or eax, 0x3							; Set present bit and R/W
+        ; Set necessary bits
+        mov eax, boot_page_table
 	sub eax, KERNEL_VIRTUAL_BASE
+	or eax, 0x3                     ; Set present bit and R/W
 	mov [edx], eax
 
 
+        ; TODO: Do we really need recursive paging to setup here?
 	; Set up recursive paging
 	mov edx, (boot_page_directory - KERNEL_VIRTUAL_BASE)
 	add edx, 4 * 1023
 	xor eax, eax
 	mov eax, boot_page_directory
-	or eax, 0x3
 	sub eax, KERNEL_VIRTUAL_BASE
+	or eax, 0x3
 	mov [edx], eax
 
 ; Load physical boot page directory address
@@ -91,30 +96,40 @@ jmp ecx
 
 start_in_higher_half:
 	; Remove first 4MB identity mapping
-	mov dword [boot_page_directory], 0
-	invlpg [0]
+	;mov dword [boot_page_directory], 0
+	;invlpg [0]
 
 	; Flush TLB
-	mov eax, cr3
-	mov cr3, eax
+	;mov eax, cr3
+	;mov cr3, eax
 
-	mov esp, stack + STACK_SIZE
+        mov ebp, 0x0                    ; Clear the frame pointer register
 
-	call _start
+	mov esp, stack + STACK_SIZE     ; Setup the stack pointer
+
+	call kernel_start
+
+halt:
+        cli
 	hlt
-	jmp $
+	jmp halt
+
+section .data
+align 0x1000
+boot_page_table: times 1024 dd 0
 
 align 0x1000
-boot_page_table:
-	times 1024 dd 0
+boot_page_directory: times 1024 dd 0
 
 align 0x1000
-boot_page_directory:
-	dd boot_page_table
-	times (KERNEL_PAGE_NUMBER - 1) dd 0
-	dd boot_page_table
-	times (1024 - KERNEL_PAGE_NUMBER - 1) dd 0
+global prdt_mem_buffer
+prdt_mem_buffer: times 4096 db 0
 
-stack:
-	resb STACK_SIZE
-stack_top:
+align 0x1000
+global prdt_struct
+prdt_struct: times 4096 db 0
+
+
+section .bss
+align 0x4
+stack: resb STACK_SIZE

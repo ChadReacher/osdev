@@ -10,6 +10,7 @@ void debug(i8 *fmt, ...) {
 
 	va_start(args, fmt);
 	kvsprintf(buf, fmt, args);
+        va_end(args);
 	write_string_serial(buf);
 }
 
@@ -19,6 +20,7 @@ void panic(i8 *fmt, ...) {
 
 	va_start(arg, fmt);
 	kvsprintf(buf, fmt, arg);
+        va_end(args);
 	kprintf(buf);
 	kprintf("\nSystem halted!\n");
 	__asm__ volatile ("cli; hlt");

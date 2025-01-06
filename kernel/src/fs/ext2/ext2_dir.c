@@ -7,6 +7,7 @@
 #include <string.h>
 #include <panic.h>
 #include <process.h> 
+#include <bcache.h>
 
 struct file_ops ext2_dir_ops = {
 	NULL,
@@ -28,29 +29,27 @@ i32 ext2_unlink(struct vfs_inode *dir, const char *basename) {
 	inode = vfs_iget(dir->i_dev, de->inode);
 	if (!inode) {
 		vfs_iput(dir);
-		free(buf->b_data);
-		free(buf);
+		brelse(buf);
 		return -ENOENT;
 	}
 	if (!EXT2_S_ISREG(inode->i_mode)) {
 		vfs_iput(dir);
 		vfs_iput(inode);
-		free(buf->b_data);
-		free(buf);
+		brelse(buf);
 		return -EPERM;
 	}
 	if (!inode->i_links_count) {
 		inode->i_links_count = 1;
 	}
 	de->inode = 0;
-	write_blk(buf);
+	bwrite(buf);
 	--inode->i_links_count;
 	inode->i_dirt = 1;
 	inode->i_ctime = get_current_time();
+
 	vfs_iput(inode);
 	vfs_iput(dir);
-	free(buf->b_data);
-	free(buf);
+	brelse(buf);
 	return 0;
 }
 
@@ -61,8 +60,7 @@ i32 ext2_link(struct vfs_inode *dir, const i8 *basename, struct vfs_inode *inode
 
 	buf = ext2_find_entry(dir, basename, &de, NULL);
 	if (buf) {
-		free(buf->b_data);
-		free(buf);
+		brelse(buf);
 		vfs_iput(dir);
 		vfs_iput(inode);
 		return -EEXIST;
@@ -74,9 +72,8 @@ i32 ext2_link(struct vfs_inode *dir, const i8 *basename, struct vfs_inode *inode
 		return err;
 	}
 	de->inode = inode->i_num;
-	write_blk(buf);
-	free(buf->b_data);
-	free(buf);
+	bwrite(buf);
+	brelse(buf);
 	vfs_iput(dir);
 	++inode->i_links_count;
 	inode->i_ctime = get_current_time();
@@ -139,7 +136,7 @@ i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_name,
 	if (new_buf) {
 		new_inode = vfs_iget(new_dir->i_dev, new_de->inode);
 		if (!new_inode) {
-			free(new_buf);
+			brelse(new_buf);
 			new_buf = NULL;
 		}
 	}
@@ -173,17 +170,16 @@ i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_name,
 			goto end_rename;
 		}
 		retval = -EIO;
-		dir_buf = read_blk(old_inode->i_dev, old_inode->u.i_ext2.i_block[0]);
+		dir_buf = bread(old_inode->i_dev, old_inode->u.i_ext2.i_block[0]);
 		if (!dir_buf) {
 			goto end_rename;
 		}
-		fst_de = (struct ext2_dir *)dir_buf->b_data;
-		parent_i_num = ((struct ext2_dir *)(dir_buf->b_data + (fst_de->rec_len)))->inode;
+		fst_de = (struct ext2_dir *)dir_buf->data;
+		parent_i_num = ((struct ext2_dir *)(dir_buf->data + (fst_de->rec_len)))->inode;
 		if (parent_i_num != old_dir->i_num) {
 			goto end_rename;
 		}
-		free(dir_buf->b_data);
-		free(dir_buf);
+		brelse(dir_buf);
 	}
 	if (!new_buf) {
 		ext2_add_entry(new_dir, new_name, &new_buf, &new_de);
@@ -193,9 +189,8 @@ i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_name,
 		goto end_rename;
 	}
 	new_de->inode = old_inode->i_num;
-	write_blk(new_buf);
-	free(old_buf->b_data);
-	free(old_buf);
+	bwrite(new_buf);
+	brelse(old_buf);
 	old_buf = ext2_find_entry(old_dir, old_name, &old_de, NULL);
 	if (!old_buf) {
 		retval = -ENOENT;
@@ -205,7 +200,7 @@ i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_name,
 	if (retval) {
 		goto end_rename;
 	}
-	write_blk(old_buf);
+	bwrite(old_buf);
 	if (new_inode) {
 		--new_inode->i_links_count;
 		new_inode->i_dirt = 1;
@@ -213,14 +208,14 @@ i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_name,
 	if (EXT2_S_ISDIR(old_inode->i_mode)) {
 		struct ext2_dir *fst_de, *snd_de;
 		retval = -EIO;
-		dir_buf = read_blk(old_inode->i_dev, old_inode->u.i_ext2.i_block[0]);
+		dir_buf = bread(old_inode->i_dev, old_inode->u.i_ext2.i_block[0]);
 		if (!dir_buf) {
 			goto end_rename;
 		}
-		fst_de = (struct ext2_dir *)dir_buf->b_data;
-		snd_de = (struct ext2_dir *)(dir_buf->b_data + fst_de->rec_len);
+		fst_de = (struct ext2_dir *)dir_buf->data;
+		snd_de = (struct ext2_dir *)(dir_buf->data + fst_de->rec_len);
 		snd_de->inode = new_dir->i_num;
-		write_blk(dir_buf);
+		bwrite(dir_buf);
 		--old_dir->i_links_count;
 		++new_dir->i_links_count;
 		old_dir->i_dirt = 1;
@@ -229,18 +224,9 @@ i32 ext2_rename(struct vfs_inode *old_dir, const i8 *old_name,
 	retval = 0;
 
 end_rename:
-	if (old_buf) {
-		free(old_buf->b_data);
-	}
-	free(old_buf);
-	if (new_buf) {
-		free(new_buf->b_data);
-	}
-	free(new_buf);
-	if (dir_buf) {
-		free(dir_buf->b_data);
-	}
-	free(dir_buf);
+	brelse(old_buf);
+	brelse(new_buf);
+	brelse(dir_buf);
 	vfs_iput(old_inode);
 	vfs_iput(new_inode);
 	vfs_iput(old_dir);
@@ -254,12 +240,12 @@ static i32 is_empty_dir(struct vfs_inode *inode) {
 	struct buffer *buf;
 	struct ext2_dir *de, *de1;
 
-	buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[0]);
+	buf = bread(inode->i_dev, inode->u.i_ext2.i_block[0]);
 	if (!buf) { 
 		return 1;
 	}
-	de = (struct ext2_dir *)buf->b_data;
-	de1 = (struct ext2_dir *)(buf->b_data + de->rec_len);
+	de = (struct ext2_dir *)buf->data;
+	de1 = (struct ext2_dir *)(buf->data + de->rec_len);
 	if (de->inode != inode->i_num || !de1->inode ||
 			strcmp(".", de->name) || strcmp("..", de1->name)) {
 		return 1;
@@ -267,31 +253,28 @@ static i32 is_empty_dir(struct vfs_inode *inode) {
 	curr_off = inblock_offset = de->rec_len + de1->rec_len;
 	while (curr_off < (u32)inode->i_size) {
 		if (inblock_offset >= inode->i_sb->s_block_size) {
-			free(buf->b_data);
-			free(buf);
+			brelse(buf);
 			inblock_offset = 0;
 			block = ext2_bmap(inode, curr_off);
 			if (!block) {
 				curr_off += 1024;
 				continue;
 			}
-			buf = read_blk(inode->i_dev, block);
+			buf = bread(inode->i_dev, block);
 			if (!buf) {
 				curr_off += 1024;
 				continue;
 			}
 		}
-		de = (struct ext2_dir *)(buf->b_data + inblock_offset);
+		de = (struct ext2_dir *)(buf->data + inblock_offset);
 		if (de->inode) {
-			free(buf->b_data);
-			free(buf);
+			brelse(buf);
 			return 0;
 		}
 		inblock_offset += de->rec_len;
 		curr_off += de->rec_len;
 	}
-	free(buf->b_data);
-	free(buf);
+	brelse(buf);
 	return 1;
 }
 
@@ -335,7 +318,7 @@ i32 ext2_rmdir(struct vfs_inode *dir, const char *basename) {
 		debug("inode has links_count > 2, %d\r\n", inode->i_links_count);
 	}
 	de->inode = 0;
-	write_blk(buf);
+	bwrite(buf);
 	inode->i_links_count = 0;
 	inode->i_dirt = 1;
 	--dir->i_links_count;
@@ -345,10 +328,7 @@ i32 ext2_rmdir(struct vfs_inode *dir, const char *basename) {
 end:
 	vfs_iput(dir);
 	vfs_iput(inode);
-	if (buf) {
-		free(buf->b_data);
-	}
-	free(buf);
+	brelse(buf);
 	return retval;
 }
 
@@ -360,19 +340,18 @@ i32 ext2_mkdir(struct vfs_inode *dir, const char *basename, i32 mode) {
 
 	buf = ext2_find_entry(dir, basename, &de, NULL);
 	if (buf) {
-		free(buf->b_data);
-		free(buf);
+		brelse(buf);
 		vfs_iput(dir);
 		return -EEXIST;
 	}
-	inode = alloc_inode(dir->i_dev);
+	inode = ext2_alloc_inode(dir->i_dev);
 	if (!inode) {
 		vfs_iput(dir);
 		return -ENOSPC;
 	}
 	inode->i_dirt = 1;
 	inode->i_mtime = inode->i_atime = get_current_time();
-	if (!(inode->u.i_ext2.i_block[0] = alloc_block(inode->i_dev))) {
+	if (!(inode->u.i_ext2.i_block[0] = ext2_alloc_block(inode->i_dev))) {
 		vfs_iput(dir);
 		--inode->i_links_count;
 		vfs_iput(inode);
@@ -380,27 +359,26 @@ i32 ext2_mkdir(struct vfs_inode *dir, const char *basename, i32 mode) {
 	}
 	inode->i_size = 1024;
 	inode->i_blocks += 2;
-	if (!(dir_block = read_blk(inode->i_dev, inode->u.i_ext2.i_block[0]))) {
+	if (!(dir_block = bread(inode->i_dev, inode->u.i_ext2.i_block[0]))) {
 		inode->i_blocks -= 2;
 		vfs_iput(dir);
 		--inode->i_links_count;
 		vfs_iput(inode);
 		return -EIO;
 	}
-	de = (struct ext2_dir *)(dir_block->b_data);
+	de = (struct ext2_dir *)(dir_block->data);
 	de->inode = inode->i_num;
 	de->rec_len = 12;
 	de->name_len = 1;
 	memcpy(de->name, ".", 1);
-	de = (struct ext2_dir *)(dir_block->b_data + de->rec_len);
+	de = (struct ext2_dir *)(dir_block->data + de->rec_len);
 	de->inode = dir->i_num;
 	de->rec_len = 1024 - 12;
 	de->name_len = 2;
 	memcpy(de->name, "..", 2);
 	inode->i_links_count = 2;
-	write_blk(dir_block);
-	free(dir_block->b_data);
-	free(dir_block);
+	bwrite(dir_block);
+	brelse(dir_block);
 	inode->i_mode = EXT2_S_IFDIR | (mode & 0777 & ~current_process->umask);
 	inode->i_dirt = 1;
 	err = ext2_add_entry(dir, basename, &buf, &de);
@@ -412,11 +390,11 @@ i32 ext2_mkdir(struct vfs_inode *dir, const char *basename, i32 mode) {
 		return -ENOSPC;
 	}
 	de->inode = inode->i_num;
-	write_blk(buf);
+	bwrite(buf);
 	++dir->i_links_count;
 	dir->i_dirt = 1;
-	free(buf->b_data);
-	free(buf);
+
+	brelse(buf);
 	vfs_iput(dir);
 	vfs_iput(inode);
 	return 0;
@@ -428,7 +406,7 @@ i32 ext2_symlink(struct vfs_inode *dir, const i8 *name, const i8*symname) {
 	struct buffer *buf;
 	struct ext2_dir *de;
 
-	inode = alloc_inode(dir->i_dev);
+	inode = ext2_alloc_inode(dir->i_dev);
 	if (!inode) {
 		vfs_iput(dir);
 		return -ENOSPC;
@@ -438,14 +416,14 @@ i32 ext2_symlink(struct vfs_inode *dir, const i8 *name, const i8*symname) {
 	inode->i_mtime = inode->i_atime = get_current_time();
 	extern struct vfs_inode_ops ext2_inode_symlink_ops;
 	inode->i_ops = &ext2_inode_symlink_ops;
-	if (!(inode->u.i_ext2.i_block[0] = alloc_block(inode->i_dev))) {
+	if (!(inode->u.i_ext2.i_block[0] = ext2_alloc_block(inode->i_dev))) {
 		vfs_iput(dir);
 		--inode->i_links_count;
         inode->i_dirt = 1;
 		vfs_iput(inode);
 		return -ENOSPC;
 	}
-    buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[0]);
+    buf = bread(inode->i_dev, inode->u.i_ext2.i_block[0]);
     if (!buf) {
 		vfs_iput(dir);
 		--inode->i_links_count;
@@ -453,22 +431,20 @@ i32 ext2_symlink(struct vfs_inode *dir, const i8 *name, const i8*symname) {
 		vfs_iput(inode);
 		return -EIO;
     }
-    i32 i = 0;
+    u32 i = 0;
     for (i = 0; i < strlen(symname); ++i) {
-        buf->b_data[i] = symname[i];
+        buf->data[i] = symname[i];
     }
-    buf->b_data[i] = '\0';
-    write_blk(buf);
-	free(buf->b_data);
-	free(buf);
+    buf->data[i] = '\0';
+    bwrite(buf);
+	brelse(buf);
 
 	inode->i_size = i;
 	inode->i_dirt = 1;
 
 	buf = ext2_find_entry(dir, name, &de, NULL);
 	if (buf) {
-		free(buf->b_data);
-		free(buf);
+		brelse(buf);
 		vfs_iput(dir);
 		--inode->i_links_count;
         inode->i_dirt = 1;
@@ -477,8 +453,7 @@ i32 ext2_symlink(struct vfs_inode *dir, const i8 *name, const i8*symname) {
 	}
 	err = ext2_add_entry(dir, name, &buf, &de);
 	if (err) {
-		free(buf->b_data);
-		free(buf);
+		brelse(buf);
 		vfs_iput(dir);
 		--inode->i_links_count;
         inode->i_dirt = 1;
@@ -486,9 +461,8 @@ i32 ext2_symlink(struct vfs_inode *dir, const i8 *name, const i8*symname) {
 		return err;
 	}
 	de->inode = inode->i_num;
-	write_blk(buf);
-	free(buf->b_data);
-	free(buf);
+	bwrite(buf);
+	brelse(buf);
     vfs_iput(inode);
     vfs_iput(dir);
     return 0;
@@ -500,18 +474,17 @@ i32 ext2_readlink(struct vfs_inode *inode, i8 *buf, i32 bufsiz) {
 	if (!EXT2_S_ISLNK(inode->i_mode)) {
 		return -EINVAL;
 	}
-    bbuf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[0]);
+    bbuf = bread(inode->i_dev, inode->u.i_ext2.i_block[0]);
 	vfs_iput(inode);
 	if (!bbuf) {
 		return 0;
 	}
 	i32 i;
 	for (i = 0; i < bufsiz; ++i) {
-		buf[i] = bbuf->b_data[i];
+		buf[i] = bbuf->data[i];
 	}
-	free(bbuf->b_data);
-	free(bbuf);
 
+	brelse(bbuf);
 	return i;
 }
 
@@ -540,19 +513,18 @@ struct vfs_inode *ext2_follow_link(struct vfs_inode *inode, struct vfs_inode *ba
 		vfs_iput(base);
 		return NULL;
 	}
-	if (!(buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[0]))) {
+	if (!(buf = bread(inode->i_dev, inode->u.i_ext2.i_block[0]))) {
 		vfs_iput(inode);
 		vfs_iput(base);
 		return NULL;
 	}
 	vfs_iput(inode);
-	name = buf->b_data;
+	name = buf->data;
 	++current_process->symlink_count;
 	if (vfs_namei(name, base, 1, &inode) != 0) {
 		inode = NULL;
 	}
 	--current_process->symlink_count;
-	free(buf->b_data);
-	free(buf);
+	brelse(buf);
 	return inode;
 }

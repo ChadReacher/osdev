@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <sys/wait.h>
 
-int main() {
+int main(void) {
 	i8 *m[] = {"/bin/sh", 0};
 	i32 pid, stat_loc;
 	i32 fd = open("/dev/tty0", O_RDWR, 0);

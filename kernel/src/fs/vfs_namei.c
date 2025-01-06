@@ -50,6 +50,7 @@ i32 vfs_dirnamei(const i8 *pathname, struct vfs_inode *base, const i8 **res_base
 			return error;
 		}
 		if (!inode->i_ops || !inode->i_ops->followlink) {
+			vfs_iput(base); // here
 			base = inode;
 			continue;
 		}

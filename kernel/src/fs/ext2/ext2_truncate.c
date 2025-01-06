@@ -1,8 +1,8 @@
 #include <ext2.h>
-#include <blk_dev.h>
 #include <timer.h>
-#include <heap.h>
+#include <bcache.h>
 #include <vfs.h>
+#include <string.h>
 
 static void trunc_direct(struct vfs_inode *inode) {
 	struct buffer *buf;
@@ -11,12 +11,13 @@ static void trunc_direct(struct vfs_inode *inode) {
 		if (!inode->u.i_ext2.i_block[i]) {
 			continue;
 		}
-		buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[i]);
-		memset(buf->b_data, 0, 1024);
-		write_blk(buf);
-		free_block(inode->i_dev, inode->u.i_ext2.i_block[i]);
+		buf = bread(inode->i_dev, inode->u.i_ext2.i_block[i]);
+		memset(buf->data, 0, 1024);
+		bwrite(buf);
+		ext2_free_block(inode->i_dev, inode->u.i_ext2.i_block[i]);
 		inode->u.i_ext2.i_block[i] = 0;
 		inode->i_blocks -= 2;
+		brelse(buf);
 	}
 }
 
@@ -27,22 +28,24 @@ static void trunc_indirect(struct vfs_inode *inode) {
 	if (!inode->u.i_ext2.i_block[12]) {
 		return;
 	}
-	buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[12]);
-	blocks = (u32 *)buf->b_data;
+	buf = bread(inode->i_dev, inode->u.i_ext2.i_block[12]);
+	blocks = (u32 *)buf->data;
 	for (i = 0; i < 256; ++i) {
 		if (!blocks[i]) {
 			continue;
 		}
-		free_block(inode->i_dev, blocks[i]);
+		buf = bread(inode->i_dev, inode->u.i_ext2.i_block[i]);
+		memset(buf->data, 0, 1024);
+		bwrite(buf);
+		ext2_free_block(inode->i_dev, blocks[i]);
 		blocks[i] = 0;
 		inode->i_blocks -= 2;
 	}
-	write_blk(buf);
-	free_block(inode->i_dev, inode->u.i_ext2.i_block[12]);
+	bwrite(buf);
+	ext2_free_block(inode->i_dev, inode->u.i_ext2.i_block[12]);
 	inode->u.i_ext2.i_block[12] = 0;
 	inode->i_blocks -= 2;
-	free(buf->b_data);
-	free(buf);
+	brelse(buf);
 }
 
 static void trunc_doubly_indirect(struct vfs_inode *inode) {
@@ -53,37 +56,35 @@ static void trunc_doubly_indirect(struct vfs_inode *inode) {
 	if (!inode->u.i_ext2.i_block[13]) {
 		return;
 	}
-	buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[13]);
-	indirect = (u32 *)buf->b_data;
+	buf = bread(inode->i_dev, inode->u.i_ext2.i_block[13]);
+	indirect = (u32 *)buf->data;
 	for (i = 0; i < 256; ++i) {
 		if (!indirect[i]) {
 			continue;
 		}
-		buf2 = read_blk(inode->i_dev, indirect[i]);
-		blocks = (u32 *)buf2->b_data;
+		buf2 = bread(inode->i_dev, indirect[i]);
+		blocks = (u32 *)buf2->data;
 		for (j = 0; j < 256; ++j) {
 			if (!blocks[j]) {
 				continue;
 			}
-			free_block(inode->i_dev, blocks[j]);
+			ext2_free_block(inode->i_dev, blocks[j]);
 			blocks[j] = 0;
 			inode->i_blocks -= 2;
 		}
-		write_blk(buf2);
+		bwrite(buf2);
 
-		free_block(inode->i_dev, indirect[i]);
+		ext2_free_block(inode->i_dev, indirect[i]);
 		indirect[i] = 0;
 		inode->i_blocks -= 2;
 
-		free(buf2->b_data);
-		free(buf2);
+		brelse(buf2);
 	}
-	write_blk(buf);
-	free_block(inode->i_dev, inode->u.i_ext2.i_block[13]);
+	bwrite(buf);
+	ext2_free_block(inode->i_dev, inode->u.i_ext2.i_block[13]);
 	inode->u.i_ext2.i_block[13] = 0;
 	inode->i_blocks -= 2;
-	free(buf->b_data);
-	free(buf);
+	brelse(buf2);
 }
 
 static void trunc_triply_indirect(struct vfs_inode *inode) {
@@ -94,54 +95,54 @@ static void trunc_triply_indirect(struct vfs_inode *inode) {
 	if (!inode->u.i_ext2.i_block[14]) {
 		return;
 	}
-	buf = read_blk(inode->i_dev, inode->u.i_ext2.i_block[14]);
-	dindirect = (u32 *)buf->b_data;
+	buf = bread(inode->i_dev, inode->u.i_ext2.i_block[14]);
+	dindirect = (u32 *)buf->data;
 	for (i = 0; i < 256; ++i) {
 		if (!dindirect[i]) {
 			continue;
 		}
-		buf2 = read_blk(inode->i_dev, dindirect[i]);
-		indirect = (u32 *)buf2->b_data;
+		buf2 = bread(inode->i_dev, dindirect[i]);
+		indirect = (u32 *)buf2->data;
 		for (j = 0; j < 256; ++j) {
 			if (!indirect[j]) {
 				continue;
 			}
-			buf3 = read_blk(inode->i_dev, indirect[j]);
-			blocks = (u32 *)buf3->b_data;
+			buf3 = bread(inode->i_dev, indirect[j]);
+			blocks = (u32 *)buf3->data;
 			for (k = 0; k < 256; ++k) {
 				if (!blocks[k]) {
 					continue;
 				}
-				free_block(inode->i_dev, blocks[k]);
+				ext2_free_block(inode->i_dev, blocks[k]);
 				blocks[k] = 0;
 				inode->i_blocks -= 2;
 			}
-			write_blk(buf3);
-			free_block(inode->i_dev, indirect[j]);
+			bwrite(buf3);
+			ext2_free_block(inode->i_dev, indirect[j]);
 			indirect[j] = 0;
 			inode->i_blocks -= 2;
 
-			free(buf3->b_data);
-			free(buf3);
+			brelse(buf3);
 		}
-		write_blk(buf2);
-		free_block(inode->i_dev, dindirect[i]);
+		bwrite(buf2);
+		ext2_free_block(inode->i_dev, dindirect[i]);
 		dindirect[i] = 0;
 		inode->i_blocks -= 2;
 
-		free(buf2->b_data);
-		free(buf2);
+		brelse(buf2);
 	}
-	write_blk(buf);
-	free_block(inode->i_dev, inode->u.i_ext2.i_block[14]);
+	bwrite(buf);
+	ext2_free_block(inode->i_dev, inode->u.i_ext2.i_block[14]);
 	inode->u.i_ext2.i_block[14] = 0;
 	inode->i_blocks -= 2;
 
-	free(buf->b_data);
-	free(buf);
+	brelse(buf);
 }
 
-/* TODO: For now we assume truncate to size 0 */
+/* TODO: For now we assume truncate to size 0
+ * refactor the code to reuse the same functionality
+ * should we free the contents of the disk block?
+ */
 i32 ext2_truncate(struct vfs_inode *inode) {
 	trunc_direct(inode);
 	trunc_indirect(inode);

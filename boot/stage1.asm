@@ -16,25 +16,10 @@ boot_start:
 
 	; Load stage2 bootloader at 0x7E00
 	mov bx, 0x7E00					; ES:BX => 0x0000:0x7E00 => 0x7E00
-
 	mov ah, 2						; specific value for interrupt int 0x13
-	mov al, 4 						; number of sectors to read
+	mov al, 6 						; number of sectors to read
 	mov ch, 0 						; track/cylinder number
 	mov cl, 2 						; sector number(they start at 1, first sector - bootloader)
-	mov dh, 0 						; head number
-	mov dl, [drive_num] 			; drive number
-
-	int 0x13 
-
-	; Load font at 0xA000
-	xor bx, bx
-	mov es, bx
-	mov bx, 0xA000					; ES:BX => 0x0000:0xA000 => 0xA000
-
-	mov ah, 2						; specific value for interrupt int 0x13
-	mov al, 4 						; number of sectors to read
-	mov ch, 0 						; track/cylinder number
-	mov cl, 6 						; sector number(they start at 1, first sector - bootloader, second - start of kernel)
 	mov dh, 0 						; head number
 	mov dl, [drive_num] 			; drive number
 

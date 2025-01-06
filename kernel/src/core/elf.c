@@ -157,7 +157,7 @@ i32 elf_load(struct vfs_inode *inode,
 	if (is_elf(&elf_header) != ET_EXEC) {
 		return -ENOEXEC;
 	}
-	dump_elf_header(&elf_header);
+	//dump_elf_header(&elf_header);
 	free_user_image();
 	code_pd_entry = &cur_pd->entries[0];
 	*code_pd_entry |= PAGING_FLAG_USER;
@@ -175,7 +175,7 @@ i32 elf_load(struct vfs_inode *inode,
 	    			return -ENOEXEC;
             }
         }
-		dump_program_header(program_header);
+		//dump_program_header(program_header);
 
 		flags = PAGING_FLAG_PRESENT | PAGING_FLAG_USER;
 		flags |= (program_header.flags & PF_W) ? PAGING_FLAG_WRITEABLE : 0;

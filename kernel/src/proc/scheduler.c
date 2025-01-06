@@ -77,7 +77,7 @@ void schedule() {
 	int i, count;
 	struct proc *next_proc, *p;
 
-	dump_procs();
+	//dump_procs();
 
 	for (i = 1; i < NR_PROCS; ++i) {
 		p = procs[i];
