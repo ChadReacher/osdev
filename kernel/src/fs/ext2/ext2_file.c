@@ -7,6 +7,7 @@
 #include <heap.h>
 #include <fcntl.h>
 #include <vfs.h>
+#include <bcache.h>
 
 struct file_ops ext2_file_ops = {
 	NULL,
@@ -22,7 +23,7 @@ i32 ext2_file_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count)
 	struct buffer *lbuf;
 	i32 left, block, inblock, chars;
 
-	if (count + fp->f_pos > inode->i_size) {
+	if (count + fp->f_pos > (i32)inode->i_size) {
 		count = inode->i_size - fp->f_pos;
 	}
 	if ((left = count) <= 0) {
@@ -31,7 +32,7 @@ i32 ext2_file_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count)
 	while (left) {
 		block = ext2_bmap(inode, fp->f_pos);
 		if (block) {
-			lbuf = read_blk(inode->i_dev, block);
+			lbuf = bread(inode->i_dev, block);
 			if (!lbuf) {
 				break;
 			}
@@ -41,10 +42,9 @@ i32 ext2_file_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count)
 		fp->f_pos += chars;
 		left -= chars;
 		if (block) {
-			i8 *p = lbuf->b_data + inblock;
+			i8 *p = lbuf->data + inblock;
 			memcpy(buf, p, chars);
-			free(lbuf->b_data);
-			free(lbuf);
+			brelse(lbuf);
 		} else {
 			memset(buf, 0, chars);
 		}
@@ -70,7 +70,7 @@ i32 ext2_file_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count
 		if (!(block = ext2_create_block(inode, pos))) {
 			break;
 		}
-		lbuf = read_blk(inode->i_dev, block);
+		lbuf = bread(inode->i_dev, block);
 		if (!lbuf) {
 			break;
 		}
@@ -83,11 +83,10 @@ i32 ext2_file_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count
 		}
 		left -= chars;
 		
-		p = lbuf->b_data + inblock;
+		p = lbuf->data + inblock;
 		memcpy(p, buf, chars);
-		write_blk(lbuf);
-		free(lbuf->b_data);
-		free(lbuf);
+		bwrite(lbuf);
+		brelse(lbuf);
 
 		buf += chars;
 	}
@@ -102,7 +101,7 @@ i32 ext2_file_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count
 i32 ext2_readdir(struct vfs_inode *inode, struct file *fp, 
 		struct dirent *dent) {
 	u32 block, offset, i;
-	struct buffer *buf;
+	struct buffer *buf = NULL;
 	struct ext2_dir *de;
 
 	if (!inode || !EXT2_S_ISDIR(inode->i_mode)) {
@@ -111,11 +110,11 @@ i32 ext2_readdir(struct vfs_inode *inode, struct file *fp,
 	while ((u32)fp->f_pos < inode->i_size) {
 		offset = fp->f_pos & 1023;
 		block = ext2_bmap(inode, fp->f_pos);
-		if (!block || !(buf = read_blk(inode->i_dev, block))) {
+		if (!block || !(buf = bread(inode->i_dev, block))) {
 			fp->f_pos += 1024 - offset;
 			continue;
 		}
-		de = (struct ext2_dir *)(buf->b_data + offset);
+		de = (struct ext2_dir *)(buf->data + offset);
 		while (offset < 1024 && (u32)fp->f_pos < inode->i_size) {
 			offset += de->rec_len;
 			fp->f_pos += de->rec_len;
@@ -124,12 +123,12 @@ i32 ext2_readdir(struct vfs_inode *inode, struct file *fp,
 				dent->inode = de->inode;
 				dent->name[de->name_len] = '\0';
 				i = de->name_len;
-				free(buf->b_data);
-				free(buf);
+				brelse(buf);
 				return i;
 			}
-			de = (struct ext2_dir *)(buf->b_data + offset);
+			de = (struct ext2_dir *)(buf->data + offset);
 		}
 	}
+	brelse(buf);
 	return 0;
 }

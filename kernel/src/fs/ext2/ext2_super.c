@@ -4,6 +4,7 @@
 #include <panic.h>
 #include <process.h>
 #include <string.h>
+#include <bcache.h>
 
 struct fs_ops ext2_fs_ops = {
     ext2_read_inode,
@@ -17,29 +18,25 @@ i32 ext2_read_super(struct vfs_superblock *vsb) {
 	struct buffer *buf;
 	struct vfs_inode *vnode;
 
-	buf = read_blk(vsb->s_dev, 1);
+	buf = bread(vsb->s_dev, 1);
 	if (!buf) {
 		debug("Failed to read block #1 on device %d\r\n");
 		return -1;
 	}
-	vsb->u.ext2_sb = *((struct ext2_super_block *) buf->b_data);
+        memcpy(&vsb->u.ext2_sb, buf->data, sizeof(struct ext2_super_block));
+        brelse(buf);
+        //vsb->u.ext2_sb = *((struct ext2_super_block *) buf->data);
 	if (vsb->u.ext2_sb.s_magic != EXT2_SUPER_MAGIC) {
-        vsb->s_dev = 0;
 		debug("It is not an EXT2 file system\r\n");
-		free(buf->b_data);
-		free(buf);
+        vsb->s_dev = 0;
 		return -1;
 	}
 	dump_super_block_info(&vsb->u.ext2_sb);
-	free(buf->b_data);
-	free(buf);
     vsb->s_block_size = 1024 << vsb->u.ext2_sb.s_log_block_size;
     vsb->fs_ops = &ext2_fs_ops;
     if (!(vnode = vfs_iget(vsb->s_dev, EXT2_ROOT_INO))) {
-        vsb->s_dev = 0;
-        free(buf->b_data);
-        free(buf);
         debug("Could not get the root inode");
+        vsb->s_dev = 0;
         return -1;
     }
     vsb->s_root = vnode;

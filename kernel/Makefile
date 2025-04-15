@@ -1,34 +1,29 @@
-CFLAGS += -c -I ./include -I ../libk
+CFLAGS += -c
+CFLAGS += -I ../kernel/include -I ../libk
 
-#SUBDIRS := $(shell ls -FR src | grep "\/" )
-#DIRS := $(SUBDIRS)
-#SOURCE_FILES := $(foreach d, $(DIRS), $(wildcard src/$(d)*.c) )
-SOURCE_FILES := $(shell find src -name '*.c' | grep -v 'src/kernel.c')
+SOURCE_FILES := $(shell find src -name '*.c')
 OBJECTS = $(patsubst %.c, %.o, $(SOURCE_FILES))
 DEPENDENCIES = $(patsubst %.c, %.d, $(SOURCE_FILES))
-# TODO: update the linker script to insert kernel_entry before main kernel code
-KERNEL_DEPS = ../build/kernel_entry.o src/kernel.o \
-			$(OBJECTS) ../build/interrupt.o ../build/gdt_helper.o ../build/tss_helper.o\
-			../build/context_switch.o ../build/libk.a
+ASM_FILES := $(shell find ./ -name '*.asm')
+OBJECTS += $(patsubst %.asm, %.o, $(ASM_FILES))
+KERNEL_DEPS = $(OBJECTS) ../build/libk.a
 
 kernel: $(DEPENDENCIES) $(KERNEL_DEPS)
-	echo $(SUBDIRS)
-	echo $(DIRS)
-	@echo $(OBJECTS)
-	$(LD) -Tlinker.ld $(KERNEL_DEPS) -o ../build/kernel.elf
-	$(OBJCOPY) -O binary ../build/kernel.elf ../build/kernel.bin
+	$(LD) $(KERNEL_DEPS) -o ../build/kernel.elf -T linker.ld $(LDFLAGS)
+	cp ../build/kernel.elf ../build/kernel.bin
+	#$(OBJCOPY) -S ../build/kernel.elf ../build/kernel.bin
 
-ifeq (,$(findstring $(MAKECMDGOALS),clean-all))
+ifeq (,$(findstring $(MAKECMDGOALS),clean-deps))
 ifneq ($(strip $(DEPENDENCIES)), "")
   include $(DEPENDENCIES)
 endif
 endif
 
 clean:
-	rm -rf src/kernel.o $(OBJECTS)
+	rm -rf $(OBJECTS)
 
-clean-all:
-	rm -rf src/kernel.o $(OBJECTS) $(DEPENDENCIES)
+clean-deps:
+	rm -rf $(OBJECTS) $(DEPENDENCIES)
 
 %.d: %.c
 	$(CC) -I ./include/ -I ../libk -M $< -MF $*.d
@@ -36,11 +31,5 @@ clean-all:
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-../build/%.o: %.asm
-	$(AS) -f elf32 $< -o $@
-
-../build/%.o: src/%.asm
-	$(AS) -f elf32 $< -o $@
-
-../build/%.o: src/core/%.asm
+%.o: %.asm
 	$(AS) -f elf32 $< -o $@

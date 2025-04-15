@@ -73,7 +73,7 @@ static void ata_device_detect(struct ata_device *dev, u32 primary) {
 		free(dev->mem_buffer);
 		free(dev->prdt);
 		dev = NULL;
-		debug("%s", "This device is not an ATA hard disk drive\r\n");
+		debug("This device is not an ATA hard disk drive\r\n");
 		return;
 	}
 
@@ -87,7 +87,7 @@ static void ata_device_detect(struct ata_device *dev, u32 primary) {
 		free(dev->mem_buffer);
 		free(dev->prdt);
 		dev = NULL;
-		debug("%s", "Error occurred while polling\r\n");
+		debug("Error occurred while polling\r\n");
 		return;
 	}
 
@@ -96,15 +96,18 @@ static void ata_device_detect(struct ata_device *dev, u32 primary) {
 	}
 }
 
+extern u32 prdt_struct;
+extern u32 prdt_mem_buffer;
+
 static void ata_device_init(struct ata_device *dev, u32 primary) {
 	u16 data_reg = primary ? 0x1F0 : 0x170;
 	u16 alt_status_reg = primary ? 0x3F6 : 0x376;
 
-	dev->prdt = malloc(sizeof(struct phys_reg_desc));
+        dev->prdt = (struct phys_reg_desc *)&prdt_struct;
 	memset(dev->prdt, 0, sizeof(struct phys_reg_desc));
 	dev->prdt_phys = (u8 *)virtual_to_physical(dev->prdt);
 
-	dev->mem_buffer = malloc(4096);
+	dev->mem_buffer = (u8 *)(&prdt_mem_buffer);
 	memset(dev->mem_buffer, 0, 4096);
 
 	dev->prdt[0].phys_data_buf = (u32)virtual_to_physical(dev->mem_buffer);
@@ -134,21 +137,38 @@ static void ata_device_init(struct ata_device *dev, u32 primary) {
 }
 
 static void ata_write(struct ata_device *dev, u32 sector, u8 nsect, i8 *buf) {
-	memcpy(dev->mem_buffer, buf, SECTOR_SIZE * nsect);
-
-	/* Reset command register */
-	port_outb(dev->bmr_command, 0);
-
 	/* Set the apropriate transfer size */
 	dev->prdt[0].transfer_size = SECTOR_SIZE * nsect;
 
 	/* Send physical PRDT address to the BMR PRDT register */
 	port_outl(dev->bmr_prdt, (u32)dev->prdt_phys);
 
+        /* Do some setup for controller status. Don't understand any of it :( */
+        u8 controller_status = port_inb(dev->bmr_status);
+#define BMR_STATUS_ERROR        (1 << 1)
+#define BMR_STATUS_IRQ          (1 << 2)
+        controller_status |= BMR_STATUS_ERROR | BMR_STATUS_IRQ;
+        port_outb(dev->bmr_status, controller_status);
+
+        /* Transfer the buffer to the PRDT buffer location */
+	memcpy(dev->mem_buffer, buf, SECTOR_SIZE * nsect);
+
+	/* Reset command register */
+	port_outb(dev->bmr_command, 0);
+
+        /* Wait for a little bit ... */
+        while (1) {
+                u8 drive_status = port_inb(dev->status_reg);
+		if ((drive_status & 0x80) == 0) {
+			break;
+		}
+        }
+
 	/* Select the drive */
 	port_outb(dev->drive_reg, 0xE0 
 			| (dev->slave << 4)
 			| ((sector >> 24) & 0x0F));
+        ata_io_wait(dev);
 
 	/* Set LBA and sector count */
 	port_outb(dev->sector_count, nsect);
@@ -156,32 +176,54 @@ static void ata_write(struct ata_device *dev, u32 sector, u8 nsect, i8 *buf) {
 	port_outb(dev->lba_mid, (sector & 0xFF00) >> 8);
 	port_outb(dev->lba_high, (sector & 0xFF0000) >> 16);
 
+        while (1) {
+		u8 drive_status = port_inb(dev->status_reg);
+		if ( ((drive_status & 0x80) == 0) && (drive_status & 0x40) ) {
+			break;
+		}
+        }
+
 	/* Send the DMA transfer(28 bit LBA) command to the ATA controller */
 	port_outb(dev->command_reg, 0xCA);
+
+        ata_io_wait(dev);
 
 	/* Set the Start bit on Bus Master Command Register */
 	port_outb(dev->bmr_command, 0x1);
 
 	while (1) {
-		u8 controller_status = port_inb(dev->bmr_status); 
+		controller_status = port_inb(dev->bmr_status); 
 		u8 drive_status = port_inb(dev->status_reg);
-		if (drive_status & 0x1) {
-			debug("Error occured while writing to the disk\r\n");
-			ata_software_reset(dev);
-			return;
-		}
 		if (!(controller_status & 0x4)) {
 			continue;
+		}
+                if (controller_status & 0x2) {
+                        panic("DMA error\r\n");
+                }
+		if (drive_status & 0x1) {
+			panic("Error occured while writing to the disk\r\n");
+			ata_software_reset(dev);
+			return;
 		}
 		if (!(drive_status & 0x80)) {
 			break;
 		}
 	}
+        u8 drive_status = port_inb(dev->status_reg);
+        if ((drive_status & 1) == 0) {
+                if (controller_status & 0x2) {
+                        panic("B");
+                }
+        } else {
+                panic("A");
+        }
+        u8 bmr_command = port_inb(dev->bmr_command);
+        port_outb(dev->bmr_command, bmr_command & ~0x1);
+        u8 bmr_status = port_inb(dev->bmr_status);
+        port_outb(dev->bmr_status, bmr_status | 0x2 | 0x4);
 }
 
-static i8 *ata_read(struct ata_device *dev, u32 sector, u8 nsect) {
-	i8 *buf;
-
+static void ata_read(struct ata_device *dev, u32 sector, u8 nsect, i8 *buf) {
 	/* Reset command register */
 	port_outb(dev->bmr_command, 0);
 
@@ -213,7 +255,7 @@ static i8 *ata_read(struct ata_device *dev, u32 sector, u8 nsect) {
 		if (drive_status & 0x1) {
 			debug("Error occured while reading the disk\r\n");
 			ata_software_reset(dev);
-			return NULL;
+			return;
 		}
 		if (drive_status & 0x8) {
 			continue;
@@ -223,9 +265,7 @@ static i8 *ata_read(struct ata_device *dev, u32 sector, u8 nsect) {
 		}
 	}
 	
-	buf = malloc(SECTOR_SIZE * nsect);
 	memcpy(buf, dev->mem_buffer, SECTOR_SIZE * nsect);
-	return buf;
 }
 
 static void ata_handler(struct registers_state *regs) {
@@ -245,30 +285,29 @@ static void ata_handler(struct registers_state *regs) {
 	port_outb(0x20, 0x20); /* master */
 }
 
-void rw_ata(u32 rw, u16 dev, u32 block, i8 **buf) {
+void rw_ata(u32 rw, u16 dev, u32 block, i8 *buf) {
 	struct ata_device *devp;
-	u32 sector;
 
-	sector = block * 2;
-	if ((dev=MINOR(dev)) >= 5*NR_HD || sector+1 > hd_disks[dev].nr_sects) {
+	u32 sector = block * 2;
+        dev = MINOR(dev);
+	if (dev >= 5 * NR_HD || sector + 1 > hd_disks[dev].nr_sects) {
 		i8 *s = (rw == READ) ? "read" : "write";
 		debug("Cannot %s to block %d, sector %d nr_sects: %d\r\n", s,
 				block, sector, hd_disks[dev].nr_sects);
-		*buf = NULL;
 		return;
 	}
 	sector += hd_disks[dev].start_sect;
 	dev /= 5;
 	devp = &devices[dev];
 	if (rw == READ) {
-		*buf = ata_read(devp, sector, 2);
+		ata_read(devp, sector, 2, buf);
 	} else if (rw == WRITE) {
-		ata_write(devp, sector, 2, *buf);
+		ata_write(devp, sector, 2, buf);
 	}
 }
 
-void ata_init() {
-	i8 *boot_sect;
+void ata_init(void) {
+	i8 boot_sect[512];
 	struct partition *p;
 	u32 drive, i, pci_command_reg;
 
@@ -277,6 +316,9 @@ void ata_init() {
 	register_interrupt_handler(IRQ14, ata_handler);
 	register_interrupt_handler(IRQ15, ata_handler);
 
+        // Access command registers of the device,
+        // enables the device to act as the bus master.
+        // This basically enables DMA.
 	pci_command_reg = pci_read(ata_dev, PCI_COMMAND);
 	if (!(pci_command_reg & (1 << 2))) {
 		pci_command_reg |= (1 << 2);
@@ -289,7 +331,7 @@ void ata_init() {
 	ata_device_detect(&devices[1], 1);
 
 	for (drive = 0; drive < NR_HD; ++drive) {
-		boot_sect = ata_read(&devices[drive], 0, 1);
+		ata_read(&devices[drive], 0, 1, boot_sect);
 		if (boot_sect[510] != 0x55 && (u8)boot_sect[511] != 0xAA) {
 			panic("Bad partition table on drive %d\n", drive);
 		}
@@ -301,6 +343,5 @@ void ata_init() {
 				  "start_sect - %d, nr_sects - %d\r\n",
 				  drive, i, p->start_sect, p->nr_sects);
 		}
-		free(boot_sect);
 	}
 }

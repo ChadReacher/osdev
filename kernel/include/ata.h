@@ -56,6 +56,6 @@ struct partition {
 #define SECTOR_SIZE 512
 
 void ata_init();
-void rw_ata(u32 rw, u16 dev, u32 block, i8 **buf);
+void rw_ata(u32 rw, u16 dev, u32 block, i8 *buf);
 
 #endif

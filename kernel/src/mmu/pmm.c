@@ -81,7 +81,7 @@ i32 find_first_free_blocks(u32 num_blocks) {
 extern u32 _kernel_start_;
 extern u32 _kernel_end_;
 
-void pmm_init() {
+void pmm_init(void) {
 	u32 num_mmap_entries;
 	struct phys_mmap_entry *mmap_entry;
 	u32 total_memory_bytes;
@@ -95,13 +95,13 @@ void pmm_init() {
 	/* Get total amount of bytes */
 	total_memory_bytes = mmap_entry->base_address_low + mmap_entry->length_low - 1;
 
-    debug("_kernel_start_ - 0x%x\r\n", &_kernel_start_);
-    debug("_kernel_end_ - 0x%x\r\n", &_kernel_end_);
-    debug("kernel sie - 0x%x\r\n", (u32)(&_kernel_end_) - (u32)(&_kernel_start_));
+        debug("_kernel_start_ - 0x%x\r\n", &_kernel_start_);
+        debug("_kernel_end_ - 0x%x\r\n", &_kernel_end_);
+        debug("kernel size - 0x%x\r\n", (u32)(&_kernel_end_) - (u32)(&_kernel_start_));
 
-	/* Initialize physical memory manager at the 0xC0030000 */
+	/* Initialize physical memory manager at the 0xC0070000 */
 	/* to all available memory. By default all memory is used/reserved. */
-	_pmm_init(0xC0030000, total_memory_bytes); 
+	_pmm_init(0xC0070000, total_memory_bytes);
 
 	/* Get back to start of the list to available memory as free to use */
 	mmap_entry = (struct phys_mmap_entry *)BIOS_MEMORY_MAP;
@@ -112,15 +112,14 @@ void pmm_init() {
 		++mmap_entry;
 	}
 
-	mark_memory_as_used(0xA000, 0x800);	/* Mark font as used memory */
-	
 	/* mark kernel and "OS" memory regions as used */
-	mark_memory_as_used(0x10000, 0x25000);
+	mark_memory_as_used(0x0000, 0x100000);
+	mark_memory_as_used(0x100000, 0x50000);
 	
 	/* Mark physical memory map itself as used */
-	mark_memory_as_used(30000, total_blocks / BLOCKS_PER_BYTE);
+	mark_memory_as_used(0x70000, total_blocks / BLOCKS_PER_BYTE);
 	
-	mark_memory_as_used(0x26000, 1);
+	//mark_memory_as_used(0x26000, 1);
 
 	debug("Physical memory manager has been initialized\r\n");
 	debug("Number of used or reserved 4K blocks: %x\r\n", used_blocks);
@@ -139,7 +138,7 @@ void _pmm_init(u32 start_address, u32 size) {
 
 void mark_memory_as_free(u32 base_address, u32 size) {
 	u32 align = base_address / PMM_BLOCK_SIZE;
-	u32 num_blocks = size / PMM_BLOCK_SIZE;
+	i32 num_blocks = size / PMM_BLOCK_SIZE;
 	for (; num_blocks > 0; --num_blocks) {
 		clear_block(align++);
 		--used_blocks;
@@ -150,7 +149,7 @@ void mark_memory_as_free(u32 base_address, u32 size) {
 
 void mark_memory_as_used(u32 base_address, u32 size) {
 	u32 align = base_address / PMM_BLOCK_SIZE;
-	u32 num_blocks = size / PMM_BLOCK_SIZE;
+	i32 num_blocks = size / PMM_BLOCK_SIZE;
 	if (size % PMM_BLOCK_SIZE > 0) {
 		++num_blocks;
 	}
@@ -185,45 +184,33 @@ void *allocate_blocks(u32 num_blocks) {
 
 void free_blocks(void *address, u32 num_blocks) {
 	u32 i;
+        u32 freed_blocks = 0;
 	u32 starting_block = (u32)address / PMM_BLOCK_SIZE;
 	for (i = 0; i < num_blocks; ++i) {
-		clear_block(starting_block + i);
+                if (test_block(starting_block + i) == 1) {
+		        clear_block(starting_block + i);
+                        ++freed_blocks;
+                }
 	}
-	used_blocks -= num_blocks;
-	debug("PMM free_blocks(%d) - %p\r\n", num_blocks, address);
+	//used_blocks -= num_blocks;
+	debug("PMM free_blocks(%d) - %p\r\n", freed_blocks, address);
 }
 
 void print_physical_memory_info() {
 	u8 i;
 	u32 num_entries;
 	struct phys_mmap_entry *entry;
+        char *bios_mem_type[] = { NULL, "Available", "Reserved", "ACPI Reclaim", "ACPI NVS", "Undefined", "Disabled" };
 
 	entry = (struct phys_mmap_entry *)BIOS_MEMORY_MAP;
 	num_entries = *((u32 *)BIOS_NUM_ENTRIES);
 	debug("Physical memory info: \r\n");
 	debug("Total number of entries: %d\r\n", num_entries);
 	for (i = 0; i < num_entries; ++i) {
-		debug("Region: %x | Base: %x | Length: %x | Type(%d): ", 
+		debug("Region: %x | Base: 0x%x | Length: 0x%x | Type(%d): %s memory\r\n",
 				i, entry->base_address_low, 
-				entry->length_low, entry->type);
-		switch (entry->type) {
-			case 1:
-				debug("Available Memory");
-				break;
-			case 2:
-				debug("Reserved Memory");
-				break;
-			case 3:
-				debug("ACPI Reclaim Memory");
-				break;
-			case 4:
-				debug("ACPI NVS Memory");
-				break;
-			default:
-				debug("Undefined Memory");
-				break;
-		}
-		debug("\r\n");
+				entry->length_low, entry->type,
+                                bios_mem_type[entry->type]);
 		++entry; 
 	}
 	--entry;

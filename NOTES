@@ -18,12 +18,10 @@ mmu/paging.c:42:        page_table_t *table = (page_table_t *)(0xFFC00000 + (PAG
 mmu/paging.c:112:       table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
 mmu/paging.c:140:       map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 
-
-readdir(struct ext2_inode *inode, struct file *fp, struct dirent *dent);
-file_read(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
-file_write(struct ext2_inode *inode, struct file *fp, i8 *buf, i32 count);
-unlink
-link
-rename
-rmdir
-mkdir
+I have encounterd an interesting bug.
+You run the OS, enter the shell and you just exit from it by typing `exit` command.
+Then, you run the OS again and it fails to grab necessary data from disk.
+By comparing the disk images before the first boot and after the first boot we observe the differences.
+Specifically, somehow data blocks reserved for filesystem info are overwritten by the kernel code.
+The main suspect is `buffer cache code`. The function `sync_buffers` are called on the `init` process exit.
+The reason of the bug lies within ATA driver code - we apparently need to wait a little bit after performing 'write' operation.

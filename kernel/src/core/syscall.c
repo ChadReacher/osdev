@@ -21,6 +21,7 @@
 #include <chr_dev.h>
 #include <tty.h>
 #include <vfs.h>
+#include <bcache.h>
 
 
 extern u32 startup_time;
@@ -341,13 +342,6 @@ static i32 has_stopped_jobs(i32 pgrp) {
 void do_exit(i32 code) {
 	u32 i;
 
-	if (current_process->pid == 1) {
-		panic("Can't exit the INIT process\r\n");
-	}
-
-	free_user_image();
-	free_blocks((void *)current_process->directory, 1);
-		
 	/* Close open files */
 	for (i = 0; i < NR_OPEN; ++i) {
 		if (current_process->fds[i]) {
@@ -358,6 +352,15 @@ void do_exit(i32 code) {
 	current_process->root = NULL;
 	vfs_iput(current_process->pwd);
 	current_process->pwd = NULL;
+
+	if (current_process->pid == 1) {
+		sync_inodes();
+		sync_buffers();
+		panic("Can't exit the INIT process\r\n");
+	}
+	free_user_image();
+        free_blocks((void *)current_process->directory, 1);
+
 	if (current_process->leader && current_process->tty >= 0) {
 		tty_table[current_process->tty].pgrp = 0;
 	}

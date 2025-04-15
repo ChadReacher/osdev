@@ -63,6 +63,6 @@ void mount_root(void) {
 			return;
         }
     }
-    panic("Could not mount the root");
+    panic("Could not mount the root\r\n");
 }
 

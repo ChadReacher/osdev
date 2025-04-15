@@ -19,7 +19,7 @@ void heap_init() {
 	u32 heap_phys_addr, heap_virt_addr;
 	void *heap_ptr;
 	u32 i;
-	debug("%s", "Heap initialization started..\r\n");
+	debug("Heap initialization started..\r\n");
 
 	heap_start = (void *)HEAP_START;
 	heap_curr = heap_start;
@@ -39,7 +39,7 @@ void heap_init() {
 
 	heap_virt_addr = (u32)heap_start;
 	heap_phys_addr = (u32)heap_ptr;
-	debug("%s", "Start with:\r\n");
+	debug("Start with:\r\n");
 	debug("heap_virt_addr = %x\r\n", heap_virt_addr);
 	debug("heap_phys_addr = %x\r\n", heap_phys_addr);
 
@@ -49,7 +49,7 @@ void heap_init() {
 		heap_phys_addr += PMM_BLOCK_SIZE;
 	}
 	debug("heap virt addr - 0x%x\r\n", heap_virt_addr - PAGE_SIZE);
-	debug("%s", "Finished heap\r\n");
+	debug("Finished heap\r\n");
 }
 
 void *sbrk(u32 increment) {

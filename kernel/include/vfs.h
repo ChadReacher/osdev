@@ -129,4 +129,6 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
 i32 check_permission(struct vfs_inode *inode, i32 mask);
 struct vfs_inode *get_empty_inode();
 
+void sync_inodes(void);
+
 #endif

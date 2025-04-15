@@ -2,7 +2,6 @@
 #define ELF_H
 
 #include "types.h"
-#include "ext2.h"
 #include "vfs.h"
 
 #define ELF_MAGIC_NUMBER 0x7F

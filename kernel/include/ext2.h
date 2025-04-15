@@ -194,10 +194,10 @@ i32 read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superbl
 i32 write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb);
 
 
-void free_block(u16 dev, u32 block);
-u32 alloc_block(u16 dev);
-void free_inode(struct vfs_inode *inode);
-struct vfs_inode *alloc_inode(u16 dev);
+void ext2_free_block(u16 dev, u32 block);
+u32 ext2_alloc_block(u16 dev);
+void ext2_free_inode(struct vfs_inode *inode);
+struct vfs_inode *ext2_alloc_inode(u16 dev);
 
 i32 ext2_truncate(struct vfs_inode *inode);
 i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res);

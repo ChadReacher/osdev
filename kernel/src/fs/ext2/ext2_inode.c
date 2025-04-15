@@ -4,6 +4,7 @@
 #include <string.h>
 #include <panic.h>
 #include <vfs.h>
+#include <bcache.h>
 
 extern struct file_ops ext2_file_ops;
 extern struct file_ops ext2_dir_ops;
@@ -107,15 +108,14 @@ i32 read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superbl
 	descs_per_block = vsb->s_block_size / sz;
 	group_desc_block = group / descs_per_block;
 	group_desc_idx = group % descs_per_block;
-	buf = read_blk(vsb->s_dev, vsb->u.ext2_sb.s_first_data_block + 1 + group_desc_block);
+	buf = bread(vsb->s_dev, vsb->u.ext2_sb.s_first_data_block + 1 + group_desc_block);
 	if (!buf) {
 		debug("read_group_desc failed to read block group descriptor block "
 			  "#%d\r\n", vsb->u.ext2_sb.s_first_data_block + 1 + group_desc_block);
 		return -1;
 	}
-	memcpy(bgd, (void *)(buf->b_data + (group_desc_idx * sz)), sz);
-	free(buf->b_data);
-	free(buf);
+	memcpy(bgd, (void *)(buf->data + (group_desc_idx * sz)), sz);
+	brelse(buf);
 	return 0;
 }
 
@@ -127,15 +127,15 @@ i32 write_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superb
 		(sizeof(struct ext2_blk_grp_desc));
 	group_desc_block = group / descs_per_block;
 	group_desc_idx = group % descs_per_block;
-	buf = read_blk(vsb->s_dev, vsb->u.ext2_sb.s_first_data_block + 1 + group_desc_block);
+	buf = bread(vsb->s_dev, vsb->u.ext2_sb.s_first_data_block + 1 + group_desc_block);
 	if(!buf) {
 		return -1;
 	}
-	memcpy((void *)(buf->b_data + (group_desc_idx * sizeof(struct ext2_blk_grp_desc))), 
+	memcpy((void *)(buf->data + (group_desc_idx * sizeof(struct ext2_blk_grp_desc))), 
 			bgd, sizeof(struct ext2_blk_grp_desc));
-	write_blk(buf);
-	free(buf->b_data);
-	free(buf);
+	bwrite(buf);
+
+	brelse(buf);
 	return 0;
 }
 
@@ -159,17 +159,16 @@ void ext2_read_inode(struct vfs_inode *vnode) {
 	inodes_per_block = vnode->i_sb->s_block_size / vnode->i_sb->u.ext2_sb.s_inode_size;
 	block_offset = idx / inodes_per_block;
 
-	buf = read_blk(vnode->i_dev, itable_block + block_offset);
+	buf = bread(vnode->i_dev, itable_block + block_offset);
 	if (!buf) {
 		debug("Failed to read inode's block #%d\r\n", 
 				itable_block + block_offset);
 		return;
 	}
 	offset_in_block = idx % inodes_per_block;
-	memcpy(&raw_inode, (void *)(buf->b_data + offset_in_block * vnode->i_sb->u.ext2_sb.s_inode_size),
+	memcpy(&raw_inode, (void *)(buf->data + offset_in_block * vnode->i_sb->u.ext2_sb.s_inode_size),
 			vnode->i_sb->u.ext2_sb.s_inode_size);
-	free(buf->b_data);
-	free(buf);
+	brelse(buf);
     
 	vnode->i_mode = raw_inode.i_mode;
 	vnode->i_uid = raw_inode.i_uid;
@@ -262,16 +261,16 @@ void ext2_write_inode(struct vfs_inode *vnode) {
 		raw_inode.osd2[i] = vnode->u.i_ext2.osd2[i];
 	}
 
-	buf = read_blk(vnode->i_dev, itable_block + block_offset);
+	buf = bread(vnode->i_dev, itable_block + block_offset);
 	if (!buf) {
 		debug("Failed to read inode's block #%d\r\n", 
 			itable_block + block_offset);
 		return;
 	}
 	offset_in_block = idx % inodes_per_block;
-	memcpy((void *)(buf->b_data + offset_in_block * vnode->i_sb->u.ext2_sb.s_inode_size), &raw_inode,
+	memcpy((void *)(buf->data + offset_in_block * vnode->i_sb->u.ext2_sb.s_inode_size), &raw_inode,
 			vnode->i_sb->u.ext2_sb.s_inode_size);
-	write_blk(buf);
+	bwrite(buf);
 	if (!buf) {
 		debug("Failed to write inode's block #%d\r\n", 
 				itable_block + block_offset);
@@ -279,6 +278,5 @@ void ext2_write_inode(struct vfs_inode *vnode) {
 	}
 
 	vnode->i_dirt = 0;
-	free(buf->b_data);
-	free(buf);
+	brelse(buf);
 }

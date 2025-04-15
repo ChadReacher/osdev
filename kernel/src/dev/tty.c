@@ -57,10 +57,8 @@ struct tty_struct tty_table[] = {
 };
 
 i32 tty_open(struct vfs_inode *inode, struct file *fp) {
-	u16 major, minor;
-	major = MAJOR(inode->i_rdev);
-	minor = MINOR(inode->i_rdev);
-
+	(void)fp;
+	(void)inode;
 	if (current_process->tty < 0) {
 		return -EPERM;
 	}
@@ -68,8 +66,8 @@ i32 tty_open(struct vfs_inode *inode, struct file *fp) {
 }
 
 i32 ttyx_open(struct vfs_inode *inode, struct file *fp) {
-	u16 major, minor;
-	major = MAJOR(inode->i_rdev);
+	(void)fp;
+	u16 minor;
 	minor = MINOR(inode->i_rdev);
 
 	if (current_process->leader && current_process->tty < 0) {
@@ -89,6 +87,7 @@ void sleep_if_full(struct tty_queue *q) {
 }
 
 i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
+	(void)fp;
 	struct tty_struct *tty;
 	i8 c, *b = buf;
 
@@ -134,6 +133,7 @@ i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
 }
 
 i32 tty_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
+	(void)fp;
 	static i32 cr_flag = 0;
 	struct tty_struct *tty;
 	i8 c, *b = buf;
