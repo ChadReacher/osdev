@@ -122,7 +122,7 @@ void vfs_iput(struct vfs_inode *inode) {
 			/* free inode in inode array `inodes_table` */
 			inode->i_size = 0;
                         if (inode->i_ops && inode->i_ops->truncate) {
-                                inode->i_ops->truncate(inode);
+                                inode->i_ops->truncate(inode, 0);
                         }
                         if (inode->i_sb && inode->i_sb->fs_ops && inode->i_sb->fs_ops->free_inode) {
                                 inode->i_sb->fs_ops->free_inode(inode);

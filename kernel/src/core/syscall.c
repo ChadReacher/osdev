@@ -1305,3 +1305,17 @@ i32 syscall_lstat(i8 *path, struct stat *statbuf) {
 	vfs_iput(inode);
 	return 0;
 }
+
+i32 syscall_truncate(const i8 *path, u32 length) {
+	i32 err;
+	struct vfs_inode *inode;
+
+	if ((err = vfs_namei(path, NULL, 1, &inode))) {
+		return err;
+	}
+	if (!inode->i_ops || !inode->i_ops->truncate) {
+		vfs_iput(inode);
+		return -EINVAL;
+	}
+        return inode->i_ops->truncate(inode, length);
+}

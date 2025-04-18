@@ -80,6 +80,7 @@
 #define __NR_symlink		54
 #define __NR_readlink		55
 #define __NR_lstat			56
+#define __NR_truncate           57
 
 #define syscall0(type, name) \
 type name(void) { \
@@ -202,5 +203,6 @@ i32 getgroups(i32 gidsetsize, i32 *grouplist);
 i32 pipe(i32 fildes[2]);
 i32 tcsetpgrp(i32 fildes, pid_t pgrp_id);
 i32 tcgetpgrp(i32 fildes);
+i32 truncate(const char *path, u32 length);
 
 #endif

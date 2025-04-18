@@ -460,3 +460,5 @@ i32 times(tms *buffer) {
 }
 
 syscall2(i32, getgroups, i32, gidsetsize, i32 *, grouplist)
+
+syscall2(i32, truncate, const char *, path, u32, length)

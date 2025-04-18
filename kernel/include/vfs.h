@@ -43,7 +43,7 @@ struct vfs_inode_ops {
     i32 (*rmdir) (struct vfs_inode *dir, const char *basename);
 	i32 (*mkdir) (struct vfs_inode *dir, const char *basename, i32 mode);
     i32 (*rename) (struct vfs_inode *old_dir, const char *old_base, struct vfs_inode *new_dir, const char *new_base);
-	i32 (*truncate) (struct vfs_inode *inode);
+        i32 (*truncate) (struct vfs_inode *inode, u32 length);
 	i32 (*lookup) (struct vfs_inode *inode, const char *name, struct vfs_inode **res);
 	i32 (*create) (struct vfs_inode *dir, const i8 *name, i32 mode, struct vfs_inode **res);
     i32 (*symlink) (struct vfs_inode *dir, const i8 *name, const i8 *newname);

@@ -51,6 +51,7 @@
 #define EXT2_S_IXOTH 0x0001
 
 
+#define EXT2_DIRECT_BLOCKS 12
 #define EXT2_POINTERS_PER_BLOCK 256
 
 struct ext2_super_block {
@@ -199,7 +200,7 @@ u32 ext2_alloc_block(u16 dev);
 void ext2_free_inode(struct vfs_inode *inode);
 struct vfs_inode *ext2_alloc_inode(u16 dev);
 
-i32 ext2_truncate(struct vfs_inode *inode);
+i32 ext2_truncate(struct vfs_inode *inode, u32 length);
 i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res);
 i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf);
 

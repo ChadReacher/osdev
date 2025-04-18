@@ -1,7 +1,8 @@
 CFLAGS += -c -I ../libc/include
 
 binaries = bin/init bin/test bin/sh bin/ls bin/cat bin/rm bin/link bin/mkdir\
-		   bin/rmdir bin/mv bin/clear bin/sleep bin/wc bin/symlink bin/readlink
+		   bin/rmdir bin/mv bin/clear bin/sleep bin/wc bin/symlink bin/readlink\
+		   bin/trunc
 
 all: userland
 

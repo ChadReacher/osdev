@@ -1,7 +1,7 @@
 #ifndef SYS_H
 #define SYS_H
 
-#define NR_SYSCALLS 57
+#define NR_SYSCALLS 58
 
 typedef i32 (*syscall_fn)();
 
@@ -62,6 +62,7 @@ i32 syscall_tcgetpgrp();
 i32 syscall_symlink();
 i32 syscall_readlink();
 i32 syscall_lstat();
+i32 syscall_truncate();
 
 syscall_fn syscall_handlers[NR_SYSCALLS] = {
 	syscall_test,
@@ -121,6 +122,7 @@ syscall_fn syscall_handlers[NR_SYSCALLS] = {
     syscall_symlink,
     syscall_readlink,
 	syscall_lstat,
+        syscall_truncate,
 };
 
 #endif
