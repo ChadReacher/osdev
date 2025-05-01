@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 TOOLCHAIN_SRC = /usr/bin/i386elfgcc/bin
 CC = $(TOOLCHAIN_SRC)/i386-elf-gcc
 LD = $(TOOLCHAIN_SRC)/i386-elf-ld
@@ -31,19 +32,17 @@ build/kernel.bin: libk
 
 user: libc
 	$(MAKE) -C userland
-	mkdir -p userland/hdd/usr
-	mkdir -p userland/hdd/bin
-	mkdir -p userland/hdd/dev
+	$(shell mkdir -p userland/hdd/{bin,etc,home,lib,tmp,usr,var,dev})
 	mv -f userland/bin/* userland/hdd/bin
-	man wc > userland/hdd/usr/file
-	echo "del" > userland/hdd/usr/del
-	echo "bye" > userland/hdd/usr/bye
+	man wc > userland/hdd/home/file
+	echo "del" > userland/hdd/home/del
+	echo "bye" > userland/hdd/home/bye
 	sudo mknod userland/hdd/dev/tty0 c 0x04 0x00
 	dd if=/dev/zero of=build/disk.img bs=1024 count=4096
 	sudo losetup -fP build/disk.img
 	sudo losetup
 	sudo ./disk_part.sh
-	sudo mkfs.ext2 -b 1024 -g 1024 -r 0 -d userland/hdd/ /dev/loop0p1 
+	sudo mkfs.ext2 -b 1024 -g 1024 -r 0 -d userland/hdd/ /dev/loop0p1
 	sudo dumpe2fs /dev/loop0p1
 	sudo losetup -d /dev/loop0
 
