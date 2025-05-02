@@ -581,7 +581,6 @@ i32 syscall_fstat(i32 fd, struct stat *statbuf) {
 	statbuf->st_ctime = inode->i_ctime;
 	statbuf->st_blksize = inode->i_sb->s_block_size;
 	statbuf->st_blocks = inode->i_blocks;
-	vfs_iput(inode);
 	return 0;
 }
 
