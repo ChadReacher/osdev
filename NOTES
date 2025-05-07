@@ -25,3 +25,4 @@ By comparing the disk images before the first boot and after the first boot we o
 Specifically, somehow data blocks reserved for filesystem info are overwritten by the kernel code.
 The main suspect is `buffer cache code`. The function `sync_buffers` are called on the `init` process exit.
 The reason of the bug lies within ATA driver code - we apparently need to wait a little bit after performing 'write' operation.
+This forum discussion saved me - https://forum.osdev.org/viewtopic.php?t=24394.

@@ -25,7 +25,7 @@ Core:
   * Introduce dynamic libraries
   * Introduce dynamic loader
   * Add bootinfo structure and pass it from bootloader to kernel
-  * Write code to load kernel which size is bigger than 250 sectors
+  * [DONE] Write code to load kernel which size is bigger than 250 sectors
 
 Devices:
   * Implement several TTYs
