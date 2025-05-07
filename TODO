@@ -29,7 +29,7 @@ Core:
 
 Devices:
   * Implement several TTYs
-  * Implement block cache
+  * [DONE] Implement block cache
   * Implement devfs?
 
 Misc:
@@ -54,7 +54,7 @@ Plan:
 * [DONE] Improve/revise signals implementation
 * ...
 * [DONE] Introduce block cache
-* Implement truncate(2) syscall
+* [DONE] Implement truncate(2) syscall
 * ...
 * Introduce memory zones? mmap(2) syscall?
 * ...
