@@ -11,7 +11,7 @@ void debug(i8 *fmt, ...) {
 	va_start(args, fmt);
 	kvsprintf(buf, fmt, args);
         va_end(args);
-	write_string_serial(buf);
+	write_serial(buf);
 }
 
 void panic(i8 *fmt, ...) {
