@@ -1,4 +1,4 @@
-org 0x7C00							; Run the program as we loaded into memory 0x7C00
+org 0x7C00							; Run the program as if we are loaded into memory 0x7C00
 bits 16								; We are in 16 bit mode
 
 boot_start:
@@ -19,11 +19,11 @@ boot_start:
 	mov ah, 2						; specific value for interrupt int 0x13
 	mov al, 6 						; number of sectors to read
 	mov ch, 0 						; track/cylinder number
-	mov cl, 2 						; sector number(they start at 1, first sector - bootloader)
+	mov cl, 2 						; sector number (they start at 1, first sector - bootloader)
 	mov dh, 0 						; head number
 	mov dl, [drive_num] 			; drive number
 
-	int 0x13 
+	int 0x13
 
 	jmp 0x0000:0x7E00				; Jump to second stage bootloader
 
