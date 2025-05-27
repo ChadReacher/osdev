@@ -186,4 +186,6 @@ void scheduler_init() {
 	init_process->context = (struct context *)
 		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
 		 - sizeof(struct registers_state) - sizeof(struct context) + 4);
+
+	debug("Scheduler has been successfully initialized\r\n");
 }

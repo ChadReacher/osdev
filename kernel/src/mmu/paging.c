@@ -56,7 +56,7 @@ void map_page(void *phys_addr, void *virt_addr, u32 flags) {
 	if ((*entry & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
 		page_table_t *new_page_table;
 		table = (page_table_t *)allocate_blocks(1);
-		debug("Created new table at %p\r\n", (void *)table);
+		//debug("Created new table at %p\r\n", (void *)table);
 		if (!table) {
 			return;
 		}

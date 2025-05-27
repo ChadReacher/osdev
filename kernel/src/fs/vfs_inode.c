@@ -71,12 +71,12 @@ struct vfs_inode *vfs_iget(u16 dev, u32 nr) {
                         continue;
 		}
 		++inode->i_count;
-		debug("[icache]: got the cached inode - %d, now count - %d\r\n", nr, inode->i_count);
+		//debug("[icache]: got the cached inode - %d, now count - %d\r\n", nr, inode->i_count);
 		return inode;
 	}
 
 	inode = get_empty_inode();
-	debug("[icache]: got the empty inode from cache - %d\r\n", nr);
+	//debug("[icache]: got the empty inode from cache - %d\r\n", nr);
 	inode->i_dev = dev;
 	inode->i_num = nr;
         inode->i_sb = get_vfs_super(dev);
@@ -102,10 +102,8 @@ void vfs_iput(struct vfs_inode *inode) {
 	if (inode->i_pipe) {
 		process_wakeup(&inode->i_wait);
 		if (--inode->i_count) {
-			debug("[icache]: decreased the 'i_count', now - %d for the inode - %d\r\n", inode->i_count, inode->i_num);
 			return;
 		}
-		debug("[icache]: freeing the pipe inode - %d\r\n", inode->i_num);
 		free((void *)inode->u.i_pipe.i_buf);
 		inode->i_count = 0;
 		inode->i_dirt = 0;
@@ -114,9 +112,7 @@ void vfs_iput(struct vfs_inode *inode) {
 		return;
 	}
 	--inode->i_count;
-	debug("[icache]: decreased the 'i_count', now - %d for the inode - %d\r\n", inode->i_count, inode->i_num);
 	if (!inode->i_count) {
-		debug("[icache]: freeing the inode - %d\r\n", inode->i_num);
 		if (!inode->i_links_count) {
 			/* Free disk blocks, free inode in inode bitmap, */
 			/* free inode in inode array `inodes_table` */
@@ -131,7 +127,6 @@ void vfs_iput(struct vfs_inode *inode) {
 		}
 		if (inode->i_dirt) {
                         if (inode->i_sb && inode->i_sb->fs_ops && inode->i_sb->fs_ops->write_inode) {
-                                debug("inode is dirt, writing to the disk\r\n");
                                 inode->i_sb->fs_ops->write_inode(inode);
                         }
 		}

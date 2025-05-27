@@ -60,6 +60,7 @@ void mount_root(void) {
 	        current_process->root = vsb->s_root;
 	        current_process->pwd = vsb->s_root;
 	        current_process->str_pwd = strdup("/");
+			debug("The root file system (%s) has been mounted\r\n", filesystems[i].name);
 			return;
         }
     }
