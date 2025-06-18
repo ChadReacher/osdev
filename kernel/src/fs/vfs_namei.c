@@ -23,7 +23,9 @@ i32 vfs_dirnamei(const i8 *pathname, struct vfs_inode *base, const i8 **res_base
 	if (pathname_dup[0] == '/') {
 		vfs_iput(base);
 		base = current_process->root;
-		++pathname_dup;
+        while (*pathname_dup == '/') {
+		    ++pathname_dup;
+        }
 		++base->i_count;
 	} else {
 		if (!base) {

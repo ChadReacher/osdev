@@ -13,18 +13,18 @@ static inline u8 inb(u16 port) {
 	return res;
 }
 
-static inline void insl(int port, void *addr, int cnt) {
+static inline void insl(u16 port, void *addr, u32 cnt) {
 	__asm__ volatile("cld\n\trepne\n\tinsl"
 		     : "=D" (addr), "=c" (cnt)
 		     : "d" (port), "0" (addr), "1" (cnt)
 		     : "memory", "cc");
 }
 
-static inline void outb(int port, u8 data) {
+static inline void outb(u16 port, u8 data) {
 	__asm__ volatile("outb %0,%w1" : : "a" (data), "d" (port));
 }
 
-static inline void stosb(void *addr, int data, int cnt) {
+static inline void stosb(void *addr, u32 data, u32 cnt) {
         __asm__ volatile("cld; rep stosb"
                 : "=D"(addr), "=c"(cnt)
                 : "0"(addr), "1"(cnt), "a"(data)
@@ -82,14 +82,7 @@ void disk_read(u32 pa, u32 count, u32 sn)
 	// round down to sector boundary
 	pa &= ~(SECTOR_SIZE - 1);
 
-	// If this is too slow, we could read lots of sectors at a time.
-	// We'd write more to memory than asked, but it doesn't matter --
-	// we load in increasing order.
 	while (pa < end_pa) {
-		// Since we haven't enabled paging yet and we're using
-		// an identity segment mapping (see boot.S), we can
-		// use physical addresses directly.  This won't be the
-		// case once JOS enables the MMU.
 		read_sector((u8*) pa, sn);
 		pa += SECTOR_SIZE;
                 ++sn;
@@ -116,7 +109,6 @@ void read_sector(void *dst, u32 offset) {
 }
 
 void disk_wait(void) {
-	// wait for disk reaady
 	while ((inb(0x1F7) & 0xC0) != 0x40) {
 		/* do nothing */;
         }

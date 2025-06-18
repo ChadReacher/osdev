@@ -1,13 +1,16 @@
 #include <serial.h>
 #include <port.h>
-#include <stdarg.h>
-#include <string.h>
-#include <stdio.h>
 #include <panic.h>
 
-static i8 internal_buf[1024];
+static i32 serial_received(void) {
+	return port_inb(COM1 + 5) & 1;
+}
 
-void serial_init() {
+static i32 is_transmit_empty(void) {
+	return port_inb(COM1 + 5) & 0x20;
+}
+
+void serial_init(void) {
 	port_outb(COM1 + 1, 0x00); /* Disable all interrupts */
 	port_outb(COM1 + 3, 0x80); /* Enable DLAB(divisor latch access bit) for baud rate divisor */
 	port_outb(COM1 + 0, 0x03); /* Set divisor to 3 according to 38400 baud(low byte) */
@@ -28,38 +31,18 @@ void serial_init() {
 	debug("Serial port has been initialized\r\n");
 }
 
-static i32 serial_received() {
-	return port_inb(COM1 + 5) & 1;
-}
 
-i8 read_serial() {
+i8 read_serial(void) {
 	while (serial_received() == 0);
 
 	return port_inb(COM1);
 }
 
-static i32 is_transmit_empty() {
-	return port_inb(COM1 + 5) & 0x20;
-}
-
-void write_char_serial(i8 ch) {
-	while (is_transmit_empty() == 0);
-
-	port_outb(COM1, ch);
-}
-
-void write_string_serial(i8 *str) {
+void write_serial(i8 *str) {
 	while (*str) {
-		write_char_serial(*str++);
+		u8 ch = *str++;
+		while (is_transmit_empty() == 0);
+		port_outb(COM1, ch);
 	}
 }
 
-void serial_printf(i8 *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-
-	memset(internal_buf, 0, sizeof internal_buf);
-
-	kvsprintf(internal_buf, fmt, args);
-	write_string_serial(internal_buf);
-}

@@ -95,9 +95,9 @@ void pmm_init(void) {
 	/* Get total amount of bytes */
 	total_memory_bytes = mmap_entry->base_address_low + mmap_entry->length_low - 1;
 
-        debug("_kernel_start_ - 0x%x\r\n", &_kernel_start_);
-        debug("_kernel_end_ - 0x%x\r\n", &_kernel_end_);
-        debug("kernel size - 0x%x\r\n", (u32)(&_kernel_end_) - (u32)(&_kernel_start_));
+    //debug("_kernel_start_ - 0x%x\r\n", &_kernel_start_);
+    //debug("_kernel_end_ - 0x%x\r\n", &_kernel_end_);
+    //debug("kernel size - 0x%x\r\n", (u32)(&_kernel_end_) - (u32)(&_kernel_start_));
 
 	/* Initialize physical memory manager at the 0xC0070000 */
 	/* to all available memory. By default all memory is used/reserved. */
@@ -178,7 +178,7 @@ void *allocate_blocks(u32 num_blocks) {
 
 	/* Return its address */
 	address = starting_block * PMM_BLOCK_SIZE;
-	debug("PMM allocate_blocks(%d) - %p\r\n", num_blocks, address);
+	//debug("PMM allocate_blocks(%d) - %p\r\n", num_blocks, address);
 	return (void *)address;
 }
 
@@ -193,7 +193,7 @@ void free_blocks(void *address, u32 num_blocks) {
                 }
 	}
 	//used_blocks -= num_blocks;
-	debug("PMM free_blocks(%d) - %p\r\n", freed_blocks, address);
+	//debug("PMM free_blocks(%d) - %p\r\n", freed_blocks, address);
 }
 
 void print_physical_memory_info() {

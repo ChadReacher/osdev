@@ -43,6 +43,7 @@ void enter_usermode() {
             : 
             : "a"((u32)current_process->directory));
 
+	debug("Entering user space with INIT process\r\n");
 	enter_usermode_asm(current_process->regs->useresp);
 }
 

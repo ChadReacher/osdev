@@ -1,23 +1,3 @@
-The whole operating system is in `boot.img` that consists of:
-* bootloader.bin
-* kernel.bin
-
-
-[DONE] dev/pci.c:51:   dev = pci_get_device(0x8086, 0x7010, -1);
-dev/screen.c:14:        map_page((void *)0xA000, (void *)0xFE000000, PAGING_FLAG_PRESENT);
-dev/screen.c:20:        for (i = 0, fb_start = 0xFD000000; i < fb_size_in_pages; ++i, fb_start += PAGE_SIZE) {
-dev/console.c:255:      phys_addr = 0xB8000;
-dev/console.c:18:#define SCREEN_START 0xFE000000
-dev/console.c:19:#define SCREEN_END     0xFE008000
-proc/scheduler.c:174:   idle_process->directory = virtual_to_physical((void *)0xFFFFF000);
-mmu/pmm.c:96:   _pmm_init(0xC0030000, total_memory_bytes);
-mmu/pmm.c:107:  mark_memory_as_used(0xA000, 0x800);     /* Mark font as used memory */
-mmu/pmm.c:110:  mark_memory_as_used(0x10000, 0x25000);
-mmu/pmm.c:115:  mark_memory_as_used(0x26000, 1);
-mmu/paging.c:42:        page_table_t *table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
-mmu/paging.c:112:       table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
-mmu/paging.c:140:       map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-
 I have encounterd an interesting bug.
 You run the OS, enter the shell and you just exit from it by typing `exit` command.
 Then, you run the OS again and it fails to grab necessary data from disk.
@@ -25,3 +5,9 @@ By comparing the disk images before the first boot and after the first boot we o
 Specifically, somehow data blocks reserved for filesystem info are overwritten by the kernel code.
 The main suspect is `buffer cache code`. The function `sync_buffers` are called on the `init` process exit.
 The reason of the bug lies within ATA driver code - we apparently need to wait a little bit after performing 'write' operation.
+This forum discussion saved me - https://forum.osdev.org/viewtopic.php?t=24394.
+
+Bugs:
+* ./test searches the binary executable in PATH. It finds and executes this file
+* test program behaves strange. When stopping the program and then resuming it, the counter starts just 1 number above. For example, we stopped at 3, and it started at 5
+* Ctrl+D does not work

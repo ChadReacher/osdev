@@ -5,8 +5,8 @@
 
 #define COM1 0x3F8
 
-void serial_init();
-void write_string_serial(i8 *str);
-void serial_printf(i8 *str, ...);
+void serial_init(void);
+void write_serial(i8 *str);
+i8 read_serial(void);
 
 #endif

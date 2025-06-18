@@ -25,19 +25,19 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 		}
-		debug("Direct block\r\n");
+		//debug("Direct block\r\n");
 		return inode->u.i_ext2.i_block[block];
 	} else if (block < 12 + EXT2_POINTERS_PER_BLOCK) {
-		debug("Indirect block\r\n");
+		//debug("Indirect block\r\n");
 		block -= 12;
 		if (!inode->u.i_ext2.i_block[12] && create) {
 			inode->u.i_ext2.i_block[block] = ext2_alloc_block(inode->i_dev);
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 		}
 		buf = bread(inode->i_dev, inode->u.i_ext2.i_block[12]);
 		res_block = ((u32 *)buf->data)[block];
@@ -46,14 +46,14 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 			bwrite(buf);
 		}
 		brelse(buf);
 		return res_block;
 	} else if (block < 12 + EXT2_POINTERS_PER_BLOCK + EXT2_POINTERS_PER_BLOCK *
 			EXT2_POINTERS_PER_BLOCK) {
-		debug("Doubly-indirect block\r\n");
+		//debug("Doubly-indirect block\r\n");
 		block -= 12;
 		block -= EXT2_POINTERS_PER_BLOCK;
 		if (!inode->u.i_ext2.i_block[13] && create) {
@@ -61,7 +61,7 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 		}
 		buf = bread(inode->i_dev, inode->u.i_ext2.i_block[13]);
 		ind_block = ((u32 *)buf->data)[block / EXT2_POINTERS_PER_BLOCK];
@@ -71,19 +71,19 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 			bwrite(buf);
 		}
 		brelse(buf);
 		buf = bread(inode->i_dev, ind_block);
 		res_block = ((u32 *)buf->data)[block % EXT2_POINTERS_PER_BLOCK];
 		if (!res_block && create) {
-			debug("?????ARE WE HERE?????");
+			//debug("?????ARE WE HERE?????");
 			((u32 *)buf->data)[block] = res_block = ext2_alloc_block(inode->i_dev);
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 			bwrite(buf);
 		}
 		brelse(buf);
@@ -91,7 +91,7 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 	} else if (block < 12 + EXT2_POINTERS_PER_BLOCK + EXT2_POINTERS_PER_BLOCK *
 			EXT2_POINTERS_PER_BLOCK + EXT2_POINTERS_PER_BLOCK *
 			EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK) {
-		debug("Triply-indirect block\r\n");
+		//debug("Triply-indirect block\r\n");
 		block -= 12;
 		block -= EXT2_POINTERS_PER_BLOCK;
 		block -= EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK;
@@ -100,7 +100,7 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 		}
 		buf = bread(inode->i_dev, inode->u.i_ext2.i_block[14]);
 		dind_block = ((u32 *)buf->data)[block / (EXT2_POINTERS_PER_BLOCK * EXT2_POINTERS_PER_BLOCK)];
@@ -110,7 +110,7 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 			bwrite(buf);
 		}
 		brelse(buf);
@@ -122,7 +122,7 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 			bwrite(buf);
 		}
 		ind_block2 = ind_block / EXT2_POINTERS_PER_BLOCK;
@@ -135,7 +135,7 @@ static i32 bmap(struct vfs_inode *inode, u32 offset, i32 create) {
 			inode->i_blocks += 2;
 			inode->i_dirt = 1;
 			inode->i_ctime = get_current_time();
-			inode->i_size += inode->i_sb->s_block_size;
+			//inode->i_size += inode->i_sb->s_block_size;
 			bwrite(buf);
 		}
 		brelse(buf);

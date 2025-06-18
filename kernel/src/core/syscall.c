@@ -549,7 +549,7 @@ i32 syscall_stat(i8 *path, struct stat *statbuf) {
 	statbuf->st_nlink = inode->i_links_count;
 	statbuf->st_uid = inode->i_uid;
 	statbuf->st_gid = inode->i_gid;
-	statbuf->st_rdev = 0;
+	statbuf->st_rdev = inode->i_rdev;
 	statbuf->st_size = inode->i_size;
 	statbuf->st_atime = inode->i_atime;
 	statbuf->st_mtime = inode->i_mtime;
@@ -574,14 +574,13 @@ i32 syscall_fstat(i32 fd, struct stat *statbuf) {
 	statbuf->st_nlink = inode->i_links_count;
 	statbuf->st_uid = inode->i_uid;
 	statbuf->st_gid = inode->i_gid;
-	statbuf->st_rdev = 0;
+	statbuf->st_rdev = inode->i_rdev;
 	statbuf->st_size = inode->i_size;
 	statbuf->st_atime = inode->i_atime;
 	statbuf->st_mtime = inode->i_mtime;
 	statbuf->st_ctime = inode->i_ctime;
 	statbuf->st_blksize = inode->i_sb->s_block_size;
 	statbuf->st_blocks = inode->i_blocks;
-	vfs_iput(inode);
 	return 0;
 }
 
@@ -1295,7 +1294,7 @@ i32 syscall_lstat(i8 *path, struct stat *statbuf) {
 	statbuf->st_nlink = inode->i_links_count;
 	statbuf->st_uid = inode->i_uid;
 	statbuf->st_gid = inode->i_gid;
-	statbuf->st_rdev = 0;
+	statbuf->st_rdev = inode->i_rdev;
 	statbuf->st_size = inode->i_size;
 	statbuf->st_atime = inode->i_atime;
 	statbuf->st_mtime = inode->i_mtime;

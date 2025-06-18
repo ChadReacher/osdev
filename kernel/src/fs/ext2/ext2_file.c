@@ -128,6 +128,7 @@ i32 ext2_readdir(struct vfs_inode *inode, struct file *fp,
 			}
 			de = (struct ext2_dir *)(buf->data + offset);
 		}
+		brelse(buf);
 	}
 	brelse(buf);
 	return 0;

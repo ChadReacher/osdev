@@ -25,11 +25,11 @@ Core:
   * Introduce dynamic libraries
   * Introduce dynamic loader
   * Add bootinfo structure and pass it from bootloader to kernel
-  * Write code to load kernel which size is bigger than 250 sectors
+  * [DONE] Write code to load kernel which size is bigger than 250 sectors
 
 Devices:
   * Implement several TTYs
-  * Implement block cache
+  * [DONE] Implement block cache
   * Implement devfs?
 
 Misc:
@@ -44,6 +44,7 @@ Misc:
   * Introduce threads
   * Introduce asynchronous functions
   * Introduce even-driven architecture
+  * Introduce kernel stack trace
 
 Plan:
 * [DONE] Implement pipe as file system
@@ -54,7 +55,7 @@ Plan:
 * [DONE] Improve/revise signals implementation
 * ...
 * [DONE] Introduce block cache
-* Implement truncate(2) syscall
+* [DONE] Implement truncate(2) syscall
 * ...
 * Introduce memory zones? mmap(2) syscall?
 * ...

@@ -329,6 +329,7 @@ void ata_init(void) {
 	devices[1].slave = 1;
 	ata_device_detect(&devices[0], 1);
 	ata_device_detect(&devices[1], 1);
+    debug("ATA device driver has been initialized for master & slave drives\r\n");
 
 	for (drive = 0; drive < NR_HD; ++drive) {
 		ata_read(&devices[drive], 0, 1, boot_sect);
