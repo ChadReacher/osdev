@@ -1,3 +1,4 @@
+#include <types.h>
 #include <syscall.h>
 #include <stdio.h>
 #include <panic.h>
@@ -23,7 +24,7 @@
 #include <vfs.h>
 #include <bcache.h>
 #include <ata.h>
-
+#include <socket.h>
 
 extern u32 startup_time;
 extern u32 ticks;
@@ -32,7 +33,7 @@ extern u32 next_pid;
 extern struct file file_table[NR_FILE];
 extern struct tty_struct tty_table[];
 
-extern void irq_ret();
+extern void irq_ret(void);
 
 i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
     i32 fd, res;
@@ -417,8 +418,9 @@ void do_exit(i32 code) {
     panic("Zombie returned from scheduler\n");
 }
 
-void syscall_exit(i32 exit_code) {
+i32 syscall_exit(i32 exit_code) {
     do_exit((exit_code & 0xFF) << 8);
+    return 0;
 }
 
 i32 syscall_waitpid(i32 pid, i32 *stat_loc, i32 options) {
@@ -889,7 +891,7 @@ i32 syscall_times(tms *buffer) {
     return ticks;
 }
 
-u32 syscall_umask(u32 cmask) {
+i32 syscall_umask(u32 cmask) {
     u32 old = current_process->umask;
     current_process->umask = cmask & 0777;
     return old;
@@ -1376,3 +1378,59 @@ i32 syscall_umount(const i8 *target) {
     }
     return 0;
 }
+
+i32 syscall_socket(i32 domain, i32 type, i32 protocol) {
+    // domain is only supported for: AF_INET
+    if (domain != AF_INET) {
+        return -EINVAL;
+    }
+
+    // type is only supported for: SOCK_STREAM (TCP), SOCK_DGRAM (UDP), SOCK_RAW (for ICMP?) 
+    if (type != SOCK_DGRAM && type != SOCK_RAW && type != SOCK_STREAM) {
+        return -EINVAL;
+    }
+    
+    // protocol is only supported for: 0 i.e. default protocol
+    if (protocol != 0) {
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+i32 syscall_connect() {
+    return -EINVAL;
+}
+
+i32 syscall_bind() {
+    return -EINVAL;
+}
+
+i32 syscall_listen() {
+    return -EINVAL;
+}
+
+i32 syscall_accept() {
+    return -EINVAL;
+}
+
+i32 syscall_send() {
+    return -EINVAL;
+}
+
+i32 syscall_sendto() {
+    return -EINVAL;
+}
+
+i32 syscall_recv() {
+    return -EINVAL;
+}
+
+i32 syscall_recvfrom() {
+    return -EINVAL;
+}
+
+i32 syscall_shutdown() {
+    return -EINVAL;
+}
+

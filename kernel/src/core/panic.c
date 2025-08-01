@@ -58,3 +58,4 @@ void stack_trace(void) {
         eip = *((u32 *)ebp + 1);
     }
 }
+

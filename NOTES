@@ -10,4 +10,3 @@ This forum discussion saved me - https://forum.osdev.org/viewtopic.php?t=24394.
 Bugs:
 * ./test searches the binary executable in PATH. It finds and executes this file
 * test program behaves strange. When stopping the program and then resuming it, the counter starts just 1 number above. For example, we stopped at 3, and it started at 5
-* Ctrl+D does not work

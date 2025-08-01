@@ -20,10 +20,20 @@ Plans for working on OS:
      UDP client: echo 'Sky is blue' | nc -u 192.168.0.115 3232
 
    - Application layer:		DHCP, DNS, HTTP
- - Network sockets (POSIX)
- - Userspace 'ping' utility
+ - Network sockets (POSIX). Implement the following system calls:
+   - socket(2) creates a socket
+   - connect(2) connects a socket to a remote socket address
+   - bind(2) binds a socket to a local socket address
+   - listen(2) tells a socket that new connections shall be accepted
+   - accept(2) is used to get a new socket with a new incoming connection
+   - send(2), sendto(2) send data over a socket
+   - recv(2), recvfrom(2) receive data from a socket
+   - read(2), write(2) can also be used to read and write data
+   - close(2) close a socket
+   - shutdown(2) closes parts of a full-duplex socket connection
  - HTTP server
  - HTTP client
+ - Userspace 'ping' utility
 
 Filesystem:
   * [DONE] Implement pipe as file system

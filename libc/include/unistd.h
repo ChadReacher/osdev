@@ -83,6 +83,16 @@
 #define __NR_truncate       57
 #define __NR_mount          58
 #define __NR_umount         59
+#define __NR_socket			60
+#define __NR_connect		61
+#define __NR_bind			62
+#define __NR_listen			63
+#define __NR_accept			64
+#define __NR_send			65
+#define __NR_sendto			66
+#define __NR_recv			67
+#define __NR_recvfrom		68
+#define __NR_shutdown		69
 
 #define syscall0(type, name) \
 type name(void) { \

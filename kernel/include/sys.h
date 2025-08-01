@@ -1,7 +1,7 @@
 #ifndef SYS_H
 #define SYS_H
 
-#define NR_SYSCALLS 60
+#define NR_SYSCALLS 70
 
 typedef i32 (*syscall_fn)();
 
@@ -19,7 +19,7 @@ i32 syscall_chdir();
 i32 syscall_time();
 i32 syscall_lseek();
 i32 syscall_getpid();
-i32 syscall_setuid();
+i32 syscall_setuid(u16 uid);
 i32 syscall_getuid();
 i32 syscall_alarm();
 i32 syscall_fstat();
@@ -48,7 +48,7 @@ i32 syscall_sleep();
 i32 syscall_umask();
 i32 syscall_link();
 i32 syscall_rename();
-i32 syscall_readdir();
+struct dirent *syscall_readdir(DIR *dirp);
 i32 syscall_stat();
 i32 syscall_access();
 i32 syscall_dup2();
@@ -65,6 +65,16 @@ i32 syscall_lstat();
 i32 syscall_truncate();
 i32 syscall_mount();
 i32 syscall_umount();
+i32 syscall_socket();
+i32 syscall_connect();
+i32 syscall_bind();
+i32 syscall_listen();
+i32 syscall_accept();
+i32 syscall_send();
+i32 syscall_sendto();
+i32 syscall_recv();
+i32 syscall_recvfrom();
+i32 syscall_shutdown();
 
 syscall_fn syscall_handlers[NR_SYSCALLS] = {
     syscall_test,
@@ -123,10 +133,20 @@ syscall_fn syscall_handlers[NR_SYSCALLS] = {
     syscall_tcgetpgrp,
     syscall_symlink,
     syscall_readlink,
-    syscall_lstat,
-    syscall_truncate,
     syscall_mount,
     syscall_umount,
+	syscall_lstat,
+	syscall_truncate,
+	syscall_socket,
+	syscall_connect,
+	syscall_bind,
+	syscall_listen,
+	syscall_accept,
+	syscall_send,
+	syscall_sendto,
+	syscall_recv,
+	syscall_recvfrom,
+	syscall_shutdown
 };
 
 #endif
