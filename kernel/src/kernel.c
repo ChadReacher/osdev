@@ -28,7 +28,7 @@ void kernel_start(void) {
 	isr_init();
 	irq_init();
 	syscall_init();
-	tss_init(5, 0x10, 0);
+	tss_init(0x10, 0);
 	idt_init();
 	timer_init(TIMER_FREQ);
 	keyboard_init();

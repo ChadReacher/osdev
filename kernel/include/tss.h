@@ -33,9 +33,7 @@ struct tss_entry {
 	u32 iomap;
 } __attribute__((packed));
 
-extern void tss_flush();
-
-void tss_init(u32 idx, u32 kss, u32 kesp);
+void tss_init(u32 kss, u32 kesp);
 void tss_set_stack(u32 kesp);
 
 #endif

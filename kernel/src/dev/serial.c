@@ -38,7 +38,7 @@ i8 read_serial(void) {
 	return port_inb(COM1);
 }
 
-void write_serial(i8 *str) {
+void write_serial(const i8 *str) {
 	while (*str) {
 		u8 ch = *str++;
 		while (is_transmit_empty() == 0);
