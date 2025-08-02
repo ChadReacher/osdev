@@ -8,7 +8,7 @@
 #include <syscall.h>
 #include <timer.h>
 #include <keyboard.h>
-#include <cmos.h>
+#include <cmos_rtc.h>
 #include <pmm.h>
 #include <paging.h>
 #include <console.h>

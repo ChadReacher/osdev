@@ -12,4 +12,6 @@ void panic(i8 *fmt, ...);
     } \
 } while (0)
 
+#define UNUSED __attribute__((__unused__))
+
 #endif
