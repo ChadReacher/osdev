@@ -688,15 +688,15 @@ i32 syscall_sigsuspend(sigset_t *sigmask) {
 i32 syscall_alarm(u32 secs) {
 	i32 old = current_process->alarm;
 	if (old) {
-		old = (old - ticks) / TIMER_FREQ;
+		old = (old - ticks) / TIMER_FREQ_HZ;
 	}
-	current_process->alarm = secs > 0 ? ticks + secs * TIMER_FREQ : 0;
+	current_process->alarm = secs > 0 ? ticks + secs * TIMER_FREQ_HZ : 0;
 	return 0;
 }
 
 i32 syscall_sleep(u32 secs) {
 	current_process->state = INTERRUPTIBLE;
-	current_process->sleep = ticks + secs * TIMER_FREQ;
+	current_process->sleep = ticks + secs * TIMER_FREQ_HZ;
 	schedule();
 	return 0;
 }
@@ -853,7 +853,7 @@ i32 syscall_uname(utsname *name) {
 }
 
 i32 syscall_time(i32 *tloc) {
-	i32 tm = startup_time + ticks / TIMER_FREQ;
+	i32 tm = startup_time + ticks / TIMER_FREQ_HZ;
 	if (tloc) {
 		*tloc = tm;
 	}

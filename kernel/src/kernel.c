@@ -31,7 +31,7 @@ void kernel_start(void) {
 	syscall_init();
 	tss_init();
 	idt_init();
-	timer_init(TIMER_FREQ);
+	timer_init();
 	keyboard_init();
 	cmos_rtc_init();
 	pmm_init();
