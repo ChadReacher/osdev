@@ -42,6 +42,8 @@ void gdt_init(void) {
     gdt_add_entry(0x0, 0xFFFFFFFF, 0xF2, 0xCF);
 
     gdt_flush((u32)(&gdtr));
+
+    debug("GDT has been initialized\r\n");
 }
 
 void gdt_add_entry(u32 base, u32 limit, u8 access_byte, u8 granularity) {

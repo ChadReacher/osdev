@@ -64,64 +64,65 @@ void breakpoint_handler(struct registers_state *regs) {
 	);
 }
 
-void isr_init() {
+void isr_init(void) {
 	pic_remap();
 
-	idt_set(0, (u32)isr0, 0x8E);
-	idt_set(1, (u32)isr1, 0x8E);
-	idt_set(2, (u32)isr2, 0x8E);
-	idt_set(3, (u32)isr3, 0x8E);
-	idt_set(4, (u32)isr4, 0x8E);
-	idt_set(5, (u32)isr5, 0x8E);
-	idt_set(6, (u32)isr6, 0x8E);
-	idt_set(7, (u32)isr7, 0x8E);
-	idt_set(8, (u32)isr8, 0x8E);
-	idt_set(9, (u32)isr9, 0x8E);
-	idt_set(10, (u32)isr10, 0x8E);
-	idt_set(11, (u32)isr11, 0x8E);
-	idt_set(12, (u32)isr12, 0x8E);
-	idt_set(13, (u32)isr13, 0x8E);
-	idt_set(14, (u32)isr14, 0x8E);
-	idt_set(15, (u32)isr15, 0x8E);
-	idt_set(16, (u32)isr16, 0x8E);
-	idt_set(17, (u32)isr17, 0x8E);
-	idt_set(18, (u32)isr18, 0x8E);
-	idt_set(19, (u32)isr19, 0x8E);
-	idt_set(20, (u32)isr20, 0x8E);
-	idt_set(21, (u32)isr21, 0x8E);
-	idt_set(22, (u32)isr22, 0x8E);
-	idt_set(23, (u32)isr23, 0x8E);
-	idt_set(24, (u32)isr24, 0x8E);
-	idt_set(25, (u32)isr25, 0x8E);
-	idt_set(26, (u32)isr26, 0x8E);
-	idt_set(27, (u32)isr27, 0x8E);
-	idt_set(28, (u32)isr28, 0x8E);
-	idt_set(29, (u32)isr29, 0x8E);
-	idt_set(30, (u32)isr30, 0x8E);
-	idt_set(31, (u32)isr31, 0x8E);
+	idt_set(0, (u32)isr0, INTERRUPT_GATE_TYPE);
+	idt_set(1, (u32)isr1, INTERRUPT_GATE_TYPE);
+	idt_set(2, (u32)isr2, INTERRUPT_GATE_TYPE);
+	idt_set(3, (u32)isr3, INTERRUPT_GATE_TYPE);
+	idt_set(4, (u32)isr4, INTERRUPT_GATE_TYPE);
+	idt_set(5, (u32)isr5, INTERRUPT_GATE_TYPE);
+	idt_set(6, (u32)isr6, INTERRUPT_GATE_TYPE);
+	idt_set(7, (u32)isr7, INTERRUPT_GATE_TYPE);
+	idt_set(8, (u32)isr8, INTERRUPT_GATE_TYPE);
+	idt_set(9, (u32)isr9, INTERRUPT_GATE_TYPE);
+	idt_set(10, (u32)isr10, INTERRUPT_GATE_TYPE);
+	idt_set(11, (u32)isr11, INTERRUPT_GATE_TYPE);
+	idt_set(12, (u32)isr12, INTERRUPT_GATE_TYPE);
+	idt_set(13, (u32)isr13, INTERRUPT_GATE_TYPE);
+	idt_set(14, (u32)isr14, INTERRUPT_GATE_TYPE);
+	idt_set(15, (u32)isr15, INTERRUPT_GATE_TYPE);
+	idt_set(16, (u32)isr16, INTERRUPT_GATE_TYPE);
+	idt_set(17, (u32)isr17, INTERRUPT_GATE_TYPE);
+	idt_set(18, (u32)isr18, INTERRUPT_GATE_TYPE);
+	idt_set(19, (u32)isr19, INTERRUPT_GATE_TYPE);
+	idt_set(20, (u32)isr20, INTERRUPT_GATE_TYPE);
+	idt_set(21, (u32)isr21, INTERRUPT_GATE_TYPE);
+	idt_set(22, (u32)isr22, INTERRUPT_GATE_TYPE);
+	idt_set(23, (u32)isr23, INTERRUPT_GATE_TYPE);
+	idt_set(24, (u32)isr24, INTERRUPT_GATE_TYPE);
+	idt_set(25, (u32)isr25, INTERRUPT_GATE_TYPE);
+	idt_set(26, (u32)isr26, INTERRUPT_GATE_TYPE);
+	idt_set(27, (u32)isr27, INTERRUPT_GATE_TYPE);
+	idt_set(28, (u32)isr28, INTERRUPT_GATE_TYPE);
+	idt_set(29, (u32)isr29, INTERRUPT_GATE_TYPE);
+	idt_set(30, (u32)isr30, INTERRUPT_GATE_TYPE);
+	idt_set(31, (u32)isr31, INTERRUPT_GATE_TYPE);
 
 	register_interrupt_handler(3, breakpoint_handler);
 
 	debug("ISRs have been initialized\r\n");
 }
 
-void irq_init() {
-	idt_set(32, (u32)irq0, 0x8E);
-	idt_set(33, (u32)irq1, 0x8E);
-	idt_set(34, (u32)irq2, 0x8E);
-	idt_set(35, (u32)irq3, 0x8E);
-	idt_set(36, (u32)irq4, 0x8E);
-	idt_set(37, (u32)irq5, 0x8E);
-	idt_set(38, (u32)irq6, 0x8E);
-	idt_set(39, (u32)irq7, 0x8E);
-	idt_set(40, (u32)irq8, 0x8E);
-	idt_set(41, (u32)irq9, 0x8E);
-	idt_set(42, (u32)irq10, 0x8E);
-	idt_set(43, (u32)irq11, 0x8E);
-	idt_set(44, (u32)irq12, 0x8E);
-	idt_set(45, (u32)irq13, 0x8E);
-	idt_set(46, (u32)irq14, 0x8E);
-	idt_set(47, (u32)irq15, 0x8E);
+void irq_init(void) {
+	idt_set(32, (u32)irq0, INTERRUPT_GATE_TYPE);
+	idt_set(33, (u32)irq1, INTERRUPT_GATE_TYPE);
+	idt_set(34, (u32)irq2, INTERRUPT_GATE_TYPE);
+	idt_set(35, (u32)irq3, INTERRUPT_GATE_TYPE);
+	idt_set(36, (u32)irq4, INTERRUPT_GATE_TYPE);
+	idt_set(37, (u32)irq5, INTERRUPT_GATE_TYPE);
+	idt_set(38, (u32)irq6, INTERRUPT_GATE_TYPE);
+	idt_set(39, (u32)irq7, INTERRUPT_GATE_TYPE);
+	idt_set(40, (u32)irq8, INTERRUPT_GATE_TYPE);
+	idt_set(41, (u32)irq9, INTERRUPT_GATE_TYPE);
+	idt_set(42, (u32)irq10, INTERRUPT_GATE_TYPE);
+	idt_set(43, (u32)irq11, INTERRUPT_GATE_TYPE);
+	idt_set(44, (u32)irq12, INTERRUPT_GATE_TYPE);
+	idt_set(45, (u32)irq13, INTERRUPT_GATE_TYPE);
+	idt_set(46, (u32)irq14, INTERRUPT_GATE_TYPE);
+	idt_set(47, (u32)irq15, INTERRUPT_GATE_TYPE);
+
 	debug("IRQs have been initialized\r\n");
 }
 
@@ -137,8 +138,10 @@ void check_signals(struct registers_state *regs) {
 	}
 }
 
-void syscall_init() {
+void syscall_init(void) {
 	idt_set(SYSCALL, (u32)isr0x80, 0xEE);
+
+    debug("Syscall handler has been initialized\r\n");
 }
 
 i32 syscall_handler(struct registers_state *regs) {
@@ -190,6 +193,6 @@ void irq_handler(struct registers_state *regs) {
 		isr_t handler = interrupt_handlers[regs->int_number];
 		handler(regs);
 	} else {
-		debug("interesting interrupt - %d\r\n", regs->int_number);
+		debug("Received spurious interrupt - %d\r\n", regs->int_number);
 	}
 }

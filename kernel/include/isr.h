@@ -81,9 +81,9 @@ struct registers_state {
 	u32 eip, cs, eflags, useresp, ss;
 };
 
-void isr_init();
-void irq_init();
-void syscall_init();
+void isr_init(void);
+void irq_init(void);
+void syscall_init(void);
 void isr_handler(struct registers_state *regs);
 void irq_handler(struct registers_state *regs);
 i32 syscall_handler(struct registers_state *regs);

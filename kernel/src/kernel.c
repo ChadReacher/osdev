@@ -21,6 +21,7 @@
 #include <ext2.h>
 #include <elf.h>
 #include <bcache.h>
+#include <common.h>
 
 void kernel_start(void) {
 	serial_init();
@@ -28,7 +29,7 @@ void kernel_start(void) {
 	isr_init();
 	irq_init();
 	syscall_init();
-	tss_init(0x10, 0);
+	tss_init();
 	idt_init();
 	timer_init(TIMER_FREQ);
 	keyboard_init();
