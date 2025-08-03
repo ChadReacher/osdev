@@ -25,15 +25,18 @@ void heap_init() {
 	heap_curr = heap_start;
 	heap_end = (u8 *)heap_start + HEAP_INITIAL_SIZE;
 	heap_max = (void *)HEAP_MAX_ADDRESS;
-	debug("Heap initial size - 0x%x\r\n", HEAP_INITIAL_SIZE);
+	debug("Heap initial size - %#x\r\n", HEAP_INITIAL_SIZE);
 	debug("Virtual heap start - %p\r\n", heap_start);
 	debug("Virtual heap end - %p\r\n", heap_end);
 	debug("Virtual heap max address - %p\r\n", heap_max);
 
 
 	heap_blocks = HEAP_INITIAL_SIZE / PMM_BLOCK_SIZE;
-	debug("Heap consists of 0x%x heap blocks(4KB)\r\n", heap_blocks);
+	debug("Heap consists of %#x heap blocks(4KB)\r\n", heap_blocks);
 	heap_ptr = allocate_blocks(heap_blocks);
+    if (heap_ptr == NULL) {
+        panic("Failed to allocate %d physical blocks: not enough space :(", heap_blocks);
+    }
 	debug("Allocated %d heap blocks at physical address %p\r\n", heap_blocks, heap_ptr);
 	debug("Heap ends at physical address %p\r\n", (u8*)heap_ptr + HEAP_INITIAL_SIZE);
 
@@ -48,7 +51,7 @@ void heap_init() {
 		heap_virt_addr += PAGE_SIZE;
 		heap_phys_addr += PMM_BLOCK_SIZE;
 	}
-	debug("heap virt addr - 0x%x\r\n", heap_virt_addr - PAGE_SIZE);
+	debug("heap virt addr - %#x\r\n", heap_virt_addr - PAGE_SIZE);
 	debug("Finished heap\r\n");
 }
 

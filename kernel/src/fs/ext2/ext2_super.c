@@ -60,7 +60,7 @@ static void dump_super_block_info(struct ext2_super_block *sb) {
 	debug("s_wtime             = %d\r\n", sb->s_wtime);
 	debug("s_mnt_count         = %d\r\n", sb->s_mnt_count);
 	debug("s_max_mnt_count     = %d\r\n", sb->s_max_mnt_count);
-	debug("s_magic             = 0x%x\r\n", sb->s_magic);
+	debug("s_magic             = %#x\r\n", sb->s_magic);
 	debug("s_state             = %d\r\n", sb->s_state);
 	debug("s_errors            = %d\r\n", sb->s_errors);
 	debug("s_minor_rev_level   = %d\r\n", sb->s_minor_rev_level);

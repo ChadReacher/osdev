@@ -14,7 +14,7 @@ void pagefault_handler(struct registers_state *regs) {
 	__asm__ volatile ("movl %%cr2, %0" : "=r"(bad_address));
 	err_code = regs->err_code;
 
-	debug("Page Fault Exception. Bad Address: 0x%x. Error code: %d\r\n", bad_address, err_code);
+	debug("Page Fault Exception. Bad Address: %#x. Error code: %d\r\n", bad_address, err_code);
 	kprintf("page fault\r\n");
 
 	not_present = err_code & 0x1;
@@ -26,6 +26,9 @@ void pagefault_handler(struct registers_state *regs) {
 		debug("%s", "User heap\r\n");
 		/* Fault due to user heap expansion */
 		new_heap_page = allocate_blocks(1);
+        if (new_heap_page == NULL) {
+            panic("Failed to allocate new physical block: not enough space :(");
+        }
 		map_page(new_heap_page, (void *)bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
 	} else {
 		debug("%s", "Not user heap\r\n");
@@ -56,6 +59,9 @@ void map_page(void *phys_addr, void *virt_addr, u32 flags) {
 	if ((*entry & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
 		page_table_t *new_page_table;
 		table = (page_table_t *)allocate_blocks(1);
+        if (table == NULL) {
+            panic("Failed to allocate new physical block: not enough space :(");
+        }
 		//debug("Created new table at %p\r\n", (void *)table);
 		if (!table) {
 			return;
@@ -171,6 +177,9 @@ page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
 	u32 i, j;
 	page_directory_t *new_pd, *cur_pd;
 	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
+    if (new_page_dir_phys == NULL) {
+        panic("Failed to allocate new physical block: not enough space :(");
+    }
 
 	if (new_page_dir_phys == NULL) {
 		return NULL;

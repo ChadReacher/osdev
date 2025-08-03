@@ -51,11 +51,11 @@ i8 *exception_messages[] = {
 
 void breakpoint_handler(struct registers_state *regs) {
     kprintf("Exception: BREAKPOINT\n"
-          "   Instruction Pointer = 0x%x\n"
-          "   Code Segment        = 0x%x\n"
-          "   CPU Flags           = 0x%x\n"
-          "   Stack Pointer       = 0x%x\n"
-          "   Stack Segment       = 0x%x\n",
+          "   Instruction Pointer = %#x\n"
+          "   Code Segment        = %#x\n"
+          "   CPU Flags           = %#x\n"
+          "   Stack Pointer       = %#x\n"
+          "   Stack Segment       = %#x\n",
           regs->eip,
           regs->cs,
           regs->eflags,
@@ -167,11 +167,11 @@ void isr_handler(struct registers_state *regs) {
     }
 
     panic("Received interrupt: %s(%d) with error code: %x\n\n"
-          "   Instruction Pointer = 0x%x\n"
-          "   Code Segment      = 0x%x\n"
-          "   CPU Flags         = 0x%x\n"
-          "   Stack Pointer     = 0x%x\n"
-          "   Stack Segment     = 0x%x\n", 
+          "   Instruction Pointer = %#x\n"
+          "   Code Segment        = %#x\n"
+          "   CPU Flags           = %#x\n"
+          "   Stack Pointer       = %#x\n"
+          "   Stack Segment       = %#x\n",
         exception_messages[regs->int_number], regs->int_number, regs->err_code,
         regs->eip,
         regs->cs,

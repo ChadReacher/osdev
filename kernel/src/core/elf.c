@@ -31,6 +31,9 @@ static void map_user_stack() {
 	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
 
 	stack_frame = allocate_blocks(1);
+    if (stack_frame == NULL) {
+        panic("Failed to allocate new physical block: not enough space :(");
+    }
 	map_page(stack_frame, (void *)0xBFFFF000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
 	stack_pd_entry = &cur_pd->entries[767];
 	*stack_pd_entry |= PAGING_FLAG_PRESENT;
@@ -93,6 +96,9 @@ static void setup_heap(u32 last_addr) {
 	void *brk_phys_frame;
 
 	brk_phys_frame = allocate_blocks(1);
+    if (brk_phys_frame == NULL) {
+        panic("Failed to allocate new physical block: not enough space :(");
+    }
 	current_process->brk = ALIGN_UP(last_addr, 4096);
 	map_page(brk_phys_frame, (void *)current_process->brk, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
 }
@@ -189,6 +195,9 @@ i32 elf_load(struct vfs_inode *inode,
 			++blocks;
 		}
 		code_phys_frame = allocate_blocks(blocks);
+        if (code_phys_frame == NULL) {
+            panic("Failed to allocate new physical block: not enough space :(");
+        }
 		/* Map necessary pages for code */
 		for (j = 0, addr = program_header.vaddr; j < blocks; ++j, addr += 0x1000) {
 			u32 phys_code_page = (u32)code_phys_frame + j * 0x1000;

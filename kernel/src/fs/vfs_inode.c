@@ -12,7 +12,7 @@ void sync_inodes(void) {
 
     for (i32 i = 0; i < NR_INODES; ++i) {
 		inode = &inodes_table[i];
-		debug("i_flags - 0x%x, i_num - %d, i_count - %d, i_dirt - 0x%x, i_pipe - 0x%x\r\n",
+		debug("i_flags - %#x, i_num - %d, i_count - %d, i_dirt - %#x, i_pipe - %#x\r\n",
 			inode->i_flags, inode->i_num, inode->i_count, inode->i_dirt, inode->i_pipe);
                 if (inode->i_dirt) {
                         if (inode->i_sb != NULL && inode->i_sb->fs_ops && inode->i_sb->fs_ops->write_inode) {
