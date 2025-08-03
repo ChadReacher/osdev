@@ -10,8 +10,7 @@ KERNEL_DEPS = $(OBJECTS) ../build/libk.a
 
 kernel: $(DEPENDENCIES) $(KERNEL_DEPS)
 	$(LD) $(KERNEL_DEPS) -o ../build/kernel.elf -T linker.ld $(LDFLAGS)
-	cp ../build/kernel.elf ../build/kernel.bin
-	#$(OBJCOPY) -S ../build/kernel.elf ../build/kernel.bin
+	$(OBJCOPY) -S ../build/kernel.elf ../build/kernel.bin
 
 ifeq (,$(findstring $(MAKECMDGOALS),clean-deps))
 ifneq ($(strip $(DEPENDENCIES)), "")
