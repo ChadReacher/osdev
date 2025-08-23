@@ -10,6 +10,9 @@ struct buffer head;
 void bcache_init(void) {
         for (i32 i = 0; i < NBUF; ++i) {
                 bufs[i] = malloc(sizeof(struct buffer));
+                if (bufs[i] == NULL) {
+                    panic("[%s]: failed to allocate enough memory\r\n", __FUNCTION__);
+                }
                 memset(bufs[i], 0, sizeof(struct buffer));
         }
 
