@@ -52,10 +52,26 @@ struct partition {
 /* For now supporting only 2 drives */
 #define NR_HD 2
 #define IDENTIFY_COMMAND 0xEC
+#define WRITE_DMA_COMMAND 0xCA
+#define READ_DMA_COMMAND 0xC8
 
 #define SECTOR_SIZE 512
 
-void ata_init();
+#define PRIMARY_DATA_REG 0x1F0
+#define SECONDARY_DATA_REG 0x170
+#define PRIMARY_ALT_STATUS_REG 0x3F6
+#define SECONDARY_ALT_STATUS_REG 0x376
+
+#define STATUS_ERR  0x01
+#define STATUS_DRQ  0x08
+#define STATUS_DRDY 0x40
+#define STATUS_BSY  0x80
+
+#define CONTROL_NIEN    0x02
+#define CONTROL_SRST    0x04
+#define CONTROL_HOB     0x80
+
+void ata_init(void);
 void rw_ata(u32 rw, u16 dev, u32 block, i8 *buf);
 
 #endif
