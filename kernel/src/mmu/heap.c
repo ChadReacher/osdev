@@ -11,6 +11,7 @@ static struct heap_block *block_list;
 
 static struct heap_block *best_fit(u32 size);
 static void split_block(struct heap_block *block, u32 size);
+static void *sbrk(u32 increment);
 
 void heap_init(void) {
     heap_curr = (void *)HEAP_START;
@@ -37,7 +38,7 @@ void heap_init(void) {
     debug("Kernel heap has been initialized\r\n");
 }
 
-void *sbrk(u32 increment) {
+static void *sbrk(u32 increment) {
     void *old_boundary = heap_curr;
     u32 new_boundary = (u32)heap_curr + increment;
 

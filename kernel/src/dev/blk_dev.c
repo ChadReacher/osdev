@@ -99,10 +99,11 @@ blk_fn blk_dev[] = {
 
 void blk_dev_read(struct buffer *buf) {
 	blk_fn blk_addr;
-	u16 major;
 
-	if ((major=MAJOR(buf->dev)) >= NRBLKDEV || !(blk_addr=blk_dev[major])) {
+    u16 major = MAJOR(buf->dev);
+	if (major >= NRBLKDEV || !(blk_addr=blk_dev[major])) {
 		panic("nonexistent block device");
+        return;
 	}
 	blk_addr(READ, buf->dev, buf->block, buf->data);
 }
@@ -116,6 +117,7 @@ void blk_dev_write(struct buffer *buf) {
 	}
 	if ((major=MAJOR(buf->dev)) >= NRBLKDEV || !(blk_addr=blk_dev[major])) {
 		panic("nonexistent block device");
+        return;
 	}
 	blk_addr(WRITE, buf->dev, buf->block, buf->data);
 }

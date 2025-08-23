@@ -66,7 +66,15 @@ void user_init() {
 	}
         
 	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
+    if (argv == NULL) {
+        panic("Failed to allocate enough memory for argv");
+        return;
+    }
 	envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
+    if (envp == NULL) {
+        panic("Failed to allocate enough memory for envp");
+        return;
+    }
 	envp[0] = strdup("PATH=/bin");
 	argv[argc] = NULL;
 	envp[envc] = NULL;

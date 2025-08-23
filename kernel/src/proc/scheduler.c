@@ -143,6 +143,10 @@ void task_switch(struct proc *next_proc) {
 
 void create_idle_process() {
 	struct proc *idle_process = procs[0] = malloc(sizeof(struct proc));
+    if (idle_process == NULL) {
+        panic("Failed to allocate process structure for idle process");
+        return;
+    }
 	memset(idle_process, 0, sizeof(struct proc));
 
 	idle_process->pid = next_pid++;
@@ -150,6 +154,10 @@ void create_idle_process() {
 	idle_process->state = RUNNING;
 	idle_process->directory = (struct page_directory *)virtual_to_physical(CURR_PAGE_DIR);
 	idle_process->kernel_stack_bottom = malloc(4096 *2);
+    if (idle_process->kernel_stack_bottom == NULL) {
+        panic("Failed to allocate kernel stack for idle process");
+        return;
+    }
 	memset(idle_process->kernel_stack_bottom, 0, 4096 * 2);
 	idle_process->regs = (struct registers_state *)
 		(ALIGN_DOWN((u32)idle_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
@@ -174,11 +182,19 @@ void scheduler_init() {
 	create_idle_process();
 
 	init_process = current_process = procs[1] = malloc(sizeof(struct proc));
+    if (init_process == NULL) {
+        panic("Failed to allocate process structure for init process");
+        return;
+    }
 	memset(init_process, 0, sizeof(struct proc));
 	init_process->pid = next_pid++;
 	init_process->timeslice = 20;
 	init_process->state = RUNNING;
 	init_process->kernel_stack_bottom = malloc(4096 * 2);
+    if (init_process->kernel_stack_bottom == NULL) {
+        panic("Failed to allocate enough memory for kernel stack for init process");
+        return;
+    }
 	memset(init_process->kernel_stack_bottom, 0, 4096 * 2);
 	init_process->regs = (struct registers_state *)
 		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)

@@ -4,6 +4,7 @@
 #include <scheduler.h>
 #include <errno.h>
 #include <heap.h>
+#include <panic.h>
 
 static i32 bad_pipe_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 static i32 bad_pipe_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
@@ -101,6 +102,10 @@ struct vfs_inode *get_pipe_inode() {
 	inode->i_count = 2;
 	inode->i_pipe = 1;
 	inode->u.i_pipe.i_buf = malloc(4096);
+    if (inode->u.i_pipe.i_buf == NULL) {
+        panic("Failed to allocate enough memory for pipe buffer");
+        return NULL;
+    }
 	inode->u.i_pipe.i_head = 0;
 	inode->u.i_pipe.i_tail = 0;
 	return inode;

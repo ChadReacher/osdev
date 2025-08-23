@@ -210,7 +210,8 @@ i32 syscall_fork() {
 	}
 	child = procs[idx] = malloc(sizeof(struct proc));
 	if (!child) {
-		return -EAGAIN;
+        debug("Failed to allocate enough memory for child process structure");
+		return -ENOMEM;
 	}
 	*child = *current_process;
 	child->pid = next_pid++;
@@ -223,6 +224,9 @@ i32 syscall_fork() {
 		return -EAGAIN;
 	}
 	child->kernel_stack_bottom = malloc(4096 *2);
+    if (child->kernel_stack_bottom == NULL) {
+        panic("Failed to allocate the kernel stack for child process");
+    }
 	memset(child->kernel_stack_bottom, 0, 4096 * 2);
 	child->regs = (struct registers_state *)
 		(ALIGN_DOWN((u32)child->kernel_stack_bottom + 4096 * 2 - 1, 4)
