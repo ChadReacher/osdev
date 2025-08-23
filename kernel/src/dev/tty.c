@@ -6,8 +6,8 @@
 #include <errno.h>
 #include <signal.h> 
 #include <chr_dev.h>
+#include <console.h>
 
-void console_write(struct tty_struct *tty);
 i32 is_orphaned_pgrp(i32 pgrp);
 i32 kill_pgrp(i32 pgrp, i32 sig);
 

@@ -2,8 +2,9 @@
 #define CONSOLE_H
 
 #include <types.h>
+#include <tty.h>
 
-void console_init();
-void console_write();
+void console_init(void);
+void console_write(struct tty_struct *tty);
 
 #endif
