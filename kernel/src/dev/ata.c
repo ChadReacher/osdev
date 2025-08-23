@@ -312,7 +312,7 @@ void ata_init(void) {
 	struct partition *p;
 	u32 drive, i, pci_command_reg;
 
-	ata_dev = pci_get_device(ATA_PCI_VENDOR_ID, ATA_PCI_DEVICE_ID, -1);
+	ata_dev = pci_probe_device(ATA_PCI_VENDOR_ID, ATA_PCI_DEVICE_ID, -1);
 	
 	register_interrupt_handler(IRQ14, ata_handler);
 	register_interrupt_handler(IRQ15, ata_handler);
