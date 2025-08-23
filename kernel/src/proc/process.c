@@ -77,7 +77,7 @@ void user_init() {
 	init_process->sleep = 0;
 	init_process->tty = -1;
 	init_process->directory = paging_copy_page_dir(0);
-	kernel_page_dir = virtual_to_physical((void *)0xFFFFF000);
+	kernel_page_dir = (void *)virtual_to_physical(CURR_PAGE_DIR);
 	__asm__ volatile ("movl %%eax, %%cr3" : : "a"(init_process->directory));
 	if ((err = elf_load(inode, argc, argv, envc, envp))) {
 		vfs_iput(inode);

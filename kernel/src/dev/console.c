@@ -255,8 +255,7 @@ void console_init() {
 	phys_addr = 0xB8000;
 	virt_addr = SCREEN_START;
 	for (i = 0; i < 0x8000; i += 0x1000) {
-		map_page((void *)(phys_addr + i), (void *)(virt_addr + i),
-				PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+		map_page(phys_addr + i, virt_addr + i, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 	}
 	x = y = 0;
 	pos = SCREEN_START;

@@ -2,7 +2,7 @@
 #define ATA_H
 
 #include "types.h"
-#include "isr.h"
+#include <paging.h>
 
 struct phys_reg_desc {
 	u32 phys_data_buf;
@@ -29,7 +29,7 @@ struct ata_device {
 	u32 bmr_prdt;
 
 	struct phys_reg_desc *prdt;
-	u8 *prdt_phys;
+	physical_address prdt_phys;
 	u8 *mem_buffer;
 };
 

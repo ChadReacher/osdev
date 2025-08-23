@@ -148,7 +148,7 @@ void create_idle_process() {
 	idle_process->pid = next_pid++;
 	idle_process->timeslice = 20;
 	idle_process->state = RUNNING;
-	idle_process->directory = virtual_to_physical((void *)0xFFFFF000);
+	idle_process->directory = (struct page_directory *)virtual_to_physical(CURR_PAGE_DIR);
 	idle_process->kernel_stack_bottom = malloc(4096 *2);
 	memset(idle_process->kernel_stack_bottom, 0, 4096 * 2);
 	idle_process->regs = (struct registers_state *)

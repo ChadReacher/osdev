@@ -216,6 +216,7 @@ i32 syscall_fork() {
 	child->pid = next_pid++;
 	child->parent = current_process;
 	child->directory = paging_copy_page_dir(1);
+
 	if (!child->directory) {
 		--next_pid;
 		free(child);

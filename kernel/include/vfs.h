@@ -4,7 +4,6 @@
 #include "types.h"
 #include "ext2.h"
 #include "pipe.h"
-#include "process.h"
 
 
 #define S_IFMT   0170000

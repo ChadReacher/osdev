@@ -3,283 +3,238 @@
 #include <panic.h>
 #include <pmm.h>
 #include <process.h>
-#include <stdio.h>
+#include <common.h>
 
-page_directory_t *cur_page_dir = (page_directory_t *)0xFFFFF000;
+static struct page_directory *cur_page_dir = (struct page_directory *)CURR_PAGE_DIR;
+
+static void unmap_page(virtual_address vaddr);
+
+static void flush_tlb(void) {
+    __asm__ volatile ("movl %%cr3, %%eax" : : );
+    __asm__ volatile ("movl %%eax, %%cr3" : : );
+}
 
 void pagefault_handler(struct registers_state *regs) {
-	u32 bad_address, err_code;
-	i8 not_present, rw, us;
+    u32 bad_address;
 
-	__asm__ volatile ("movl %%cr2, %0" : "=r"(bad_address));
-	err_code = regs->err_code;
+    __asm__ volatile ("movl %%cr2, %0" : "=r"(bad_address));
+    const u32 err_code = regs->err_code;
 
-	debug("Page Fault Exception. Bad Address: %#x. Error code: %d\r\n", bad_address, err_code);
-	kprintf("page fault\r\n");
+    debug("Page Fault Exception. Bad Address: %#x. Error code: %d\r\n", bad_address, err_code);
 
-	not_present = err_code & 0x1;
-	rw = err_code & 0x2;
-	us = err_code & 0x4;
-	
-	if (!not_present && rw && us) {
-		void *new_heap_page;
-		debug("%s", "User heap\r\n");
-		/* Fault due to user heap expansion */
-		new_heap_page = allocate_blocks(1);
+    const i8 present = (err_code & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT;
+    const i8 rw = (err_code & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE;
+    const i8 us = (err_code & PAGING_FLAG_USER) == PAGING_FLAG_USER;
+
+    if (!present && rw && us) {
+        /* Fault due to user heap expansion */
+        void *new_heap_page = allocate_blocks(1);
         if (new_heap_page == NULL) {
             panic("Failed to allocate new physical block: not enough space :(");
         }
-		map_page(new_heap_page, (void *)bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
-	} else {
-		debug("%s", "Not user heap\r\n");
-		while (1) {
-			__asm__ volatile ("cli");
-			__asm__ volatile ("hlt");
-		}
-	}
+        map_page((physical_address)new_heap_page, bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+    } else {
+        while (1) {
+            __asm__ volatile ("cli");
+            __asm__ volatile ("hlt");
+        }
+    }
 }
 
-/* Return a page for a given virtual address in the current page directory */
-page_table_entry *get_page(virtual_address virt_addr) {
-	/* Get page table in page directory */
-	page_table_t *table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
-	
-	/* Get page in table */
-	page_table_entry *page = &table->entries[PAGE_TABLE_INDEX(virt_addr)];
+physical_address virtual_to_physical(virtual_address vaddr) {
+    u32 pd_entry_idx = PAGE_DIR_INDEX(vaddr);
 
-	return page;
+    /* Get page table entry from page directory */
+    const pd_entry entry = cur_page_dir->entries[pd_entry_idx];
+    assert((entry & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT);
+
+    // We use a recursive paging: the last entry in page directory points to the page directory itself
+    // It means that it contains the physical address of page directory
+    // Suppose the page directory is at 0x117000 physical address. Then
+    // PDE[1023] = 0x117000 (discarded the flags for simplicity)
+    // If we take this entry, then we will look at the page directory again
+    // but now in the "table mode". In "table mode" now each entry corresponds to PHYSICAL frame.
+    // *However*, as we look at the page directory that each entry, in fact, is a pointer to a page table, we
+    // effectively see their physical address.
+    // Then if we take the PTE[1023], we will see the 0x117000 value again.
+    // Basically, we reached the physical address of the page directory being in virtual address space.
+    // The specific address that corresponds to physical page directory is 0xFFFFF000.
+    // Why?
+    // Page directory index = 0xFFFFF000 >> 22 = 0x3FF = 1023 i.e. PDE[1023]
+    // Page table index = (0xFFFFF000 >> 12) & 0x3FF = 0x3FF = 1023 i.e PTE[1023]
+    // Page table offset = 0xFFFFF000 & 0xFFF = 0
+    // So, CR3 = 0x117000 (Page Directory)
+    // PDE[1023] => 0x117000[1023] = 0x117000 (Page Table) (this IS recursive paging)
+    // PTE[1023] => 0x117000[1023] = 0x117000 (Physical Frame) 
+    // 0x117000 + 0 (offset) = 0x117000
+    // Hooray! We obtained the physical address of the page directory from virtual address
+    //
+    // In the same manner, we can obtain the addresses of other page tables.
+    // We can also get the virtual address of other page tables
+    // by working backwards from our _root_ address - 0xFFFFF000
+    // If 0xFFFFF000 is the last entry in _page table_, 
+    // then the second to last page table is 0xFFFFE000 i.e. PDE[1023] -> PTE[1022]
+    // 0xFFFFD000 is PDE[1023] -> PTE[1021]
+    // 0xFFFFE000 is PDE[1023] -> PTE[1020]
+    const struct page_table *table = (struct page_table *)
+        (CURR_PAGE_DIR - (PAGE_DIRECTORY_ENTRIES - 1 - pd_entry_idx) * PAGE_SIZE);
+
+    /* Get page in table */
+    const pt_entry page = table->entries[PAGE_TABLE_INDEX(vaddr)];
+    assert((page & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT);
+
+    const u32 phys_addr = PAGE_FRAME_BASE(page) + PAGE_FRAME_OFFSET(vaddr);
+    return phys_addr;
 }
 
-void map_page(void *phys_addr, void *virt_addr, u32 flags) {
-	page_table_t *table;
-	page_table_entry *page;
-	page_directory_entry *entry = &cur_page_dir->entries[PAGE_DIR_INDEX((u32)virt_addr)];
+void map_page(physical_address paddr, virtual_address vaddr, u32 flags) {
+    pd_entry *entry = &cur_page_dir->entries[PAGE_DIR_INDEX(vaddr)];
 
-
-	if ((*entry & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
-		page_table_t *new_page_table;
-		table = (page_table_t *)allocate_blocks(1);
-        if (table == NULL) {
+    if ((*entry & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
+        physical_address new_table_paddr = (physical_address)allocate_blocks(1);
+        if (new_table_paddr == 0) {
             panic("Failed to allocate new physical block: not enough space :(");
         }
-		//debug("Created new table at %p\r\n", (void *)table);
-		if (!table) {
-			return;
-		}
-		*entry |= PAGING_FLAG_PRESENT;
-		*entry |= PAGING_FLAG_WRITEABLE;
-		*entry = ((*entry & ~0xFFFFF000) | (physical_address)table);
+        *entry |= PAGING_FLAG_PRESENT;
+        *entry |= PAGING_FLAG_WRITEABLE;
+        *entry = ((*entry & ~0xFFFFF000) | new_table_paddr);
 
-		new_page_table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
-		memset(new_page_table, 0, sizeof(page_table_t));
-
-		page = &new_page_table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
-		*page |= flags;
-		*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
-		return;
-	}
-
-
-	table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
-
-	page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
-	*page |= flags;	
-	*page = ((*page & ~0xFFFFF000) | (physical_address)phys_addr);
-}
-
-void unmap_page(void *virt_addr) {
-	page_table_entry *page = get_page((u32)virt_addr);
-
-	*page &= ~PAGING_FLAG_PRESENT;	
-	*page = ((*page & ~0xFFFFF000) | 0);
-
-	/* Flush TLB */
-	__asm__ volatile ("movl %%cr3, %%eax" : : );
-	__asm__ volatile ("movl %%eax, %%cr3" : : );
-}
-
-void paging_init() {
-	register_interrupt_handler(14, pagefault_handler);
-
-	debug("Paging has been initialized\r\n");
-}
-
-void *virtual_to_physical(void *virt_addr) {
-	page_directory_entry *entry;
-	page_table_t *table;
-	page_table_entry *page;
-	u32 page_frame, page_frame_offset, phys_addr;
-	/* Get page table in page directory */
-	entry = &cur_page_dir->entries[PAGE_DIR_INDEX((u32)virt_addr)];
-	if (!*entry) {
-		return NULL;
-	}
-
-	table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)virt_addr) << 12));
-	if (!table) {
-		return NULL;
-	}
-	
-	/* Get page in table */
-	page = &table->entries[PAGE_TABLE_INDEX((u32)virt_addr)];
-	if (!*page) {
-		return NULL;
-	}
-	page_frame = (u32)GET_FRAME(*page);
-	page_frame_offset = PAGE_FRAME_INDEX((u32)virt_addr);
-	phys_addr = page_frame + page_frame_offset;
-
-	return (void *)phys_addr;
-}
-
-void free_user_image() {
-	u32 i, j;
-	page_directory_t *page_dir;
-	void *page_dir_phys;
-	page_directory_entry pde;
-	page_table_t *table;
-	page_table_entry pte;
-	void *table_phys;
-	void *page_frame;
-
-	page_dir_phys = (void *)current_process->directory;
-	map_page(page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-	page_dir = (page_directory_t *)0xE0000000;
-	for (i = 0; i < 768; ++i) {
-		if (!page_dir->entries[i]) {
-			continue;
-		}
-		pde = page_dir->entries[i];
-		table_phys = (void *)GET_FRAME(pde);
-		map_page(table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-		table = (page_table_t *)0xEA000000;
-		for (j = 0; j < 1024; ++j) {
-			if (!table->entries[j]) {
-				continue;
-			}
-			pte = table->entries[j];
-			page_frame = (void *)GET_FRAME(pte);
-			free_blocks(page_frame, 1);
-		}
-		memset(table, 0, 4096);
-		unmap_page((void *)0xEA000000);
-		free_blocks(table_phys, 1);
-		page_dir->entries[i] = 0;
-	}
-	unmap_page((void *)0xE0000000);
-
-	/* Flush TLB */
-	__asm__ volatile ("movl %%cr3, %%eax" : : );
-	__asm__ volatile ("movl %%eax, %%cr3" : : );
-}
-
-page_directory_t *paging_copy_page_dir(bool is_deep_copy) {
-	u32 i, j;
-	page_directory_t *new_pd, *cur_pd;
-	void *new_page_dir_phys = (page_directory_t *)allocate_blocks(1);
-    if (new_page_dir_phys == NULL) {
-        panic("Failed to allocate new physical block: not enough space :(");
+        struct page_table *new_page_table = (struct page_table *)
+            (CURR_PAGE_DIR - (PAGE_DIRECTORY_ENTRIES - 1 - PAGE_DIR_INDEX(vaddr)) * PAGE_SIZE);
+        memset(new_page_table, 0, sizeof(struct page_table));
     }
 
-	if (new_page_dir_phys == NULL) {
-		return NULL;
-	}
-	map_page(new_page_dir_phys, (void *)0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-	memset((void *)0xE0000000, 0, 4096);
+    struct page_table *table = (struct page_table *)
+        (CURR_PAGE_DIR - (PAGE_DIRECTORY_ENTRIES - 1 - PAGE_DIR_INDEX(vaddr)) * PAGE_SIZE);
 
-	new_pd = (page_directory_t *)0xE0000000;
-	cur_pd = (page_directory_t *)0xFFFFF000;
-	for (i = 768; i < 1024; ++i) {
-		new_pd->entries[i] = cur_pd->entries[i];
-	}
-	new_pd->entries[1023] = (u32)new_page_dir_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE;
+    pt_entry *page = &table->entries[PAGE_TABLE_INDEX(vaddr)];
+    *page |= flags;
+    *page = ((*page & ~0xFFFFF000) | paddr);
+}
 
-	if (!is_deep_copy) {
-		unmap_page((void *)0xE0000000);
-		return new_page_dir_phys;
-	}
+static void unmap_page(virtual_address vaddr) {
+    const pd_entry entry = cur_page_dir->entries[PAGE_DIR_INDEX(vaddr)];
+    assert((entry & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT);
 
-	/* Deep copy user pages */
-	for (i = 0; i < 768; ++i) {
-		page_directory_entry cur_pde, new_pde; 
-		page_table_t *cur_table, *new_table_phys, *new_table;
+    struct page_table *table = (struct page_table *)
+        (CURR_PAGE_DIR - (PAGE_DIRECTORY_ENTRIES - 1 - PAGE_DIR_INDEX(vaddr)) * PAGE_SIZE);
 
-		if (!cur_pd->entries[i]) {
-			continue;
-		}
-		cur_table = (page_table_t *)(0xFFC00000 + (i << 12));
-		new_table_phys = allocate_blocks(1);
-		if (new_table_phys == NULL) {
-			return NULL;
-		}
-		new_table = (page_table_t *)0xEA000000;
-		map_page(new_table_phys, (void *)0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE); /* Temporary mapping */
-		memset((void *)0xEA000000, 0, 4096);
-		for (j = 0; j < 1024; ++j) {
-			page_table_entry cur_pte, new_pte;
-			u32 cur_page_frame;
-			void *new_page_frame;
+    pt_entry *page = &table->entries[PAGE_TABLE_INDEX(vaddr)];
+    assert((*page & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT);
 
-			if (!cur_table->entries[j]) {
-				continue;
-			}
-			/* Copy the page frame's contents  */
-			cur_pte = cur_table->entries[j];
-			cur_page_frame = (u32)GET_FRAME(cur_pte);
-			new_page_frame = allocate_blocks(1);
-			if (new_page_frame == NULL) {
-				return NULL;
-			}
-			map_page((void *)cur_page_frame, (void *)0xEB000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-			map_page(new_page_frame, (void *)0xEC000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
-			memcpy((void *)0xEC000000, (void *)0xEB000000, 4096);
-			unmap_page((void *)0xEC000000);
-			unmap_page((void *)0xEB000000);
+    *page &= ~PAGING_FLAG_PRESENT;
+    *page = ((*page & ~0xFFFFF000) | 0);
 
-			/* Insert the corresponding page table entry */
-			new_pte = 0;
-			if ((cur_pte & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT) {
-				new_pte |= PAGING_FLAG_PRESENT;
-			}
-			if ((cur_pte & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE) {
-				new_pte |= PAGING_FLAG_WRITEABLE;
-			}
-			if ((cur_pte & PAGING_FLAG_ACCESSED) == PAGING_FLAG_ACCESSED) {
-				new_pte |= PAGING_FLAG_ACCESSED;
-			}
-			if ((cur_pte & PAGING_FLAG_DIRTY) == PAGING_FLAG_DIRTY) {
-				new_pte |= PAGING_FLAG_DIRTY;
-			}
-			if ((cur_pte & PAGING_FLAG_USER) == PAGING_FLAG_USER) {
-				new_pte |= PAGING_FLAG_USER;
-			}
-			new_pte = ((new_pte & ~0xFFFFF000) | (physical_address)new_page_frame);
-			new_table->entries[j] = new_pte;
-		}
-		unmap_page((void *)0xEA000000);
+    flush_tlb();
+}
 
-		/* Insert the corresponding page directory entry */
-		cur_pde = cur_pd->entries[i];
-		new_pde = 0;
-		if ((cur_pde & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT) {
-			new_pde |= PAGING_FLAG_PRESENT;
-		}
-		if ((cur_pde & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE) {
-			new_pde |= PAGING_FLAG_WRITEABLE;
-		}
-		if ((cur_pde & PAGING_FLAG_ACCESSED) == PAGING_FLAG_ACCESSED) {
-			new_pde |= PAGING_FLAG_ACCESSED;
-		}
-		if ((cur_pde & PAGING_FLAG_DIRTY) == PAGING_FLAG_DIRTY) {
-			new_pde |= PAGING_FLAG_DIRTY;
-		}
-		if ((cur_pde & PAGING_FLAG_USER) == PAGING_FLAG_USER) {
-			new_pde |= PAGING_FLAG_USER;
-		}
-		new_pde = ((new_pde & ~0xFFFFF000) | (physical_address)new_table_phys);
-		new_pd->entries[i] = new_pde;
-	}
-	unmap_page((void *)0xE0000000);
+void free_user_image(void) {
+    u32 kernel_pde_idx = PAGE_DIR_INDEX(KERNEL_LOAD_VADDR);
+    for (u32 i = 0; i < kernel_pde_idx; ++i) {
+        const pd_entry pde = cur_page_dir->entries[i];
+        if ((pde & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
+            continue;
+        }
+        struct page_table *table = (struct page_table *)
+            (CURR_PAGE_DIR - (PAGE_DIRECTORY_ENTRIES - 1 - i) * PAGE_SIZE);
+        for (u32 j = 0; j < PAGE_TABLE_ENTRIES; ++j) {
+            const pt_entry pte = table->entries[j];
+            if ((pte & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
+                continue;
+            }
+            void *page_frame = (void *)PAGE_FRAME_BASE(pte);
+            free_blocks(page_frame, 1);
+            table->entries[j] = 0;
+        }
+        physical_address table_frame = PAGE_FRAME_BASE(pde);
+        free_blocks((void*)table_frame, 1);
+        cur_page_dir->entries[i] = 0;
+    }
 
-	return new_page_dir_phys;
+    flush_tlb();
+}
+
+struct page_directory *paging_copy_page_dir(bool is_deep_copy) {
+    u32 kernel_pde_idx = PAGE_DIR_INDEX(KERNEL_LOAD_VADDR);
+
+    void *new_pd_phys = (struct page_directory *)allocate_blocks(1);
+    if (new_pd_phys == NULL) {
+        debug("Failed to allocate new physical block: not enough space :(");
+        return NULL;
+    }
+    map_page((physical_address)new_pd_phys, 0xE0000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+    struct page_directory *new_pd = (struct page_directory *)0xE0000000;
+    memset(new_pd, 0, PAGE_DIRECTORY_ENTRIES * 4);
+
+    // Copy the kernel pages (starting from 0xC0000000)
+    for (u32 i = kernel_pde_idx; i < PAGE_DIRECTORY_ENTRIES; ++i) {
+        new_pd->entries[i] = cur_page_dir->entries[i];
+    }
+    // Setup the recursive paging
+    new_pd->entries[PAGE_DIRECTORY_ENTRIES - 1] = (u32)new_pd_phys | PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE;
+
+    if (!is_deep_copy) {
+        unmap_page(0xE0000000);
+        return new_pd_phys;
+    }
+
+    /* Deep copy user pages */
+    for (u32 i = 0; i < kernel_pde_idx; ++i) {
+        const pd_entry curr_pde = cur_page_dir->entries[i];
+        if ((curr_pde & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
+            continue;
+        }
+
+        const struct page_table *table = (struct page_table *)
+            (CURR_PAGE_DIR - (PAGE_DIRECTORY_ENTRIES - 1 - i) * PAGE_SIZE);
+
+        struct page_table *new_table_phys = allocate_blocks(1);
+        if (new_table_phys == NULL) {
+            debug("Failed to allocate new physical block: not enough space :(");
+            return NULL;
+        }
+        map_page((physical_address)new_table_phys, 0xEA000000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+        struct page_table *new_table = (struct page_table *)0xEA000000;
+        memset(new_table, 0, PAGE_TABLE_ENTRIES * 4);
+
+        for (u32 j = 0; j < PAGE_TABLE_ENTRIES; ++j) {
+            const pt_entry curr_pte = table->entries[j];
+            if ((curr_pte & PAGING_FLAG_PRESENT) != PAGING_FLAG_PRESENT) {
+                continue;
+            }
+
+            /* Copy the page frame's contents  */
+            const void *curr_page_frame = (void *)PAGE_FRAME_BASE(curr_pte);
+            void *new_page_frame = allocate_blocks(1);
+            if (new_page_frame == NULL) {
+                debug("Failed to allocate new physical block: not enough space :(");
+                return NULL;
+            }
+            map_page((physical_address)curr_page_frame, 0xEB000000,
+                    PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+            map_page((physical_address)new_page_frame, 0xEC000000,
+                    PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+            memcpy((void *)0xEC000000, (void *)0xEB000000, PAGE_TABLE_ENTRIES * 4);
+            unmap_page(0xEC000000);
+            unmap_page(0xEB000000);
+
+            /* Insert the corresponding page table entry */
+            const pt_entry new_pte = ((curr_pte & ~0xFFFFF000) | (u32)new_page_frame);
+            new_table->entries[j] = new_pte;
+        }
+        unmap_page(0xEA000000);
+
+        /* Insert the corresponding page directory entry */
+        const pd_entry new_pde = ((curr_pde & ~0xFFFFF000) | (u32)new_table_phys);
+        new_pd->entries[i] = new_pde;
+    }
+    unmap_page(0xE0000000);
+
+    return new_pd_phys;
+}
+
+void paging_init(void) {
+    register_interrupt_handler(14, pagefault_handler);
+
+    debug("Paging has been initialized\r\n");
 }

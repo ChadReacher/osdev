@@ -6,6 +6,7 @@
 #include <paging.h>
 #include <blk_dev.h>
 #include <panic.h>
+#include <isr.h>
 
 static union pci_device ata_dev;
 static struct hd_disk {
@@ -105,12 +106,12 @@ static void ata_device_init(struct ata_device *dev, u32 primary) {
 
         dev->prdt = (struct phys_reg_desc *)&prdt_struct;
 	memset(dev->prdt, 0, sizeof(struct phys_reg_desc));
-	dev->prdt_phys = (u8 *)virtual_to_physical(dev->prdt);
+	dev->prdt_phys = virtual_to_physical((virtual_address)dev->prdt);
 
 	dev->mem_buffer = (u8 *)(&prdt_mem_buffer);
 	memset(dev->mem_buffer, 0, 4096);
 
-	dev->prdt[0].phys_data_buf = (u32)virtual_to_physical(dev->mem_buffer);
+	dev->prdt[0].phys_data_buf = virtual_to_physical((virtual_address)dev->mem_buffer);
 	dev->prdt[0].transfer_size = SECTOR_SIZE;
 	dev->prdt[0].mark_end = 0x8000;
 
@@ -141,7 +142,7 @@ static void ata_write(struct ata_device *dev, u32 sector, u8 nsect, i8 *buf) {
 	dev->prdt[0].transfer_size = SECTOR_SIZE * nsect;
 
 	/* Send physical PRDT address to the BMR PRDT register */
-	port_outl(dev->bmr_prdt, (u32)dev->prdt_phys);
+	port_outl(dev->bmr_prdt, dev->prdt_phys);
 
         /* Do some setup for controller status. Don't understand any of it :( */
         u8 controller_status = port_inb(dev->bmr_status);
@@ -231,7 +232,7 @@ static void ata_read(struct ata_device *dev, u32 sector, u8 nsect, i8 *buf) {
 	dev->prdt[0].transfer_size = SECTOR_SIZE * nsect;
 
 	/* Send physical PRDT address to the BMR PRDT register */
-	port_outl(dev->bmr_prdt, (u32)dev->prdt_phys);
+	port_outl(dev->bmr_prdt, dev->prdt_phys);
 
 	/* Select the drive */
 	port_outb(dev->drive_reg, 0xE0 
@@ -334,7 +335,7 @@ void ata_init(void) {
 	for (drive = 0; drive < NR_HD; ++drive) {
 		ata_read(&devices[drive], 0, 1, boot_sect);
 		if (boot_sect[510] != 0x55 && (u8)boot_sect[511] != 0xAA) {
-			panic("Bad partition table on drive %d\n", drive);
+			panic("Bad partition table on drive %d\r\n", drive);
 		}
 		p = (struct partition *)(boot_sect + 0x1BE);
 		for (i = 1; i < 5; ++i, ++p) {

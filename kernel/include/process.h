@@ -36,7 +36,7 @@ struct proc {
 	enum state state;
 	i32 exit_code;
 	struct proc *parent;
-	page_directory_t *directory;
+	struct page_directory *directory;
 	struct registers_state *regs;
 	struct context *context;
 	void *kernel_stack_bottom;

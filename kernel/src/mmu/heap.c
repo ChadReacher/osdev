@@ -47,7 +47,7 @@ void heap_init() {
 	debug("heap_phys_addr = %x\r\n", heap_phys_addr);
 
 	for (i = 0; i < heap_blocks; ++i) {
-		map_page((void *)heap_phys_addr, (void *)heap_virt_addr, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
+		map_page(heap_phys_addr, heap_virt_addr, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE);
 		heap_virt_addr += PAGE_SIZE;
 		heap_phys_addr += PMM_BLOCK_SIZE;
 	}
