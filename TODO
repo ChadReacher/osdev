@@ -57,14 +57,14 @@ Plan:
 * [DONE] Introduce block cache
 * [DONE] Implement truncate(2) syscall
 * ...
+* Implement MSDOS/FAT32(16) file system
+* Implement mount() syscall
+* Implement umount() syscall
+* ...
 * Introduce memory zones? mmap(2) syscall?
 * ...
 * Implement Unix domain sockets
 * Implement networking sockets
-* ...
-* Implement MSDOS/FAT32(16) file system
-* Implement mount() syscall
-* Implement umount() syscall
 * ...
 * Implement SMP
 * Implement threads

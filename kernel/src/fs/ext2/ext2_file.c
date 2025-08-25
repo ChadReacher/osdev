@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <vfs.h>
 #include <bcache.h>
+#include <common.h>
 
 struct file_ops ext2_file_ops = {
 	NULL,
@@ -16,8 +17,6 @@ struct file_ops ext2_file_ops = {
 	ext2_readdir,
 };
 
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
 
 i32 ext2_file_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
 	struct buffer *lbuf;
@@ -130,6 +129,5 @@ i32 ext2_readdir(struct vfs_inode *inode, struct file *fp,
 		}
 		brelse(buf);
 	}
-	brelse(buf);
 	return 0;
 }

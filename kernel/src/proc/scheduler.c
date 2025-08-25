@@ -176,20 +176,19 @@ void create_idle_process() {
 	idle_process->kernel_stack_top = idle_process->context;
 }
 
-void scheduler_init() {
-	struct proc *init_process;
-
-	create_idle_process();
-
-	init_process = current_process = procs[1] = malloc(sizeof(struct proc));
+static void create_init_process(void) {
+	struct proc *init_process = current_process = procs[1] = malloc(sizeof(struct proc));
     if (init_process == NULL) {
         panic("Failed to allocate process structure for init process");
-        return;
     }
 	memset(init_process, 0, sizeof(struct proc));
 	init_process->pid = next_pid++;
 	init_process->timeslice = 20;
 	init_process->state = RUNNING;
+	for (u32 i = 0; i < NR_GROUPS; ++i) {
+		init_process->groups[i] = -1;
+	}
+	init_process->tty = -1;
 	init_process->kernel_stack_bottom = malloc(4096 * 2);
     if (init_process->kernel_stack_bottom == NULL) {
         panic("Failed to allocate enough memory for kernel stack for init process");
@@ -202,6 +201,11 @@ void scheduler_init() {
 	init_process->context = (struct context *)
 		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
 		 - sizeof(struct registers_state) - sizeof(struct context) + 4);
+}
+
+void scheduler_init(void) {
+	create_idle_process();
+    create_init_process();
 
 	debug("Scheduler has been successfully initialized\r\n");
 }

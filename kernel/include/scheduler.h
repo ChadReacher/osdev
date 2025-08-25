@@ -4,7 +4,8 @@
 #include <types.h>
 #include <process.h>
 
-void scheduler_init();
+void scheduler_init(void);
+
 void schedule();
 struct proc *get_proc_by_id(i32 pid);
 int get_free_proc();

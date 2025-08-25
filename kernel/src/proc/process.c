@@ -35,7 +35,7 @@ void process_wakeup(struct proc **p) {
 	}
 }
 
-void enter_usermode() {
+void enter_usermode(void) {
 	current_process = procs[1];
 	
 	tss_set_stack((u32)current_process->kernel_stack_top);
@@ -47,61 +47,27 @@ void enter_usermode() {
 	enter_usermode_asm(current_process->regs->useresp);
 }
 
-void user_init() {
-	struct vfs_inode *inode;
-	i32 err, i, argc = 0, envc = 1;
-	i8 **argv, **envp;
-	void *kernel_page_dir;
-	struct proc *init_process = procs[1];
+i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp);
 
-	err = vfs_namei("/bin/init", NULL, 1, &inode);
-	if (err) {
-		panic("could not find '/bin/init' executable\n");
-	} else if (!S_ISREG(inode->i_mode)) {
-		vfs_iput(inode);
-		return;
-	} else if (!check_permission(inode, MAY_READ | MAY_EXEC)) {
-		vfs_iput(inode);
-		return;
-	}
-        
-	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
-    if (argv == NULL) {
-        panic("Failed to allocate enough memory for argv");
-        return;
-    }
-	envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
-    if (envp == NULL) {
-        panic("Failed to allocate enough memory for envp");
-        return;
-    }
-	envp[0] = strdup("PATH=/bin");
-	argv[argc] = NULL;
-	envp[envc] = NULL;
+#define INIT_PID 1
+#define INIT_PROGRAM "/bin/init"
 
-	for (i = 0; i < NR_GROUPS; ++i) {
-		init_process->groups[i] = -1;
-	}
-	init_process->sleep = 0;
-	init_process->tty = -1;
+void user_init(void) {
+    i8 *argv[] = { INIT_PROGRAM, NULL };
+    i8 *envp[] = { "PATH=/bin", NULL };
+	struct proc *init_process = procs[INIT_PID];
+
 	init_process->directory = paging_copy_page_dir(0);
-	kernel_page_dir = (void *)virtual_to_physical(CURR_PAGE_DIR);
+	physical_address curr_page_dir_phys = virtual_to_physical(CURR_PAGE_DIR);
+
 	__asm__ volatile ("movl %%eax, %%cr3" : : "a"(init_process->directory));
-	if ((err = elf_load(inode, argc, argv, envc, envp))) {
-		vfs_iput(inode);
-		panic("could not load '/bin/init' executable\n");
-		return;
-	}
-	__asm__ volatile ("movl %%eax, %%cr3" : : "a"(kernel_page_dir));
-	for (i = 0; i < NSIG; ++i) {
-		sighandler_t hand = init_process->signals[i].sa_handler;
-		if (hand != SIG_DFL && hand != SIG_IGN && hand != SIG_ERR) {
-			init_process->signals[i].sa_handler = SIG_DFL;
-		}
-	}
-	init_process->close_on_exec = 0;
-        
-	vfs_iput(inode);
+
+    i32 err = syscall_exec(INIT_PROGRAM, argv, envp);
+    if (err != 0) {
+        panic("Failed to load the 'INIT' program\r\n"); 
+    }
+
+	__asm__ volatile ("movl %%eax, %%cr3" : : "a"(curr_page_dir_phys));
 }
 
 i32 get_new_fd() {

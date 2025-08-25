@@ -12,15 +12,13 @@ struct file_ops ext2_chr_ops = {
 };
 
 i32 ext2_chr_open(struct vfs_inode *inode, struct file *fp) {
-	i32 i;
-
-	i = MAJOR(inode->i_rdev);
-	if (i > NRCHRDEV) {
-		return 0;
+	u32 major = MAJOR(inode->i_rdev);
+	if (major > NRCHRDEV) {
+		return -1;
 	}
-	fp->f_ops = chr_dev_ops[i];
+	fp->f_ops = chr_dev_ops[major];
 	if (fp->f_ops && fp->f_ops->open) {
 		return fp->f_ops->open(inode, fp);
 	}
-	return 0;
+	return -1;
 }

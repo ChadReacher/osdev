@@ -1,14 +1,11 @@
 #include <ext2.h>
-#include <heap.h>
-#include <blk_dev.h>
 #include <panic.h>
 #include <process.h>
 #include <string.h>
 
 
 static struct filesystem filesystems[NR_FILESYSTEMS] = {
-	{ "ext2", ext2_read_super },
-	//{ "msdos", msdos_fs_ops },
+    { "ext2", ext2_read_super },
 };
 
 // Super blocks are mounted file systems
@@ -27,7 +24,7 @@ struct vfs_superblock *get_vfs_super(u32 dev) {
 }
 
 static struct vfs_superblock *read_super(u32 dev, struct filesystem *fs) {
-	struct vfs_superblock *vsb = NULL;
+    struct vfs_superblock *vsb = NULL;
 
     for (i32 i = 0; i < NR_SUPERBLOCKS; ++i) {
         if (superblocks[i].s_dev == 0) {
@@ -48,20 +45,18 @@ static struct vfs_superblock *read_super(u32 dev, struct filesystem *fs) {
 }
 
 void mount_root(void) {
-    memset(superblocks, 0, sizeof(superblocks));
-
     for (i32 i = 0; i < NR_FILESYSTEMS; ++i) {
         struct vfs_superblock *vsb = read_super(ROOT_DEV, &filesystems[i]);
         if (vsb) {
-			// We logically use the root inode 2 times: 
-            // as a root directory and as current directory for init process. 
-			// 'vsb->s_root' is a temporary field to pass the root inode.
-            vsb->s_root->i_count += 1; 
-	        current_process->root = vsb->s_root;
-	        current_process->pwd = vsb->s_root;
-	        current_process->str_pwd = strdup("/");
-			debug("The root file system (%s) has been mounted\r\n", filesystems[i].name);
-			return;
+            // We logically use the root inode 2 times:
+            // as a root directory and as a current directory for the init process.
+            // 'vsb->s_root' is a temporary field to pass the root inode.
+            vsb->s_root->i_count += 1;
+            current_process->root = vsb->s_root;
+            current_process->pwd = vsb->s_root;
+            current_process->str_pwd = strdup("/");
+            debug("The %s filesystem has been mounted as root\r\n", filesystems[i].name);
+            return;
         }
     }
     panic("Could not mount the root\r\n");

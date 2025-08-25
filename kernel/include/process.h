@@ -65,8 +65,9 @@ struct proc {
 	i32 tty;
 };
 
-void user_init();
-void enter_usermode();
+void user_init(void);
+void enter_usermode(void);
+
 i32 get_new_fd();
 struct file *get_empty_file();
 

@@ -14,4 +14,7 @@
 #define ALIGN_DOWN(val, a) ((val) & ~((a) - 1))
 #define ALIGN(sz) ((sz / 0x10 + 1) * 0x10)
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
 #endif

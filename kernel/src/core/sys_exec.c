@@ -48,12 +48,12 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	}
 	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
     if (argv == NULL) {
-        panic("Failed to allocate enough memory for argv");
+        debug("Failed to allocate enough memory for argv");
         return -ENOMEM;
     }
 	envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
     if (envp == NULL) {
-        panic("Failed to allocate enough memory for envp");
+        debug("Failed to allocate enough memory for envp");
         return -ENOMEM;
     }
 	argv[argc] = NULL;
@@ -99,6 +99,5 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	current_process->close_on_exec = 0;
 	vfs_iput(inode);
 
-	tss_set_stack((u32)current_process->kernel_stack_top);
 	return 0;
 }
