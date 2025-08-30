@@ -44,7 +44,7 @@ Misc:
   * Introduce threads
   * Introduce asynchronous functions
   * Introduce even-driven architecture
-  * Introduce kernel stack trace
+  * [DONE] Introduce kernel stack trace
 
 Plan:
 * [DONE] Implement pipe as file system
