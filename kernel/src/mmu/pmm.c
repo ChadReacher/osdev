@@ -264,5 +264,5 @@ static void kernel_layout_dump(void) {
     const u32 data_size = (u32)&_data_end_ - (u32)&_data_start_;
     const u32 bss_size = (u32)&_bss_end_ - (u32)&_bss_start_;
     const u32 ksize2 = text_size + rodata_size + data_size + bss_size;
-    debug("Kernel size (w/o alignment)  = %#x\r\n", ksize2);
+    debug("Kernel size (w/o alignment) = %#x\r\n", ksize2);
 }

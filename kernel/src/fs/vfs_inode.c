@@ -88,7 +88,8 @@ void vfs_iput(struct vfs_inode *inode) {
     assert(inode->i_count > 0);
 
     if (inode->i_pipe) {
-        process_wakeup(&inode->i_wait);
+        process_wakeup(inode->i_wait);
+        inode->i_wait = NULL;
         if (--inode->i_count) {
             return;
         }

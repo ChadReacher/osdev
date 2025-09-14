@@ -5,6 +5,8 @@
 #include <process.h>
 #include <scheduler.h>
 
+extern struct proc *procs[NR_PROCS];
+
 // It is initialized by CMOS RTC
 u32 startup_time;
 
@@ -20,6 +22,28 @@ static void timer_handler(struct registers_state *regs) {
         ++current_process->utime;
     } else {
         ++current_process->stime;
+    }
+
+    struct proc *p = NULL;
+    for (u32 i = 1; i < NR_PROCS; ++i) {
+        p = procs[i];
+        if (!p) {
+            continue;
+        }
+        if (p->alarm && (u32)p->alarm < ticks) {
+            send_signal(p, SIGALRM);
+            p->alarm = 0;
+        }
+        if (p->sleep && p->sleep < ticks) {
+            p->sleep = 0;
+            if (p->state == INTERRUPTIBLE) {
+                p->state = RUNNING;
+            }
+        }
+        if (p->sigpending != 0 && p->state == INTERRUPTIBLE) {
+            p->sleep = 0;
+            p->state = RUNNING;
+        }
     }
 
     if ((--current_process->timeslice) > 0) {

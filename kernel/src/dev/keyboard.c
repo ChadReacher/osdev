@@ -53,18 +53,6 @@ static u8 shift_map[128] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-static void put_queue(i8 ch) {
-    u32 new_head;
-    struct tty_queue *qp = &(tty_table[0].input);
-
-    qp->buf[qp->head] = ch;
-    new_head = (qp->head + 1) & (TTY_QUEUE_BUF_SZ - 1);
-    if (new_head != qp->tail) {
-        qp->head = new_head;
-    }
-    process_wakeup(&qp->process);
-}
-
 static i8 ext_key = 0;
 
 static void keyboard_handler(UNUSED struct registers_state *regs) {
@@ -150,7 +138,7 @@ static void keyboard_handler(UNUSED struct registers_state *regs) {
     if (key == 0) {
         return;
     }
-    put_queue(key);
+    ttyq_putchar(&tty_table[0].input, key);
     do_cook(&tty_table[0]);
 }
 

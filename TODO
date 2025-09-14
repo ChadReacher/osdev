@@ -73,4 +73,3 @@ Plan:
 
 Open questions/TODOs:
 * Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
-* Do we need 'need_resched'. For now, it is used only in 'process_wakeup' routine. It means that we enable the scheduler to work when we we wake up a process.

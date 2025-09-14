@@ -10,8 +10,8 @@ static volatile struct tss_entry kernel_tss;
 // As we use the software multitasking, TSS is not used except for one case:
 // when an interrupt occurs which leads to an increase of a privelege
 // level (e.g. a system call).
-// During the interrupt handling, the CPU reads the stack address(ESP0)
-// and a stack segment selector(SS0) from the TSS and sets the
+// During the interrupt handling, the CPU reads the stack address (ESP0)
+// and a stack segment selector (SS0) from the TSS and sets the
 // corresponding stack registers: ESP and SS.
 void tss_init(void) {
     u32 base = (u32)&kernel_tss;

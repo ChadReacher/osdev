@@ -19,9 +19,12 @@ i8 ttyq_getchar(struct tty_queue *q) {
 	return c;
 }
 
-static void ttyq_putchar(struct tty_queue *q, i8 c) {
+void ttyq_putchar(struct tty_queue *q, i8 c) {
 	q->buf[q->head] = c;
 	q->head = (q->head + 1) & (TTY_QUEUE_BUF_SZ - 1);
+
+    process_wakeup(q->process);
+    q->process = NULL;
 }
 
 struct file_ops tty_ops = {
@@ -82,12 +85,12 @@ void sleep_if_full(struct tty_queue *q) {
 		return;
 	}
 	while (!current_process->sigpending && LEFT_CHARS(*q) < 128) {
-		process_sleep(&q->process);
+        q->process = current_process;
+		process_sleep();
 	}
 }
 
-i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
-	(void)fp;
+i32 tty_read(struct vfs_inode *inode, UNUSED struct file *fp, i8 *buf, i32 count) {
 	struct tty_struct *tty;
 	i8 c, *b = buf;
 
@@ -105,7 +108,8 @@ i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
 		}
 		if (EMPTY(tty->cooked) || ((tty->termios.c_lflag & ICANON) &&
 				!tty->cooked.count && !IS_FULL(tty->input))) {
-			process_sleep(&tty->cooked.process);
+            tty->cooked.process = current_process;
+			process_sleep();
 			continue;
 		}
 		do {
@@ -296,6 +300,7 @@ void do_cook(struct tty_struct *tty) {
 		}
 		ttyq_putchar(&tty->cooked, c);
 	}
-	process_wakeup(&tty->cooked.process);
+	process_wakeup(tty->cooked.process);
+    tty->cooked.process = NULL;
 }
 

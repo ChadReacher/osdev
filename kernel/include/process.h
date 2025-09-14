@@ -7,14 +7,30 @@
 #include <signal.h>
 #include <vfs.h> 
 
+#define IDLE_PID 0
+#define INIT_PID 1
+
+#define INIT_PROGRAM "/bin/init"
+
+// A slice of time allocated for a process to continously run on CPU
+// (measured in timer ticks)
+#define DEFAULT_TIMESLICE 20
+
+// A process-wide maximum number of opened file descriptors
 #define NR_OPEN 20
-#define NR_FILE 32
+// A process-wide maximum number of groups
 #define NR_GROUPS 32
+
+// A system-wide maximum number of available procceses
 #define NR_PROCS 32
+// A system-wide maximum number of opened files
+#define NR_FILE 32
 
-#define ALIGN_UP(val, a) (((val) + ((a) - 1)) & ~((a) - 1))
-#define ALIGN_DOWN(val, a) ((val) & ~((a) - 1))
-
+// The possible states a process can be in:
+// * RUNNING - a process either is running on CPU or ready to run
+// * STOPPED - a process is stopped due to respective signals
+// * INTERRUPTIBLE - a process is sleeping until an event occurs
+// * ZOMBIE - a process which parent didn't read the return code
 enum state {
 	RUNNING,
 	STOPPED,
@@ -36,7 +52,7 @@ struct proc {
 	enum state state;
 	i32 exit_code;
 	struct proc *parent;
-	struct page_directory *directory;
+	physical_address page_directory;
 	struct registers_state *regs;
 	struct context *context;
 	void *kernel_stack_bottom;
@@ -68,11 +84,14 @@ struct proc {
 void user_init(void);
 void enter_usermode(void);
 
-i32 get_new_fd();
-struct file *get_empty_file();
-
-void process_wakeup(struct proc **p);
-void process_sleep(struct proc **p);
+// Allocates a new file descriptor
+i32 process_fd_new(void);
+// Allocates a new file
+struct file *process_file_new(void);
+// Wakes up the process
+void process_wakeup(struct proc *p);
+// Puts the process to sleep
+void process_sleep(void);
 
 extern struct proc *current_process;
 
