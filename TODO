@@ -4,9 +4,9 @@ Filesystem:
     - Research, get more knowledge about working with devices: character- and block-devices
   * [DONE] Support symbolink links in Ext2
   * Implement second file system:
-    - Implement MSDOS/FAT32(16)
-    - Implement mount() syscall
-    - Implement umount() syscall
+    - Implement MSDOS/FAT32(16) or HFS
+  * Implement mount() syscall
+  * Implement umount() syscall
   * Implement FIFO
   * Implement sockets
 
@@ -15,7 +15,7 @@ Scheduling:
   * Make the kernel preemptive?
 
 Memory management:
-  * Refactor?
+  * [DONE] Refactor?
   * Improve?
   * Introduce zones in virtual memory
 
@@ -57,7 +57,6 @@ Plan:
 * [DONE] Introduce block cache
 * [DONE] Implement truncate(2) syscall
 * ...
-* Implement MSDOS/FAT32(16) file system
 * Implement mount() syscall
 * Implement umount() syscall
 * ...
@@ -69,6 +68,9 @@ Plan:
 * Implement SMP
 * Implement threads
 * Implement async routines
+* ...
+* Implement a second file system
+* ...
 
 
 Open questions/TODOs:
