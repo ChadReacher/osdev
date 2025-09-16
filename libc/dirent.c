@@ -14,7 +14,7 @@ DIR *opendir(const i8 *name) {
 
 	fd = open(name, O_RDONLY, 0);
 	if (fd < 0) {
-		printf("opendir: bad open fd: %d\n", fd);
+        perror("open failed");
 		return NULL;
 	}
 

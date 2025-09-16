@@ -80,7 +80,8 @@
 #define __NR_symlink		54
 #define __NR_readlink		55
 #define __NR_lstat			56
-#define __NR_truncate           57
+#define __NR_truncate       57
+#define __NR_mount          58
 
 #define syscall0(type, name) \
 type name(void) { \

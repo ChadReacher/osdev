@@ -201,15 +201,7 @@ i32 lseek(i32 fd, i32 offset, i32 whence) {
 
 syscall3(i32, readlink, const i8 *, pathname, i8 *, buf, i32, bufsiz)
 
-i32 unlink(const i8 *pathname) {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_unlink), "b"(pathname));
-
-	return ret;
-}
+syscall1(i32, unlink, const i8 *, pathname)
 
 void yield() {
 	__asm__ __volatile__ ("int $0x80" : : "a"(__NR_yield));
@@ -462,3 +454,5 @@ i32 times(tms *buffer) {
 syscall2(i32, getgroups, i32, gidsetsize, i32 *, grouplist)
 
 syscall2(i32, truncate, const char *, path, u32, length)
+
+syscall2(i32, mount, const char *, device, const char *, dest)

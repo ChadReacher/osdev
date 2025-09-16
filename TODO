@@ -57,7 +57,7 @@ Plan:
 * [DONE] Introduce block cache
 * [DONE] Implement truncate(2) syscall
 * ...
-* Implement mount() syscall
+* [DONE] Implement mount() syscall
 * Implement umount() syscall
 * ...
 * Introduce memory zones? mmap(2) syscall?
@@ -75,3 +75,12 @@ Plan:
 
 Open questions/TODOs:
 * Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
+
+
+mount <DEVICE> <DESTINATION>
+
+Use cases for mount():
+* Attach the filesystem to the new directory
+* Attach the filesystem to the existing directory
+* Detach the filesystem
+* Detach the filesystem and check the previously existed directory

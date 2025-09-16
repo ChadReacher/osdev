@@ -313,6 +313,22 @@ void rw_ata(u32 rw, u16 dev, u32 block, i8 *buf) {
     }
 }
 
+// Translate string formatted like '/dev/hdXY' (/dev/hdb2) to the major and
+// minor numbers
+u32 dev_by_path(const i8 *device) {
+    assert(strncmp(device, "/dev/hd", strlen("/dev/hd")) == 0);
+    assert(device[7] >= 'a' && device[7] <= 'z');
+    assert(device[8] >= '0' && device[8] <= '9');
+
+    u32 devn = device[7] - 'a';
+    assert(devn < 2);
+    u32 partn = device[8] - '0';
+    ++partn;
+    assert(partn < 5);
+    partn += devn * 5;
+    return 0x300 + partn;
+}
+
 void ata_init(void) {
     i8 boot_sect[512];
 

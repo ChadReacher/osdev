@@ -34,6 +34,12 @@ i32 ext2_unlink(struct vfs_inode *dir, const char *basename) {
 		brelse(buf);
 		return -ENOENT;
 	}
+    if (inode->i_count > 1) {
+        vfs_iput(dir);
+        brelse(buf);
+        vfs_iput(inode);
+        return -EBUSY;
+    }
 	if (!EXT2_S_ISREG(inode->i_mode)) {
 		vfs_iput(dir);
 		vfs_iput(inode);
@@ -550,4 +556,34 @@ static i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf) {
 		de = (struct ext2_dir *)(old_buf->data + curr_off);
 	}
 	return -ENOENT;
+}
+
+i32 ext2_mount(struct vfs_inode *dir, u32 dev, const char *basename) {
+	struct ext2_dir *de = NULL;
+
+	struct buffer *buf = ext2_find_entry(dir, basename, &de, NULL);
+	if (!buf) {
+		vfs_iput(dir);
+		return -ENOENT;
+	}
+
+	struct vfs_inode *inode = vfs_iget(dir->i_dev, de->inode);
+	if (!inode) {
+		vfs_iput(dir);
+		brelse(buf);
+		return -ENOENT;
+	}
+
+    i32 err = vfs_do_mount(dev, inode);
+    if (err) {
+        vfs_iput(dir);
+        brelse(buf);
+        vfs_iput(inode);
+        return err;
+    }
+
+	vfs_iput(dir);
+    brelse(buf);
+    vfs_iput(inode);
+    return 0;
 }

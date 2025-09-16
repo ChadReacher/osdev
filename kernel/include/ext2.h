@@ -182,6 +182,7 @@ i32 ext2_readdir(struct vfs_inode *inode, struct file *fp, struct dirent *dent);
 
 i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res);
 i32 ext2_truncate(struct vfs_inode *inode, u32 length);
+i32 ext2_mount(struct vfs_inode *dir, u32 dev, const char *basename);
 
 
 // Low-level API

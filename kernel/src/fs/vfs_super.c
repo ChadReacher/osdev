@@ -2,6 +2,7 @@
 #include <panic.h>
 #include <process.h>
 #include <string.h>
+#include <errno.h>
 
 
 static struct filesystem filesystems[NR_FILESYSTEMS] = {
@@ -9,7 +10,8 @@ static struct filesystem filesystems[NR_FILESYSTEMS] = {
 };
 
 // Super blocks are mounted file systems
-static struct vfs_superblock superblocks[NR_SUPERBLOCKS];
+struct vfs_superblock superblocks[NR_SUPERBLOCKS];
+
 
 struct vfs_superblock *get_vfs_super(u32 dev) {
     if (!dev) {
@@ -38,10 +40,28 @@ static struct vfs_superblock *read_super(u32 dev, struct filesystem *fs) {
 
     vsb->s_dev = dev;
     if (fs->read_super(vsb) != 0) {
+        vsb->s_dev = 0;
         return NULL;
     }
     return vsb;
     
+}
+
+i32 vfs_do_mount(u32 dev, struct vfs_inode *dir) {
+    for (i32 i = 0; i < NR_FILESYSTEMS; ++i) {
+        struct vfs_superblock *vsb = read_super(dev, &filesystems[i]);
+        if (!vsb) {
+            continue;
+        }
+        vsb->s_mounted = dir;
+        // increment the inode count because it is used for a mount
+        ++vsb->s_mounted->i_count;
+        // We don't really use it until lookup
+        // but keep reference to substitute during inode lookup
+        vsb->s_root->i_count = 1;
+        return 0;
+    }
+    return -ENODEV;
 }
 
 void mount_root(void) {
@@ -52,6 +72,7 @@ void mount_root(void) {
             // as a root directory and as a current directory for the init process.
             // 'vsb->s_root' is a temporary field to pass the root inode.
             vsb->s_root->i_count += 1;
+            vsb->s_mounted = NULL;
             current_process->root = vsb->s_root;
             current_process->pwd = vsb->s_root;
             current_process->str_pwd = strdup("/");

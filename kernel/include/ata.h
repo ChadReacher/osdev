@@ -74,4 +74,6 @@ struct partition {
 void ata_init(void);
 void rw_ata(u32 rw, u16 dev, u32 block, i8 *buf);
 
+u32 dev_by_path(const i8 *device);
+
 #endif
