@@ -5,8 +5,8 @@ Filesystem:
   * [DONE] Support symbolink links in Ext2
   * Implement second file system:
     - Implement MSDOS/FAT32(16) or HFS
-  * Implement mount() syscall
-  * Implement umount() syscall
+  * [DONE] Implement mount() syscall
+  * [DONE] Implement umount() syscall
   * Implement FIFO
   * Implement sockets
 
@@ -58,7 +58,7 @@ Plan:
 * [DONE] Implement truncate(2) syscall
 * ...
 * [DONE] Implement mount() syscall
-* Implement umount() syscall
+* [DONE] Implement umount() syscall
 * ...
 * Introduce memory zones? mmap(2) syscall?
 * ...
@@ -75,12 +75,3 @@ Plan:
 
 Open questions/TODOs:
 * Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
-
-
-mount <DEVICE> <DESTINATION>
-
-Use cases for mount():
-* Attach the filesystem to the new directory
-* Attach the filesystem to the existing directory
-* Detach the filesystem
-* Detach the filesystem and check the previously existed directory

@@ -456,3 +456,5 @@ syscall2(i32, getgroups, i32, gidsetsize, i32 *, grouplist)
 syscall2(i32, truncate, const char *, path, u32, length)
 
 syscall2(i32, mount, const char *, device, const char *, dest)
+
+syscall1(i32, umount, const char *, target)

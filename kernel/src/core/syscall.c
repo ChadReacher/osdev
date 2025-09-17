@@ -361,6 +361,7 @@ void do_exit(i32 code) {
 
     if (current_process->pid == 1) {
         sync_inodes();
+        sync_superblocks();
         sync_buffers();
         panic("Can't exit the INIT process\r\n");
     }
@@ -1328,19 +1329,45 @@ i32 syscall_truncate(const i8 *path, u32 length) {
 i32 syscall_mount(const i8 *device, const i8 *dest) {
     const i8 *basename = NULL;
     struct vfs_inode *dir = NULL;
-    u32 dev = dev_by_path(device);
+    struct vfs_inode *blkdev = NULL;
 
-    i32 err = vfs_dirnamei(dest, NULL, &basename, &dir);
+    i32 err = vfs_namei(device, NULL, 1, &blkdev);
     if (err) {
         return err;
     }
+
+    err = vfs_dirnamei(dest, NULL, &basename, &dir);
+    if (err) {
+        vfs_iput(blkdev);
+        return err;
+    }
     if (*basename == '\0') {
+        vfs_iput(blkdev);
         vfs_iput(dir);
         return -ENOENT;
     }
     if (!dir->i_ops || !dir->i_ops->mount) {
+        vfs_iput(blkdev);
         vfs_iput(dir);
         return -EINVAL;
     }
-    return dir->i_ops->mount(dir, dev, basename);
+    err = dir->i_ops->mount(dir, blkdev->i_rdev, basename);
+    vfs_iput(blkdev);
+    return err;
+}
+
+i32 syscall_umount(const i8 *target) {
+    struct vfs_inode *inode = NULL;
+
+    i32 err = vfs_namei(target, NULL, 1, &inode);
+    if (err) {
+        return err;
+    }
+
+    // tranfer ownership of inode to the func
+    err = vfs_do_umount(inode);
+    if (err) {
+        return err;
+    }
+    return 0;
 }

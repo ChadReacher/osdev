@@ -98,12 +98,19 @@ struct fs_ops {
     void (*free_inode)(struct vfs_inode *vnode);
 };
 
+struct sb_ops {
+    i32 (*read_super)(struct vfs_superblock *vsb);
+    i32 (*write_super)(struct vfs_superblock *vsb);
+};
+
 struct vfs_superblock {
     u32 s_dev;
     u32 s_block_size; // s_block_size = 1024 << p->s_log_block_size;
+    bool s_dirty;
     struct vfs_inode *s_mounted;
     struct vfs_inode *s_root;
     struct fs_ops *fs_ops;
+    struct sb_ops *sb_ops;
     union {
         struct ext2_super_block ext2_sb;
     } u;
@@ -111,7 +118,7 @@ struct vfs_superblock {
 
 struct filesystem {
     char *name;
-    i32 (*read_super)(struct vfs_superblock *vsb);
+    struct sb_ops fs_ops;
 };
 
 
@@ -127,6 +134,7 @@ struct file {
 void mount_root(void);
 struct vfs_superblock *get_vfs_super(u32 dev);
 i32 vfs_do_mount(u32 dev, struct vfs_inode *dir);
+i32 vfs_do_umount(struct vfs_inode *target);
 
 struct vfs_inode *vfs_iget(u16 dev, u32 nr);
 void vfs_iput(struct vfs_inode *inode);
@@ -137,5 +145,6 @@ i32 check_permission(struct vfs_inode *inode, i32 mask);
 struct vfs_inode *get_empty_inode(void);
 
 void sync_inodes(void);
+void sync_superblocks(void);
 
 #endif

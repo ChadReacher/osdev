@@ -157,6 +157,7 @@ struct file;
 struct vfs_superblock;
 
 i32 ext2_read_super(struct vfs_superblock *vsb);
+i32 ext2_write_super(struct vfs_superblock *vsb);
 
 void ext2_read_inode(struct vfs_inode *inode);
 void ext2_write_inode(struct vfs_inode *inode);

@@ -1,7 +1,7 @@
 #ifndef SYS_H
 #define SYS_H
 
-#define NR_SYSCALLS 59
+#define NR_SYSCALLS 60
 
 typedef i32 (*syscall_fn)();
 
@@ -64,6 +64,7 @@ i32 syscall_readlink();
 i32 syscall_lstat();
 i32 syscall_truncate();
 i32 syscall_mount();
+i32 syscall_umount();
 
 syscall_fn syscall_handlers[NR_SYSCALLS] = {
     syscall_test,
@@ -125,6 +126,7 @@ syscall_fn syscall_handlers[NR_SYSCALLS] = {
     syscall_lstat,
     syscall_truncate,
     syscall_mount,
+    syscall_umount,
 };
 
 #endif

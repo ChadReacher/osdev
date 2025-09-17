@@ -5,11 +5,17 @@
 #include <process.h>
 #include <string.h>
 #include <bcache.h>
+#include <timer.h>
 
 struct fs_ops ext2_fs_ops = {
     ext2_read_inode,
     ext2_write_inode,
     ext2_free_inode
+};
+
+struct sb_ops ext2_sb_ops = {
+    ext2_read_super,
+    ext2_write_super
 };
 
 static void dump_super_block_info(struct ext2_super_block *sb);
@@ -30,19 +36,39 @@ i32 ext2_read_super(struct vfs_superblock *vsb) {
         vsb->s_dev = 0;
         return -1;
     }
-    //dump_super_block_info(&vsb->u.ext2_sb);
+    dump_super_block_info(&vsb->u.ext2_sb);
     vsb->s_block_size = 1024 << vsb->u.ext2_sb.s_log_block_size;
     vsb->fs_ops = &ext2_fs_ops;
+    vsb->sb_ops = &ext2_sb_ops;
     if (!(vnode = vfs_iget(vsb->s_dev, EXT2_ROOT_INO))) {
         debug("Could not get the root inode");
         vsb->s_dev = 0;
         return -1;
     }
     vsb->s_root = vnode;
+
+    ++vsb->u.ext2_sb.s_mnt_count;
+    vsb->u.ext2_sb.s_mtime = get_current_time();
+
     return 0;
 }
 
-static void UNUSED dump_super_block_info(struct ext2_super_block *sb) {
+i32 ext2_write_super(struct vfs_superblock *vsb) {
+    struct buffer *buf = bread(vsb->s_dev, 1);
+    if (!buf) {
+        debug("Failed to read block #1 on device %d\r\n");
+        return -1;
+    }
+
+    memcpy(buf->data, &vsb->u.ext2_sb, sizeof(struct ext2_super_block));
+
+    bwrite(buf);
+    brelse(buf);
+
+    return 0;
+}
+
+static void dump_super_block_info(struct ext2_super_block *sb) {
     debug("s_blocks_count      = %d\r\n", sb->s_blocks_count);
     debug("s_inodes_count      = %d\r\n", sb->s_inodes_count);
     debug("s_blocks_count      = %d\r\n", sb->s_blocks_count);

@@ -6,12 +6,20 @@
 
 
 static struct filesystem filesystems[NR_FILESYSTEMS] = {
-    { "ext2", ext2_read_super },
+    { "ext2", { ext2_read_super, ext2_write_super } },
 };
 
 // Super blocks are mounted file systems
 struct vfs_superblock superblocks[NR_SUPERBLOCKS];
 
+void sync_superblocks(void) {
+    for (i32 i = 0; i < NR_SUPERBLOCKS; ++i) {
+        struct vfs_superblock *vsb = &superblocks[i];
+        if (vsb->s_dev != 0 && vsb->s_dirty) {
+            vsb->sb_ops->write_super(vsb);
+        }
+    }
+}
 
 struct vfs_superblock *get_vfs_super(u32 dev) {
     if (!dev) {
@@ -39,7 +47,7 @@ static struct vfs_superblock *read_super(u32 dev, struct filesystem *fs) {
     }
 
     vsb->s_dev = dev;
-    if (fs->read_super(vsb) != 0) {
+    if (fs->fs_ops.read_super(vsb) != 0) {
         vsb->s_dev = 0;
         return NULL;
     }
@@ -59,6 +67,22 @@ i32 vfs_do_mount(u32 dev, struct vfs_inode *dir) {
         // We don't really use it until lookup
         // but keep reference to substitute during inode lookup
         vsb->s_root->i_count = 1;
+        return 0;
+    }
+    return -ENODEV;
+}
+
+i32 vfs_do_umount(struct vfs_inode *target) {
+    for (i32 i = 0; i < NR_SUPERBLOCKS; ++i) {
+        struct vfs_superblock *vsb = &superblocks[i];
+        if (vsb->s_dev != 0 && vsb->s_root != target) {
+            continue;
+        }
+        vfs_iput(target);
+        vfs_iput(vsb->s_root);
+        vsb->sb_ops->write_super(vsb);
+
+        memset(vsb, 0, sizeof(struct vfs_superblock));
         return 0;
     }
     return -ENODEV;
