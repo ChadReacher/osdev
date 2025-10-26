@@ -45,7 +45,6 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
         debug("We have run out of file descriptors\r\n");
         return -EMFILE;
     }
-    current_process->close_on_exec &= ~(1 << fd);
     f = process_file_new();
     if (!f) {
         return -ENFILE;
@@ -80,7 +79,6 @@ i32 syscall_close(i32 fd) {
     if (fd > NR_OPEN) {
         return -EBADF;
     }
-    current_process->close_on_exec &= ~(1 << fd);
     f = current_process->fds[fd];
     if (!f) {
         return -EBADF;
@@ -1103,13 +1101,7 @@ i32 syscall_fcntl(i32 fd, i32 cmd, i32 arg) {
         case F_DUPFD:
             return dup_fd(fd, arg);
         case F_GETFD:
-            return (current_process->close_on_exec >> fd) & 1;
         case F_SETFD:
-            if (arg & 1) {
-                current_process->close_on_exec |= (1 << fd);
-            } else {
-                current_process->close_on_exec &= ~(1 << fd);
-            }
             return 0;
         case F_GETFL:
             return fp->f_flags;

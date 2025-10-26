@@ -60,7 +60,6 @@ struct proc {
 	struct context *context;
 	void *kernel_stack_bottom;
 	void *kernel_stack_top;
-	u32 close_on_exec;
 	struct file *fds[NR_OPEN];
 	struct vfs_inode *root;
 	struct vfs_inode *pwd;
