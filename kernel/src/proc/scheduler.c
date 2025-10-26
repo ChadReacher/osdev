@@ -124,12 +124,12 @@ static void create_idle_process(void) {
     idle_process->state = RUNNING;
     idle_process->page_directory = virtual_to_physical(CURR_PAGE_DIR);
 
-    idle_process->kernel_stack_bottom = malloc(PAGE_SIZE * 2);
+    idle_process->kernel_stack_bottom = malloc(KSTACK_SZ);
     assert(idle_process->kernel_stack_bottom != NULL);
-    memset(idle_process->kernel_stack_bottom, 0, PAGE_SIZE * 2);
+    memset(idle_process->kernel_stack_bottom, 0, KSTACK_SZ);
 
     u8 *kstack_top = (u8 *)ALIGN_DOWN(
-        (u32)idle_process->kernel_stack_bottom + PAGE_SIZE * 2 - 1, sizeof(u32));
+        (u32)idle_process->kernel_stack_bottom + KSTACK_SZ - 1, sizeof(u32));
 
     kstack_top -= sizeof(struct registers_state) + sizeof(u32);
     idle_process->regs = (struct registers_state *)kstack_top;
@@ -161,12 +161,12 @@ static void create_init_process(void) {
     }
     init_process->tty = -1;
 
-    init_process->kernel_stack_bottom = malloc(PAGE_SIZE * 2);
+    init_process->kernel_stack_bottom = malloc(KSTACK_SZ);
     assert(init_process->kernel_stack_bottom != NULL);
-    memset(init_process->kernel_stack_bottom, 0, PAGE_SIZE * 2);
+    memset(init_process->kernel_stack_bottom, 0, KSTACK_SZ);
 
     u8 *kstack_top = (u8 *)ALIGN_DOWN(
-        (u32)init_process->kernel_stack_bottom + PAGE_SIZE * 2 - 1, sizeof(u32));
+        (u32)init_process->kernel_stack_bottom + KSTACK_SZ - 1, sizeof(u32));
 
     kstack_top -= sizeof(struct registers_state) + sizeof(u32);
     init_process->regs = (struct registers_state *)kstack_top;

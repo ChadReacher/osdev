@@ -173,7 +173,7 @@ void _exit(i32);
 i32 getpid();
 i32 dup(i32);
 void *sbrk(u32);
-u32 sleep(u32);
+i32 sleep(u32);
 i8 *getcwd(i8 *, u32);
 i32 chdir(const i8 *);
 

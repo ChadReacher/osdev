@@ -30,19 +30,15 @@ static void timer_handler(struct registers_state *regs) {
         if (!p) {
             continue;
         }
-        if (p->alarm && (u32)p->alarm < ticks) {
+        if (p->alarm && (u32)p->alarm == ticks) {
             send_signal(p, SIGALRM);
             p->alarm = 0;
         }
-        if (p->sleep && p->sleep < ticks) {
+        if (p->state == INTERRUPTIBLE && p->sleep && p->sleep == ticks) {
             p->sleep = 0;
             if (p->state == INTERRUPTIBLE) {
                 p->state = RUNNING;
             }
-        }
-        if (p->sigpending != 0 && p->state == INTERRUPTIBLE) {
-            p->sleep = 0;
-            p->state = RUNNING;
         }
     }
 

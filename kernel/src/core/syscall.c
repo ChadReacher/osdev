@@ -224,20 +224,25 @@ i32 syscall_fork() {
     }
     child->pid = next_pid++;
     child->parent = current_process;
-    child->kernel_stack_bottom = malloc(4096 *2);
+    child->kernel_stack_bottom = malloc(KSTACK_SZ);
     if (child->kernel_stack_bottom == NULL) {
         panic("Failed to allocate the kernel stack for child process");
     }
-    memset(child->kernel_stack_bottom, 0, 4096 * 2);
-    child->regs = (struct registers_state *)
-        (ALIGN_DOWN((u32)child->kernel_stack_bottom + 4096 * 2 - 1, 4)
-         - sizeof(struct registers_state) + 4);
+    memset(child->kernel_stack_bottom, 0, KSTACK_SZ);
+
+    u8 *kstack_top = (u8 *)ALIGN_DOWN(
+        (u32)child->kernel_stack_bottom + KSTACK_SZ - 1, sizeof(u32));
+    kstack_top -= sizeof(struct registers_state) + sizeof(u32);
+
+    child->regs = (struct registers_state *)kstack_top;
     *child->regs = *current_process->regs;
-    child->context = (struct context *)
-        (ALIGN_DOWN((u32)child->kernel_stack_bottom + 4096 * 2 - 1, 4)
-         - sizeof(struct registers_state) - sizeof(struct context) + 4);
+
+    kstack_top -= sizeof(struct context);
+    child->context = (struct context *)kstack_top;
     child->context->eip = (u32)irq_ret;
+
     child->kernel_stack_top = child->context;
+
     memcpy(child->fds, current_process->fds, NR_OPEN * sizeof(struct file *));  
     for (i = 0; i < NR_OPEN; ++i) {
         if (child->fds[i]) {
@@ -702,10 +707,15 @@ i32 syscall_alarm(u32 secs) {
 }
 
 i32 syscall_sleep(u32 secs) {
+    i32 slept = 0;
     current_process->state = INTERRUPTIBLE;
     current_process->sleep = ticks + secs * TIMER_FREQ_HZ;
     schedule();
-    return 0;
+    if (current_process->sleep) {
+        slept = current_process->sleep - ticks;
+    }
+    current_process->sleep = 0;
+    return slept;
 }
 
 i32 syscall_sigreturn() {

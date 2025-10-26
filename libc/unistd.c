@@ -248,15 +248,7 @@ void *sbrk(u32 incr) {
 	return (void *)ret;
 }
 
-u32 sleep(u32 secs) {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_sleep), "b"(secs));
-
-	return ret;
-}
+syscall1(i32, sleep, u32, secs)
 
 i8 *getcwd(i8 *buf, u32 size) {
 	i32 ret;

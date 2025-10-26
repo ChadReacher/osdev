@@ -16,6 +16,9 @@
 // (measured in timer ticks)
 #define DEFAULT_TIMESLICE 20
 
+// Kernel stack size in bytes
+#define KSTACK_SZ (2 * PAGE_SIZE)
+
 // A process-wide maximum number of opened file descriptors
 #define NR_OPEN 20
 // A process-wide maximum number of groups
