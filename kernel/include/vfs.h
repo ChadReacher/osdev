@@ -50,7 +50,8 @@ struct vfs_inode_ops {
     i32 (*symlink) (struct vfs_inode *dir, const i8 *name, const i8 *newname);
     i32 (*readlink) (struct vfs_inode *inode, i8 *buf, i32 bufsiz);
 
-    struct vfs_inode *(*followlink) (struct vfs_inode *inode, struct vfs_inode *base);
+    // obtains ownership of `inode` and `base`
+    i32 (*followlink) (struct vfs_inode *inode, struct vfs_inode *base, struct vfs_inode **res);
     i32 (*mount) (struct vfs_inode *dir, u32 dev, const char *basename);
 };
 

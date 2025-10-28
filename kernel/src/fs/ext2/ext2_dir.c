@@ -496,45 +496,43 @@ i32 ext2_readlink(struct vfs_inode *inode, i8 *buf, i32 bufsiz) {
 	return i;
 }
 
-struct vfs_inode *ext2_follow_link(struct vfs_inode *inode, struct vfs_inode *base) {
-	i8 *name;
-	struct buffer *buf;
-	if (!base) {
-		base = current_process->root;
-		++base->i_count;
+i32 ext2_follow_link(struct vfs_inode *link, struct vfs_inode *base, struct vfs_inode **res) {
+    int rc = -1;
+	struct buffer *buf = NULL;
+    static u32 symlink_count = 0;
+
+    assert(link != NULL);
+    assert(base != NULL);
+
+    ++symlink_count;
+
+	if (!S_ISLNK(link->i_mode)) {
+        rc = -EINVAL;
+        goto exit;
 	}
-	if (!inode) {
-		vfs_iput(base);
-		return NULL;
-	}	
-	if (!S_ISLNK(inode->i_mode)) {
-		vfs_iput(base);
-		return inode;
+	if (symlink_count > MAX_LINK_COUNT) {
+        rc = -ELOOP;
+        goto exit;
 	}
-	if (current_process->symlink_count > MAX_LINK_COUNT) {
-		vfs_iput(inode);
-		vfs_iput(base);
-		return NULL; 
+	if (!link->u.i_ext2.i_block[0]) {
+        rc = -ENOENT;
+        goto exit;
 	}
-	if (!inode->u.i_ext2.i_block[0]) {
-		vfs_iput(inode);
-		vfs_iput(base);
-		return NULL;
+    buf = bread(link->i_dev, link->u.i_ext2.i_block[0]);
+    if (!buf) {
+        rc = -EIO;
+        goto exit;
 	}
-	if (!(buf = bread(inode->i_dev, inode->u.i_ext2.i_block[0]))) {
-		vfs_iput(inode);
-		vfs_iput(base);
-		return NULL;
-	}
-	vfs_iput(inode);
-	name = buf->data;
-	++current_process->symlink_count;
-	if (vfs_namei(name, base, 1, &inode) != 0) {
-		inode = NULL;
-	}
-	--current_process->symlink_count;
+
+	i8 *name = buf->data;
+    rc = vfs_namei(name, base, 1, res);
+    goto exit;
+
+exit:
+	--symlink_count;
 	brelse(buf);
-	return inode;
+    vfs_iput(link);
+    return rc;
 }
 
 static i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf) {
