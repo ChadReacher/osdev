@@ -257,7 +257,6 @@ i32 syscall_fork() {
     }
     child->regs->eax = 0;
     child->alarm = 0;
-    child->leader = 0;
     sigemptyset(&child->sigpending);
     return child->pid;
 }
@@ -275,7 +274,7 @@ i32 kill_pgrp(i32 pgrp, i32 sig) {
         if (!p) {
             continue;
         }
-        if (p->pgrp == pgrp) {
+        if (p->pgid == pgrp) {
             if (sig && (err = send_signal(p, sig))) {
                 retval = err;
             } else {
@@ -290,7 +289,7 @@ i32 syscall_kill(i32 pid, i32 sig) {
     struct proc *p;
 
     if (pid == 0) {
-        return kill_pgrp(current_process->pgrp, sig);
+        return kill_pgrp(current_process->pgid, sig);
     } else if (pid == -1) {
         debug("syscall_kill(pid %d, sig %d) - behaviour unspecified", pid, sig);
         return 0;
@@ -316,13 +315,13 @@ i32 is_orphaned_pgrp(i32 pgrp) {
         if (!p) {
             continue;
         }
-        if (p->pgrp != pgrp ||
+        if (p->pgid != pgrp ||
                 p->state == ZOMBIE ||
                 p->parent->pid == 1) {
             continue;
         }
-        if (p->parent->pgrp != pgrp &&
-                p->parent->session == p->session) {
+        if (p->parent->pgid != pgrp &&
+                p->parent->sid == p->sid) {
             return 0;
         }
     }
@@ -338,7 +337,7 @@ static i32 has_stopped_jobs(i32 pgrp) {
         if (!p) { 
             continue;
         }
-        if (p->pgrp != pgrp) {
+        if (p->pgid != pgrp) {
             continue;
         }
         if (p->state == STOPPED) {
@@ -371,19 +370,24 @@ void do_exit(i32 code) {
     free_user_image();
     free_blocks((void *)current_process->page_directory, 1);
 
-    if (current_process->leader && current_process->tty >= 0) {
-        tty_table[current_process->tty].pgrp = 0;
-    }
     free(current_process->str_pwd);
     free(current_process->kernel_stack_bottom);
     current_process->state = ZOMBIE;
     current_process->exit_code = code;
-    if (current_process->parent->pgrp != current_process->pgrp &&
-            current_process->parent->session == current_process->session && 
-            is_orphaned_pgrp(current_process->pgrp) &&
-            has_stopped_jobs(current_process->pgrp)) {
-        kill_pgrp(current_process->pgrp, SIGHUP);
-        kill_pgrp(current_process->pgrp, SIGCONT);
+
+    bool is_session_leader = current_process->pid = current_process->sid;
+    if (is_session_leader) {
+        kill_pgrp(current_process->pgid, SIGHUP);
+        tty_table[current_process->tty].pgrp = 0;
+    }
+
+    if (current_process->parent->pgid != current_process->pgid &&
+            current_process->parent->sid == current_process->sid && 
+            is_orphaned_pgrp(current_process->pgid) &&
+            has_stopped_jobs(current_process->pgid)) {
+        kill_pgrp(current_process->pgid, SIGHUP);
+        kill_pgrp(current_process->pgid, SIGCONT);
+        debug("ARE WE EVEN HERE???\r\n");
     }
     syscall_kill(current_process->parent->pid, SIGCHLD);
 
@@ -398,12 +402,12 @@ void do_exit(i32 code) {
             if (p->state == ZOMBIE) {
                 (procs[1])->sigpending |= (1 << (SIGCHLD - 1));
             }
-            if (p->pgrp != current_process->pgrp &&
-                    p->session == current_process->session && 
-                    is_orphaned_pgrp(p->pgrp) &&
-                    has_stopped_jobs(p->pgrp)) {
-                kill_pgrp(p->pgrp, SIGHUP);
-                kill_pgrp(p->pgrp, SIGCONT);
+            if (p->pgid != current_process->pgid &&
+                    p->sid == current_process->sid && 
+                    is_orphaned_pgrp(p->pgid) &&
+                    has_stopped_jobs(p->pgid)) {
+                kill_pgrp(p->pgid, SIGHUP);
+                kill_pgrp(p->pgid, SIGCONT);
             }   
         }
     }
@@ -437,11 +441,11 @@ loop:
                 continue;
             }
         } else if (!pid) {
-            if (p->pgrp != current_process->pgrp) {
+            if (p->pgid != current_process->pgid) {
                 continue;
             }
         } else if (pid != -1) {
-            if (p->pgrp != -pid) {
+            if (p->pgid != -pid) {
                 continue;
             }
         }
@@ -795,18 +799,17 @@ i8 *cuserid(i8 *s) {
 }
 
 i32 syscall_getpgrp() {
-    return current_process->pgrp;
+    return current_process->pgid;
 }
 
 
 i32 syscall_setsid() {
-    if (current_process->leader) {
+    if (current_process->pid == current_process->sid) {
         return -EPERM;
     }
-    current_process->leader = 1;
-    current_process->session = current_process->pgrp = current_process->pid;
+    current_process->sid = current_process->pgid = current_process->pid;
     current_process->tty = -1;
-    return current_process->pgrp;
+    return current_process->sid;
 }
 
 static i32 session_of_pgrp(i32 pgrp) {
@@ -816,8 +819,8 @@ static i32 session_of_pgrp(i32 pgrp) {
         if (!p) {
             continue;
         }
-        if (p->pgrp == pgrp) {
-            return p->session;
+        if (p->pgid == pgrp) {
+            return p->sid;
         }
     }
     return -1;
@@ -841,15 +844,15 @@ i32 syscall_setpgid(i32 pid, i32 pgid) {
         }
         if (p->pid == pid && 
                 (p->parent == current_process || p == current_process)) {
-            if (p->leader) {
+            if (p->pid == p->sid) {
                 return -EPERM;
             }
-            if (p->session != current_process->session ||
+            if (p->sid != current_process->sid ||
                     (pgid != pid &&
-                     session_of_pgrp(pgid) != current_process->session)) {
+                     session_of_pgrp(pgid) != current_process->sid)) {
                 return -EPERM;
             }
-            p->pgrp = pgid;
+            p->pgid = pgid;
             return 0;
         }
     }

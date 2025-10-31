@@ -68,16 +68,19 @@ i32 tty_open(struct vfs_inode *inode, struct file *fp) {
 	return 0;
 }
 
-i32 ttyx_open(struct vfs_inode *inode, struct file *fp) {
-	(void)fp;
-	u16 minor;
-	minor = MINOR(inode->i_rdev);
+i32 ttyx_open(struct vfs_inode *inode, UNUSED struct file *fp) {
+	u16 minor = MINOR(inode->i_rdev);
 
-	if (current_process->leader && current_process->tty < 0) {
-		current_process->tty = minor;
-		tty_table[current_process->tty].pgrp = current_process->pgrp;
-	}
-	return 0;
+    bool session_leader = current_process->pid == current_process->sid;
+
+    // Only session leader process with no controlling terminal can acquire a
+    // free controlling terminal
+    if (session_leader && current_process->tty < 0 &&
+        tty_table[minor].pgrp == 0) {
+        current_process->tty = minor;
+        tty_table[current_process->tty].pgrp = current_process->pgid;
+    }
+    return 0;
 }
 
 void sleep_if_full(struct tty_queue *q) {
@@ -136,8 +139,7 @@ i32 tty_read(struct vfs_inode *inode, UNUSED struct file *fp, i8 *buf, i32 count
 	return b - buf;
 }
 
-i32 tty_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
-	(void)fp;
+i32 tty_write(struct vfs_inode *inode, struct UNUSED file *fp, i8 *buf, i32 count) {
 	static i32 cr_flag = 0;
 	struct tty_struct *tty;
 	i8 c, *b = buf;
@@ -148,12 +150,12 @@ i32 tty_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count) {
 	}
 	tty = tty_table + minor;
 	if ((tty->termios.c_lflag & TOSTOP) && 
-			current_process->tty == (i32)minor &&
-			current_process->pgrp != tty->pgrp) {
+			current_process->tty == minor &&
+			current_process->pgid != tty->pgrp) {
 		if (is_orphaned_pgrp(tty->pgrp)) {
 			return -EIO;
 		}
-		kill_pgrp(current_process->pgrp, SIGTTOU);
+		kill_pgrp(current_process->pgid, SIGTTOU);
 		if (sigismember(&current_process->sigmask, SIGTTOU) ||
 				(u32)current_process->signals[SIGTTOU].sa_handler == 1) {
 			return -EIO;
@@ -203,7 +205,7 @@ static void send_intr(struct tty_struct *tty, i32 signal) {
 		if (!p) {
 			continue;
 		}
-		if (p->pgrp == tty->pgrp) {
+		if (p->pgid == tty->pgrp) {
 			send_signal(p, signal);
 		}
 	}

@@ -65,8 +65,8 @@ static void UNUSED dump_procs(void) {
                 state = "UNKNOWN";
                 break;
         }
-        debug("Process(%p) with PID %d, state: %s\r\n",
-                p, p->pid, state);
+        debug("process(%d, %d, %d), cterm = %d, state: %s\r\n",
+                p->pid, p->pgid, p->sid, p->tty, state);
     }
 }
 

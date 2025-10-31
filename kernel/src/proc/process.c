@@ -59,6 +59,8 @@ void user_init(void) {
     i8 *envp[] = { "PATH=/bin", NULL };
     struct proc *init_process = procs[INIT_PID];
 
+    init_process->sid = init_process->pgid = init_process->pid;
+
     physical_address curr_page_dir = virtual_to_physical(CURR_PAGE_DIR);
     init_process->page_directory = (physical_address) paging_copy_page_dir(0);
 

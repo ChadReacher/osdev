@@ -24,7 +24,7 @@
 // A process-wide maximum number of groups
 #define NR_GROUPS 32
 
-// A system-wide maximum number of available procceses
+// A system-wide maximum number of processes
 #define NR_PROCS 32
 // A system-wide maximum number of opened files
 #define NR_FILE 32
@@ -104,11 +104,10 @@ struct proc {
     u16 uid, euid;
     // Real group id, effective group id
     u8 gid, egid;
-    // Process group id, session id
-    // TODO: rename -> pgid, sid
-    // TODO: remove `leader` field as leader means session leader
-    // and session leader is process where `session id` == `process id` i.e. `session` == `pid`
-    i32 pgrp, session, leader;
+    // Process group id
+    i32 pgid;
+    // Session id
+    i32 sid;
     // Process groups to which a process belongs to
     i32 groups[NR_GROUPS];
     // Time spent in user space, measured in ticks
