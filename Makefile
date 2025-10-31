@@ -38,6 +38,10 @@ user: libc
 	man wc > userland/hdd/home/file
 	echo "del" > userland/hdd/home/del
 	echo "bye" > userland/hdd/home/bye
+	sudo mknod userland/hdd/dev/null c 0x01 0x03
+	sudo mknod userland/hdd/dev/zero c 0x01 0x04
+	sudo mknod userland/hdd/dev/full c 0x01 0x05
+	sudo mknod userland/hdd/dev/tty  c 0x05 0x00
 	sudo mknod userland/hdd/dev/tty0 c 0x04 0x00
 	sudo mknod userland/hdd/dev/hdb0 b 0x03 0x06
 	sudo mknod userland/hdd/dev/hdb1 b 0x03 0x07

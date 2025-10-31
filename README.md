@@ -13,7 +13,7 @@ The goal of writing this OS is to get practical experience with C, get more know
 * Userspace programs(ELF loading)
 * Small C library
 * Multiprocessing support
-* EXT2 file system
+* Filesystems (ext2, symbolic links, mount points, special device types)
 
 # Build
 In order to build you need a cross-compiler(i387-elf-gcc, i386-elf-ld), NASM and qemu(qemu-system-i386).

@@ -163,8 +163,8 @@ i32 execlp(const i8 *file, const i8 *arg, ...);
 i32 execle(const i8 *path, const i8 *arg, ...);
 
 void test(i32);
-u32 read(i32, const void *, u32);
-u32 write(i32, const void *, u32);
+i32 read(i32, const void *, u32);
+i32 write(i32, const void *, u32);
 i32 close(i32);
 i32 lseek(i32, i32, i32);
 i32 unlink(const i8*);

@@ -163,25 +163,9 @@ void test(i32 n) {
 			: "a"(__NR_test), "b"(n));
 }
 
-u32 read(i32 fd, const void *buf, u32 count) {
-	u32 ret;
+syscall3(i32, read, i32, fd, const void *, buf, u32, count)
 
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_read), "b"(fd), "c"(buf), "d"(count));
-
-	return ret;
-}
-
-u32 write(i32 fd, const void *buf, u32 count) {
-	u32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_write), "b"(fd), "c"(buf), "d"(count));
-
-	return ret;
-}
+syscall3(i32, write, i32, fd, const void *, buf, u32, count)
 
 i32 close(i32 fd) {
 	i32 ret;
