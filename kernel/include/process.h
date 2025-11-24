@@ -49,6 +49,8 @@ struct context {
     u32 eip;
 };
 
+// A structure that represents a process - an abstraction over a running program in OS.
+// Basically it is an environment where a program is executed.
 struct proc {
     // Process identifier, 0 - IDLE, 1 - INIT, 2,3,.. - other processes
     i32 pid;
@@ -118,12 +120,7 @@ struct proc {
     i32 cutime;
     // Children process's time spent in kernel space, measure in ticks
     i32 cstime;
-    // Controlling terminal number
-    // TODO: should it have `dev_t` type? and assign `inode->i_dev`
-    // look at pm_attach_tty
-    // Probably used to:
-    // a) check the background read `handle_background_read`
-    // b) attach tty
+    // Controlling terminal device
     i32 tty;
 };
 

@@ -375,7 +375,7 @@ void do_exit(i32 code) {
     current_process->state = ZOMBIE;
     current_process->exit_code = code;
 
-    bool is_session_leader = current_process->pid = current_process->sid;
+    bool is_session_leader = current_process->pid == current_process->sid;
     if (is_session_leader) {
         kill_pgrp(current_process->pgid, SIGHUP);
         tty_table[current_process->tty].pgrp = 0;
