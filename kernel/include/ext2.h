@@ -157,6 +157,7 @@ struct file;
 struct vfs_superblock;
 
 i32 ext2_read_super(struct vfs_superblock *vsb);
+i32 ext2_write_super(struct vfs_superblock *vsb);
 
 void ext2_read_inode(struct vfs_inode *inode);
 void ext2_write_inode(struct vfs_inode *inode);
@@ -173,7 +174,7 @@ i32 ext2_unlink(struct vfs_inode *dir, const char *basename);
 i32 ext2_link(struct vfs_inode *dir, const i8 *basename, struct vfs_inode *inode);
 i32 ext2_symlink(struct vfs_inode *dir, const i8 *name, const i8*symname);
 i32 ext2_readlink(struct vfs_inode *inode, i8 *buf, i32 bufsiz);
-struct vfs_inode *ext2_follow_link(struct vfs_inode *inode, struct vfs_inode *base);
+i32 ext2_follow_link(struct vfs_inode *inode, struct vfs_inode *base, struct vfs_inode **res);
 i32 ext2_rmdir(struct vfs_inode *dir, const char *basename);
 i32 ext2_mkdir(struct vfs_inode *dir, const char *basename, i32 mode);
 
@@ -182,6 +183,7 @@ i32 ext2_readdir(struct vfs_inode *inode, struct file *fp, struct dirent *dent);
 
 i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res);
 i32 ext2_truncate(struct vfs_inode *inode, u32 length);
+i32 ext2_mount(struct vfs_inode *dir, u32 dev, const char *basename);
 
 
 // Low-level API

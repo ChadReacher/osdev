@@ -61,13 +61,14 @@ i32 vfs_dirnamei(const i8 *pathname, struct vfs_inode *base, const i8 **res_base
             base = inode;
             continue;
         }
-        base = inode->i_ops->followlink(inode, base);
-        if (base == NULL) {
+        struct vfs_inode *res = NULL;
+        error = inode->i_ops->followlink(inode, base, &res);
+        if (error) {
             vfs_iput(base);
-            vfs_iput(inode);
             free(saved_pathname);
-            return -ENOENT;
+            return error;
         }
+        base = res;
     }
     if (basename == NULL) {
         vfs_iput(base);
@@ -87,6 +88,10 @@ i32 vfs_namei(const i8 *pathname, struct vfs_inode *base, i32 follow_links, stru
     struct vfs_inode *dir = NULL;
     struct vfs_inode *inode = NULL;
 
+    // vfs_dirnamei eats one 'i_count'
+    if (base) {
+        ++base->i_count;
+    }
     i32 err = vfs_dirnamei(pathname, base, &basename, &dir);
     if (err != 0) {
         return err;
@@ -103,10 +108,12 @@ i32 vfs_namei(const i8 *pathname, struct vfs_inode *base, i32 follow_links, stru
     }
 
     if (follow_links && inode->i_ops && inode->i_ops->followlink) {
-        inode = inode->i_ops->followlink(inode, base);
-        if (inode == NULL) {
-            return -ENOENT;
+        struct vfs_inode *res = NULL;
+        err = inode->i_ops->followlink(inode, base, &res);
+        if (err != 0) {
+            return err;
         }
+        inode = res;
     }
 
     inode->i_atime = get_current_time();
@@ -161,11 +168,13 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
     }
 
     if (inode->i_ops && inode->i_ops->followlink) {
-        inode = inode->i_ops->followlink(inode, dir);
-        if (inode == NULL) {
+        struct vfs_inode *res = NULL;
+        err = inode->i_ops->followlink(inode, dir, &res);
+        if (err) {
             vfs_iput(dir);
-            return -ELOOP;
+            return err;
         }
+        inode = res;
     }
 
 

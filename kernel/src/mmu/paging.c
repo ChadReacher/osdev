@@ -21,6 +21,7 @@ void pagefault_handler(struct registers_state *regs) {
     const u32 err_code = regs->err_code;
 
     debug("Page Fault Exception. Bad Address: %#x. Error code: %d\r\n", bad_address, err_code);
+    stack_trace();
 
     const i8 present = (err_code & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT;
     const i8 rw = (err_code & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE;

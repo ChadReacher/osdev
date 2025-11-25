@@ -33,6 +33,8 @@ void ext2_free_block(u16 dev, u32 block) {
 
     ++bgd.bg_free_blocks_count;
     ++vsb->u.ext2_sb.s_free_blocks_count;
+    vsb->u.ext2_sb.s_wtime = get_current_time();
+    vsb->s_dirty = 1;
     if (write_group_desc(&bgd, group, vsb) != 0) {
         debug("Failed to write group descriptor #%d\r\n", group);
         return;
@@ -71,6 +73,9 @@ u32 ext2_alloc_block(u16 dev) {
                 bwrite(buf);
 
                 --bgd.bg_free_blocks_count;
+                --vsb->u.ext2_sb.s_free_blocks_count;
+                vsb->u.ext2_sb.s_wtime = get_current_time();
+                vsb->s_dirty = 1;
                 if (write_group_desc(&bgd, i, vsb) != 0) {
                     debug("Failed to write group descriptor #%d\r\n", i);
                 }
@@ -112,6 +117,8 @@ void ext2_free_inode(struct vfs_inode *inode) {
 
     ++bgd.bg_free_inodes_count;
     ++vsb->u.ext2_sb.s_free_inodes_count;
+    vsb->u.ext2_sb.s_wtime = get_current_time();
+    vsb->s_dirty = 1;
     if (write_group_desc(&bgd, group, vsb) != 0) {
         debug("Failed to read group descriptor #%d\r\n", group);
         return;
@@ -150,7 +157,10 @@ struct vfs_inode *ext2_alloc_inode(u16 dev) {
                 bdata[j] = bdata[j] | mask;
                 bwrite(buf);
 
-                --bgd.bg_free_inodes_count;
+                ++bgd.bg_free_inodes_count;
+                --vsb->u.ext2_sb.s_free_inodes_count;
+                vsb->u.ext2_sb.s_wtime = get_current_time();
+                vsb->s_dirty = 1;
                 if (write_group_desc(&bgd, i, vsb) != 0) {
                     debug("Failed to write group descriptor #%d\r\n", i);
                 }

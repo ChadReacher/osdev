@@ -44,12 +44,15 @@ struct vfs_inode_ops {
     i32 (*rmdir) (struct vfs_inode *dir, const char *basename);
     i32 (*mkdir) (struct vfs_inode *dir, const char *basename, i32 mode);
     i32 (*rename) (struct vfs_inode *old_dir, const char *old_base, struct vfs_inode *new_dir, const char *new_base);
-        i32 (*truncate) (struct vfs_inode *inode, u32 length);
+    i32 (*truncate) (struct vfs_inode *inode, u32 length);
     i32 (*lookup) (struct vfs_inode *inode, const char *name, struct vfs_inode **res);
     i32 (*create) (struct vfs_inode *dir, const i8 *name, i32 mode, struct vfs_inode **res);
     i32 (*symlink) (struct vfs_inode *dir, const i8 *name, const i8 *newname);
     i32 (*readlink) (struct vfs_inode *inode, i8 *buf, i32 bufsiz);
-    struct vfs_inode *(*followlink) (struct vfs_inode *inode, struct vfs_inode *base);
+
+    // obtains ownership of `inode` and `base`
+    i32 (*followlink) (struct vfs_inode *inode, struct vfs_inode *base, struct vfs_inode **res);
+    i32 (*mount) (struct vfs_inode *dir, u32 dev, const char *basename);
 };
 
 struct file_ops {
@@ -80,6 +83,7 @@ struct vfs_inode {
     u32 i_dirt;
     u32 i_pipe;
     struct proc *i_wait;
+    bool i_mount;
     struct vfs_superblock *i_sb;
     struct vfs_inode_ops *i_ops;
     struct file_ops *i_f_ops;
@@ -95,11 +99,19 @@ struct fs_ops {
     void (*free_inode)(struct vfs_inode *vnode);
 };
 
+struct sb_ops {
+    i32 (*read_super)(struct vfs_superblock *vsb);
+    i32 (*write_super)(struct vfs_superblock *vsb);
+};
+
 struct vfs_superblock {
     u32 s_dev;
     u32 s_block_size; // s_block_size = 1024 << p->s_log_block_size;
+    bool s_dirty;
+    struct vfs_inode *s_mounted;
     struct vfs_inode *s_root;
     struct fs_ops *fs_ops;
+    struct sb_ops *sb_ops;
     union {
         struct ext2_super_block ext2_sb;
     } u;
@@ -107,7 +119,7 @@ struct vfs_superblock {
 
 struct filesystem {
     char *name;
-    i32 (*read_super)(struct vfs_superblock *vsb);
+    struct sb_ops fs_ops;
 };
 
 
@@ -122,6 +134,8 @@ struct file {
 
 void mount_root(void);
 struct vfs_superblock *get_vfs_super(u32 dev);
+i32 vfs_do_mount(u32 dev, struct vfs_inode *dir);
+i32 vfs_do_umount(struct vfs_inode *target);
 
 struct vfs_inode *vfs_iget(u16 dev, u32 nr);
 void vfs_iput(struct vfs_inode *inode);
@@ -132,5 +146,6 @@ i32 check_permission(struct vfs_inode *inode, i32 mask);
 struct vfs_inode *get_empty_inode(void);
 
 void sync_inodes(void);
+void sync_superblocks(void);
 
 #endif

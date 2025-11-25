@@ -163,25 +163,9 @@ void test(i32 n) {
 			: "a"(__NR_test), "b"(n));
 }
 
-u32 read(i32 fd, const void *buf, u32 count) {
-	u32 ret;
+syscall3(i32, read, i32, fd, const void *, buf, u32, count)
 
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_read), "b"(fd), "c"(buf), "d"(count));
-
-	return ret;
-}
-
-u32 write(i32 fd, const void *buf, u32 count) {
-	u32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_write), "b"(fd), "c"(buf), "d"(count));
-
-	return ret;
-}
+syscall3(i32, write, i32, fd, const void *, buf, u32, count)
 
 i32 close(i32 fd) {
 	i32 ret;
@@ -201,15 +185,7 @@ i32 lseek(i32 fd, i32 offset, i32 whence) {
 
 syscall3(i32, readlink, const i8 *, pathname, i8 *, buf, i32, bufsiz)
 
-i32 unlink(const i8 *pathname) {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_unlink), "b"(pathname));
-
-	return ret;
-}
+syscall1(i32, unlink, const i8 *, pathname)
 
 void yield() {
 	__asm__ __volatile__ ("int $0x80" : : "a"(__NR_yield));
@@ -256,15 +232,7 @@ void *sbrk(u32 incr) {
 	return (void *)ret;
 }
 
-u32 sleep(u32 secs) {
-	i32 ret;
-
-	__asm__ __volatile__ ("int $0x80" 
-			: "=a"(ret) 
-			: "a"(__NR_sleep), "b"(secs));
-
-	return ret;
-}
+syscall1(i32, sleep, u32, secs)
 
 i8 *getcwd(i8 *buf, u32 size) {
 	i32 ret;
@@ -462,3 +430,7 @@ i32 times(tms *buffer) {
 syscall2(i32, getgroups, i32, gidsetsize, i32 *, grouplist)
 
 syscall2(i32, truncate, const char *, path, u32, length)
+
+syscall2(i32, mount, const char *, device, const char *, dest)
+
+syscall1(i32, umount, const char *, target)

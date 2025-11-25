@@ -358,16 +358,17 @@ struct buffer *ext2_find_entry(struct vfs_inode *dir, const i8 *name,
 	return NULL;
 }
 
-/* Its searches the inode by 'name' entry in VFS directory inode 'dir' */
+extern struct vfs_superblock superblocks[NR_SUPERBLOCKS];
+
+/* It searches the inode by 'name' entry in VFS directory inode 'dir' */
 i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res) {
-	struct buffer *buf;
-	u32 inr;
-	struct ext2_dir *de;
+	struct buffer *buf = NULL;
+	struct ext2_dir *de = NULL;
+    struct vfs_inode *inode = NULL;
 
 	*res = NULL;
-	if (!dir) {
-		return -ENOENT;
-	}
+    assert(dir != NULL);
+
 	if (!check_permission(dir, MAY_EXEC)) {
 		vfs_iput(dir);
 		return -EACCES;
@@ -384,17 +385,32 @@ i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res) {
 		vfs_iput(dir);
 		return -ENAMETOOLONG;
 	}
+
 	if (!(buf = ext2_find_entry(dir, name, &de, NULL))) {
 		vfs_iput(dir);
 		return -ENOENT;
 	}
-	inr = de->inode;
+	u32 inr = de->inode;
 	brelse(buf);
-	if (!(*res = vfs_iget(dir->i_dev, inr))) {
+	if (!(inode = vfs_iget(dir->i_dev, inr))) {
 		vfs_iput(dir);
 		return -EACCES;
 	}
-	vfs_iput(dir);
-	return 0;
+
+    // Is it a mountpoint?
+    for (int i = 0; i < NR_SUPERBLOCKS; ++i) {
+        if (superblocks[i].s_dev != 0 && superblocks[i].s_mounted &&
+            superblocks[i].s_mounted->i_num == inode->i_num) {
+            vfs_iput(inode);
+            inode = superblocks[i].s_root;
+            ++inode->i_count;
+            break;
+        }
+    }
+ 
+    *res = inode;
+
+    vfs_iput(dir);
+    return 0;
 }
 

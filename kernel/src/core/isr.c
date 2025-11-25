@@ -50,12 +50,12 @@ i8 *exception_messages[] = {
 };
 
 void breakpoint_handler(struct registers_state *regs) {
-    kprintf("Exception: BREAKPOINT\n"
-          "   Instruction Pointer = %#x\n"
-          "   Code Segment        = %#x\n"
-          "   CPU Flags           = %#x\n"
-          "   Stack Pointer       = %#x\n"
-          "   Stack Segment       = %#x\n",
+    debug("Exception: BREAKPOINT\r\n"
+          "   Instruction Pointer = %#x\r\n"
+          "   Code Segment        = %#x\r\n"
+          "   CPU Flags           = %#x\r\n"
+          "   Stack Pointer       = %#x\r\n"
+          "   Stack Segment       = %#x\r\n",
           regs->eip,
           regs->cs,
           regs->eflags,
@@ -131,9 +131,9 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 }
 
 void check_signals(struct registers_state *regs) {
-    if (current_process && 
-            (current_process->sigpending & ~current_process->sigmask) &&
-            (regs->cs & 0x3) == 0x3) {
+    while (current_process
+        && (current_process->sigpending & ~current_process->sigmask)
+        && (regs->cs & 0x3) == 0x3) {
         handle_signal(regs);
     }
 }
@@ -155,17 +155,7 @@ i32 syscall_handler(struct registers_state *regs) {
     return sys(regs->ebx, regs->ecx, regs->edx, regs->esi);
 }
 
-void isr_handler(struct registers_state *regs) {
-    if (regs->int_number == SYSCALL) {
-        current_process->regs = regs;
-        regs->eax = syscall_handler(regs);
-        return;
-    } else if (interrupt_handlers[regs->int_number] != 0) {
-        isr_t handler = interrupt_handlers[regs->int_number];
-        handler(regs);
-        return;
-    }
-
+static void default_handler(struct registers_state *regs) {
     panic("Received interrupt: %s(%d) with error code: %x\n\n"
           "   Instruction Pointer = %#x\n"
           "   Code Segment        = %#x\n"
@@ -179,6 +169,18 @@ void isr_handler(struct registers_state *regs) {
         regs->esp,
         regs->ss
     );
+}
+
+void isr_handler(struct registers_state *regs) {
+    if (regs->int_number == SYSCALL) {
+        current_process->regs = regs;
+        regs->eax = syscall_handler(regs);
+    } else if (interrupt_handlers[regs->int_number] != 0) {
+        isr_t handler = interrupt_handlers[regs->int_number];
+        handler(regs);
+    } else {
+        default_handler(regs);
+    }
 }
 
 static void send_eoi(u32 intr_num) {

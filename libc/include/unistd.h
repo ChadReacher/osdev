@@ -80,7 +80,9 @@
 #define __NR_symlink		54
 #define __NR_readlink		55
 #define __NR_lstat			56
-#define __NR_truncate           57
+#define __NR_truncate       57
+#define __NR_mount          58
+#define __NR_umount         59
 
 #define syscall0(type, name) \
 type name(void) { \
@@ -161,8 +163,8 @@ i32 execlp(const i8 *file, const i8 *arg, ...);
 i32 execle(const i8 *path, const i8 *arg, ...);
 
 void test(i32);
-u32 read(i32, const void *, u32);
-u32 write(i32, const void *, u32);
+i32 read(i32, const void *, u32);
+i32 write(i32, const void *, u32);
 i32 close(i32);
 i32 lseek(i32, i32, i32);
 i32 unlink(const i8*);
@@ -171,7 +173,7 @@ void _exit(i32);
 i32 getpid();
 i32 dup(i32);
 void *sbrk(u32);
-u32 sleep(u32);
+i32 sleep(u32);
 i8 *getcwd(i8 *, u32);
 i32 chdir(const i8 *);
 

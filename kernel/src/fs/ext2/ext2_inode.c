@@ -24,6 +24,7 @@ struct vfs_inode_ops ext2_inode_file_ops = {
 	NULL,
 	NULL,
 	NULL,
+    NULL,
 };
 
 struct vfs_inode_ops ext2_inode_dir_ops = {
@@ -38,6 +39,7 @@ struct vfs_inode_ops ext2_inode_dir_ops = {
     ext2_symlink,
 	NULL,
 	NULL,
+    ext2_mount
 };
 
 struct vfs_inode_ops ext2_inode_chrdev_ops = {
@@ -52,6 +54,7 @@ struct vfs_inode_ops ext2_inode_chrdev_ops = {
 	NULL,
 	NULL,
 	NULL,
+    NULL,
 };
 
 struct vfs_inode_ops ext2_inode_blkdev_ops = {
@@ -66,6 +69,7 @@ struct vfs_inode_ops ext2_inode_blkdev_ops = {
 	NULL,
 	NULL,
 	NULL,
+    NULL,
 };
 
 struct vfs_inode_ops ext2_inode_symlink_ops = {
@@ -80,6 +84,7 @@ struct vfs_inode_ops ext2_inode_symlink_ops = {
 	NULL,
 	ext2_readlink,
 	ext2_follow_link,
+    NULL,
 };
 
 struct vfs_inode_ops ext2_inode_fifo_ops = {
@@ -94,6 +99,7 @@ struct vfs_inode_ops ext2_inode_fifo_ops = {
 	NULL,
 	NULL,
 	NULL,
+    NULL,
 };
 
 i32 read_group_desc(struct ext2_blk_grp_desc *bgd, u32 group, struct vfs_superblock *vsb) {

@@ -91,12 +91,6 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 			current_process->signals[i].sa_handler = SIG_DFL;
 		}
 	}
-	for (i = 0; i < NR_OPEN; ++i) {
-		if ((current_process->close_on_exec >> i) & 1) {
-			syscall_close(i);
-		}
-	}
-	current_process->close_on_exec = 0;
 	vfs_iput(inode);
 
 	return 0;

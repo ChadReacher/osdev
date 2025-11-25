@@ -5,8 +5,8 @@ Filesystem:
   * [DONE] Support symbolink links in Ext2
   * Implement second file system:
     - Implement MSDOS/FAT32(16) or HFS
-  * Implement mount() syscall
-  * Implement umount() syscall
+  * [DONE] Implement mount() syscall
+  * [DONE] Implement umount() syscall
   * Implement FIFO
   * Implement sockets
 
@@ -57,8 +57,8 @@ Plan:
 * [DONE] Introduce block cache
 * [DONE] Implement truncate(2) syscall
 * ...
-* Implement mount() syscall
-* Implement umount() syscall
+* [DONE] Implement mount() syscall
+* [DONE] Implement umount() syscall
 * ...
 * Introduce memory zones? mmap(2) syscall?
 * ...
