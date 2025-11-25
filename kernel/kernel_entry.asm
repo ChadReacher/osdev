@@ -99,7 +99,8 @@ start_in_higher_half:
 	; mov eax, cr3
 	; mov cr3, eax
 
-        mov ebp, 0x0                    ; Clear the frame pointer register
+    mov ebp, 0x0                    ; Clear the frame pointer register
+    push 0x0
 
 	mov esp, stack + STACK_SIZE - 4     ; Setup the stack pointer
 

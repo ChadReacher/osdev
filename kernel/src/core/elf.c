@@ -6,6 +6,7 @@
 #include <blk_dev.h>
 #include <heap.h>
 #include <errno.h>
+#include <pmm.h>
 
 extern void irq_ret();
 
@@ -25,23 +26,26 @@ static i32 is_elf(struct elf_header *elf) {
 
 static void map_user_stack() {
 	void *stack_frame;
-	page_directory_entry *stack_pd_entry;
-	page_table_t *stack_page_table;
-	page_table_entry stack_page;
-	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
+	pd_entry *stack_pd_entry;
+	struct page_table *stack_page_table;
+	pt_entry stack_page;
+	struct page_directory *curr_page_dir = (struct page_directory *)CURR_PAGE_DIR;
 
 	stack_frame = allocate_blocks(1);
-	map_page(stack_frame, (void *)0xBFFFF000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
-	stack_pd_entry = &cur_pd->entries[767];
+    if (stack_frame == NULL) {
+        panic("Failed to allocate new physical block: not enough space :(");
+    }
+	map_page((physical_address)stack_frame, 0xBFFFF000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+	stack_pd_entry = &curr_page_dir->entries[767];
 	*stack_pd_entry |= PAGING_FLAG_PRESENT;
 	*stack_pd_entry |= PAGING_FLAG_WRITEABLE;
 	*stack_pd_entry |= PAGING_FLAG_USER;
-	stack_page_table = (page_table_t *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)0xBFFFF000) << 12));
+	stack_page_table = (struct page_table *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)0xBFFFF000) << 12));
 	stack_page = 0;
 	stack_page |= PAGING_FLAG_PRESENT;
 	stack_page |= PAGING_FLAG_WRITEABLE;
 	stack_page |= PAGING_FLAG_USER;
-	stack_page = ((stack_page & ~0xFFFFF000) | (physical_address)stack_frame);
+	stack_page = ((stack_page & ~0xFFFFF000) | (u32)stack_frame);
 	stack_page_table->entries[PAGE_TABLE_INDEX(0xBFFFF000)] = stack_page;
 }
 
@@ -93,8 +97,12 @@ static void setup_heap(u32 last_addr) {
 	void *brk_phys_frame;
 
 	brk_phys_frame = allocate_blocks(1);
+    if (brk_phys_frame == NULL) {
+        panic("Failed to allocate new physical block: not enough space :(");
+    }
 	current_process->brk = ALIGN_UP(last_addr, 4096);
-	map_page(brk_phys_frame, (void *)current_process->brk, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+	map_page((physical_address)brk_phys_frame, current_process->brk, 
+            PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
 }
 
 static void setup_kernel_stack(i8 *usp) {
@@ -138,8 +146,8 @@ i32 elf_load(struct vfs_inode *inode,
 	i32 i;
 	u32 last_addr;
 	struct elf_header elf_header;
-	page_directory_entry *code_pd_entry;
-	page_directory_t *cur_pd = (page_directory_t *)0xFFFFF000;
+	pd_entry *code_pd_entry;
+	struct page_directory *curr_page_dir = (struct page_directory *)0xFFFFF000;
 	struct file fp;
 
     fp.f_ops = inode->i_f_ops;
@@ -159,7 +167,7 @@ i32 elf_load(struct vfs_inode *inode,
 	}
 	//dump_elf_header(&elf_header);
 	free_user_image();
-	code_pd_entry = &cur_pd->entries[0];
+	code_pd_entry = &curr_page_dir->entries[0];
 	*code_pd_entry |= PAGING_FLAG_USER;
 	*code_pd_entry |= PAGING_FLAG_WRITEABLE;
 	for (i = 0; i < elf_header.ph_num; ++i) {
@@ -189,10 +197,13 @@ i32 elf_load(struct vfs_inode *inode,
 			++blocks;
 		}
 		code_phys_frame = allocate_blocks(blocks);
+        if (code_phys_frame == NULL) {
+            panic("Failed to allocate new physical block: not enough space :(");
+        }
 		/* Map necessary pages for code */
 		for (j = 0, addr = program_header.vaddr; j < blocks; ++j, addr += 0x1000) {
 			u32 phys_code_page = (u32)code_phys_frame + j * 0x1000;
-			map_page((void *)phys_code_page, (void *)addr, flags);
+			map_page(phys_code_page, addr, flags);
 		}
 		fp.f_pos = program_header.offset;
         if (fp.f_ops && fp.f_ops->read) {

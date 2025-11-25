@@ -16,6 +16,8 @@ struct file_ops ext2_dir_ops = {
 	ext2_readdir,
 };
 
+static i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf);
+
 i32 ext2_unlink(struct vfs_inode *dir, const char *basename) {
 	struct buffer *buf;
 	struct vfs_inode *inode;
@@ -527,4 +529,25 @@ struct vfs_inode *ext2_follow_link(struct vfs_inode *inode, struct vfs_inode *ba
 	--current_process->symlink_count;
 	brelse(buf);
 	return inode;
+}
+
+static i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf) {
+	struct ext2_dir *de, *pde;
+	i32 curr_off = 0;
+	pde = NULL;
+	de = (struct ext2_dir *)(old_buf->data);
+	while (curr_off < 1024) {
+		if (de == dir) {
+			if (pde) {
+				pde->rec_len += dir->rec_len;
+			} else {
+				dir->inode = 0;
+			}
+			return 0;
+		}
+		curr_off += de->rec_len;
+		pde = de;
+		de = (struct ext2_dir *)(old_buf->data + curr_off);
+	}
+	return -ENOENT;
 }

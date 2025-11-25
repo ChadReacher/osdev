@@ -39,13 +39,13 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 	struct vfs_inode *inode;
 
 	mode &= 0777 & ~current_process->umask;
-	fd = get_new_fd();
+	fd = process_fd_new();
 	if (fd > NR_OPEN) {
 		debug("We have run out of file descriptors\r\n");
 		return -EMFILE;
 	}
 	current_process->close_on_exec &= ~(1 << fd);
-	f = get_empty_file();
+	f = process_file_new();
 	if (!f) {
 		return -ENFILE;
 	}
@@ -204,24 +204,29 @@ i32 syscall_fork() {
 	struct proc *child;
 
 	idx = get_free_proc();
-	if (idx < 0) { 
-		panic("No more procs\r\n");
-		return -ENOMEM;
+	if (idx < 0) {
+          debug("[%s]: hit the system-wide limit: %d procs\r\n", __func__,
+                NR_PROCS);
+          return -EAGAIN;
 	}
 	child = procs[idx] = malloc(sizeof(struct proc));
 	if (!child) {
-		return -EAGAIN;
+        debug("Failed to allocate enough memory for child process structure");
+		return -ENOMEM;
 	}
 	*child = *current_process;
+	child->page_directory = (physical_address)paging_copy_page_dir(1);
+	if (!child->page_directory) {
+		free(child);
+        procs[idx] = NULL;
+		return -ENOMEM;
+	}
 	child->pid = next_pid++;
 	child->parent = current_process;
-	child->directory = paging_copy_page_dir(1);
-	if (!child->directory) {
-		--next_pid;
-		free(child);
-		return -EAGAIN;
-	}
 	child->kernel_stack_bottom = malloc(4096 *2);
+    if (child->kernel_stack_bottom == NULL) {
+        panic("Failed to allocate the kernel stack for child process");
+    }
 	memset(child->kernel_stack_bottom, 0, 4096 * 2);
 	child->regs = (struct registers_state *)
 		(ALIGN_DOWN((u32)child->kernel_stack_bottom + 4096 * 2 - 1, 4)
@@ -359,7 +364,7 @@ void do_exit(i32 code) {
 		panic("Can't exit the INIT process\r\n");
 	}
 	free_user_image();
-        free_blocks((void *)current_process->directory, 1);
+        free_blocks((void *)current_process->page_directory, 1);
 
 	if (current_process->leader && current_process->tty >= 0) {
 		tty_table[current_process->tty].pgrp = 0;
@@ -688,15 +693,15 @@ i32 syscall_sigsuspend(sigset_t *sigmask) {
 i32 syscall_alarm(u32 secs) {
 	i32 old = current_process->alarm;
 	if (old) {
-		old = (old - ticks) / TIMER_FREQ;
+		old = (old - ticks) / TIMER_FREQ_HZ;
 	}
-	current_process->alarm = secs > 0 ? ticks + secs * TIMER_FREQ : 0;
+	current_process->alarm = secs > 0 ? ticks + secs * TIMER_FREQ_HZ : 0;
 	return 0;
 }
 
 i32 syscall_sleep(u32 secs) {
 	current_process->state = INTERRUPTIBLE;
-	current_process->sleep = ticks + secs * TIMER_FREQ;
+	current_process->sleep = ticks + secs * TIMER_FREQ_HZ;
 	schedule();
 	return 0;
 }
@@ -853,7 +858,7 @@ i32 syscall_uname(utsname *name) {
 }
 
 i32 syscall_time(i32 *tloc) {
-	i32 tm = startup_time + ticks / TIMER_FREQ;
+	i32 tm = startup_time + ticks / TIMER_FREQ_HZ;
 	if (tloc) {
 		*tloc = tm;
 	}
@@ -1188,7 +1193,7 @@ i32 syscall_pipe(i32 fidles[2]) {
 		return -1;
 	}
 
-	if (!(inode = get_pipe_inode())) {
+	if (!(inode = pipe_get_inode())) {
 		current_process->fds[fd[0]] = current_process->fds[fd[1]] = NULL;
 		f[0]->f_count=f[1]->f_count = 0;
 		return -1;

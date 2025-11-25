@@ -1,4 +1,3 @@
-extern need_resched
 extern schedule
 
 extern check_signals
@@ -82,10 +81,6 @@ irq_ret:
 	push dword esp
 	call check_signals
 	add esp, 4
-
-	cmp dword [need_resched], dword 1
-	jne next
-	call schedule
 
 next:
 

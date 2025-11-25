@@ -22,6 +22,6 @@ struct pipe_inode {
 extern struct file_ops pipe_read_ops;
 extern struct file_ops pipe_write_ops;
 
-struct vfs_inode *get_pipe_inode();
+struct vfs_inode *pipe_get_inode(void);
 
 #endif

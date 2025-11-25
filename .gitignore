@@ -2,3 +2,5 @@ build/*
 kernel/**/*.o
 kernel/**/*.d
 userland/hdd
+.cache
+compile_commands.json

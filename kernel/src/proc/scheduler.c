@@ -1,191 +1,185 @@
+#include "paging.h"
 #include <scheduler.h>
 #include <tss.h>
 #include <syscall.h>
 #include <stdlib.h>
 #include <string.h>
 #include <heap.h>
-#include <syscall.h>
 #include <process.h>
 #include <panic.h>
 
-extern u32 ticks;
 extern u32 next_pid;
-extern void irq_ret();
+extern void irq_ret(void);
 extern void switch_to(struct context **old_context, struct context *new_context);
 
-i32 need_resched = 0;
 struct proc *procs[NR_PROCS];
 struct proc *current_process = NULL;
 
-void task_switch(struct proc *next_proc);
+static void task_switch(struct proc *next_proc);
 
-static void cpu_idle() {
-	while (1) { 
-		__asm__ volatile ("hlt");
-	}
+static void cpu_idle(void) {
+    while (1) {
+        __asm__ volatile ("hlt");
+    }
 }
 
 struct proc *get_proc_by_id(i32 pid) {
-	if (pid < 0 || pid > NR_PROCS) {
-		return NULL;
-	}
-	return procs[pid];
+    if (pid < 0 || pid > NR_PROCS) {
+        return NULL;
+    }
+    return procs[pid];
 }
 
-int get_free_proc() {
-	int i;
-	for (i = 0; i < NR_PROCS; ++i) {
-		if (procs[i] == NULL) {
-			return i;
-		}
-	}
-	return -1;
+int get_free_proc(void) {
+    for (u32 i = 0; i < NR_PROCS; ++i) {
+        if (procs[i] == NULL) {
+            return i;
+        }
+    }
+    return -1;
 }
 
-static void dump_procs() {
-	int i;
-	debug("Queue of all processes:\r\n");
-	for (i = 0; i < NR_PROCS; ++i) {
-		char *state;
-		struct proc *p = procs[i];
-		if (!p) {
-			continue;
-		}
-		switch (p->state) {
-			case RUNNING:
-				state = "RUNNING";
-				break;
-			case ZOMBIE:
-				state = "ZOMBIE";
-				break;
-			case INTERRUPTIBLE:
-				state = "INTERRUPTIBLE";
-				break;
-			case STOPPED:
-				state = "STOPPED";
-				break;
-			default:
-				state = "UNKNOWN";
-				break;
-		}
-		debug("Process(%p) with PID %d, state: %s\r\n",
-				p, p->pid, state);
-	}
+static void UNUSED dump_procs(void) {
+    int i;
+    debug("Queue of all processes:\r\n");
+    for (i = 0; i < NR_PROCS; ++i) {
+        char *state;
+        struct proc *p = procs[i];
+        if (!p) {
+            continue;
+        }
+        switch (p->state) {
+            case RUNNING:
+                state = "RUNNING";
+                break;
+            case ZOMBIE:
+                state = "ZOMBIE";
+                break;
+            case INTERRUPTIBLE:
+                state = "INTERRUPTIBLE";
+                break;
+            case STOPPED:
+                state = "STOPPED";
+                break;
+            default:
+                state = "UNKNOWN";
+                break;
+        }
+        debug("Process(%p) with PID %d, state: %s\r\n",
+                p, p->pid, state);
+    }
 }
 
-void schedule() {
-	int i, count;
-	struct proc *next_proc, *p;
+void schedule(void) {
+    struct proc *next_proc = NULL;
+    struct proc *p = NULL;
 
-	//dump_procs();
+    while (1) {
+        i32 count = -1;
+        next_proc = procs[0];
+        for (u32 i = 1; i < NR_PROCS; ++i) {
+            p = procs[i];
+            if (!p) {
+                continue;
+            }
+            if (p->state == RUNNING && p->timeslice > count) {
+                next_proc = p;
+                count = p->timeslice;
+            }
+        }
+        if (count) {
+            break;
+        }
+        for (u32 i = 1; i < NR_PROCS; ++i) {
+            p = procs[i];
+            if (p) {
+                p->timeslice = DEFAULT_TIMESLICE;
+            }
+        }
+    }
 
-	for (i = 1; i < NR_PROCS; ++i) {
-		p = procs[i];
-		if (!p) {
-			continue;
-		}
-		if (p->alarm && (u32)p->alarm < ticks) {
-			send_signal(p, SIGALRM);
-			p->alarm = 0;
-		}
-		if (p->sleep && p->sleep < ticks) {
-			p->sleep = 0;
-			if (p->state == INTERRUPTIBLE) {
-				p->state = RUNNING;
-			}
-		}
-		if (p->sigpending != 0 && p->state == INTERRUPTIBLE) {
-			p->sleep = 0;
-			p->state = RUNNING;
-		}
-	}
-
-	need_resched = 0;
-	while (1) {
-		count = -1;
-		next_proc = procs[0];
-		for (i = 1; i < NR_PROCS; ++i) {
-			p = procs[i];
-			if (!p) {
-				continue;
-			}
-			if (p->state == RUNNING && p->timeslice > count) {
-				next_proc = p;
-				count = p->timeslice;
-			}
-		}	
-		if (count) {
-			break;
-		}
-		for (i = 1; i < NR_PROCS; ++i) {
-			p = procs[i];
-			if (p) {
-				p->timeslice = 20;
-			}
-		}	
-	}
-	
-	if (next_proc != current_process) {
-		task_switch(next_proc);
-	}
+    if (next_proc != current_process) {
+        task_switch(next_proc);
+    }
 }
 
-void task_switch(struct proc *next_proc) {
-	struct proc *prev_proc = current_process;
-	current_process = next_proc;
+static void task_switch(struct proc *next_proc) {
+    struct proc *prev_proc = current_process;
+    current_process = next_proc;
 
-	tss_set_stack((u32)current_process->kernel_stack_top);
-	__asm__ volatile ("movl %%eax, %%cr3" 
+    tss_set_stack((u32)current_process->kernel_stack_top);
+    __asm__ volatile ("movl %%eax, %%cr3"
             : 
-            : "a"((u32)current_process->directory));
-	switch_to(&prev_proc->context, current_process->context);
+            : "a"(current_process->page_directory));
+    switch_to(&prev_proc->context, current_process->context);
 }
 
-void create_idle_process() {
-	struct proc *idle_process = procs[0] = malloc(sizeof(struct proc));
-	memset(idle_process, 0, sizeof(struct proc));
+static void create_idle_process(void) {
+    struct proc *idle_process = procs[IDLE_PID] = malloc(sizeof(struct proc));
+    assert(idle_process != NULL);
+    memset(idle_process, 0, sizeof(struct proc));
 
-	idle_process->pid = next_pid++;
-	idle_process->timeslice = 20;
-	idle_process->state = RUNNING;
-	idle_process->directory = virtual_to_physical((void *)0xFFFFF000);
-	idle_process->kernel_stack_bottom = malloc(4096 *2);
-	memset(idle_process->kernel_stack_bottom, 0, 4096 * 2);
-	idle_process->regs = (struct registers_state *)
-		(ALIGN_DOWN((u32)idle_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(struct registers_state) + 4);
-	idle_process->regs->eflags = 0x202;
-	idle_process->regs->cs = 0x8;
-	idle_process->regs->ds = 0x8;
-	idle_process->regs->es = 0x8;
-	idle_process->regs->fs = 0x8;
-	idle_process->regs->gs = 0x8;
-	idle_process->regs->eip = (u32)cpu_idle;
-	idle_process->context = (struct context *)
-		(ALIGN_DOWN((u32)idle_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(struct registers_state) - sizeof(struct context) + 4);
-	idle_process->context->eip = (u32)irq_ret;
-	idle_process->kernel_stack_top = idle_process->context;
+    idle_process->pid = next_pid++;
+    idle_process->timeslice = DEFAULT_TIMESLICE;
+    idle_process->state = RUNNING;
+    idle_process->page_directory = virtual_to_physical(CURR_PAGE_DIR);
+
+    idle_process->kernel_stack_bottom = malloc(PAGE_SIZE * 2);
+    assert(idle_process->kernel_stack_bottom != NULL);
+    memset(idle_process->kernel_stack_bottom, 0, PAGE_SIZE * 2);
+
+    u8 *kstack_top = (u8 *)ALIGN_DOWN(
+        (u32)idle_process->kernel_stack_bottom + PAGE_SIZE * 2 - 1, sizeof(u32));
+
+    kstack_top -= sizeof(struct registers_state) + sizeof(u32);
+    idle_process->regs = (struct registers_state *)kstack_top;
+    idle_process->regs->eflags = 0x202;
+    idle_process->regs->cs = KERNEL_CS;
+    idle_process->regs->ds = KERNEL_DS;
+    idle_process->regs->es = KERNEL_CS;
+    idle_process->regs->fs = KERNEL_CS;
+    idle_process->regs->gs = KERNEL_CS;
+    idle_process->regs->eip = (u32)cpu_idle;
+
+    kstack_top -= sizeof(struct context);
+    idle_process->context = (struct context *)kstack_top;
+    idle_process->context->eip = (u32)irq_ret;
+
+    idle_process->kernel_stack_top = kstack_top;
 }
 
-void scheduler_init() {
-	struct proc *init_process;
+static void create_init_process(void) {
+    struct proc *init_process = current_process = procs[1] = malloc(sizeof(struct proc));
+    assert(init_process != NULL);
+    memset(init_process, 0, sizeof(struct proc));
 
-	create_idle_process();
+    init_process->pid = next_pid++;
+    init_process->timeslice = DEFAULT_TIMESLICE;
+    init_process->state = RUNNING;
+    for (u32 i = 0; i < NR_GROUPS; ++i) {
+        init_process->groups[i] = -1;
+    }
+    init_process->tty = -1;
 
-	init_process = current_process = procs[1] = malloc(sizeof(struct proc));
-	memset(init_process, 0, sizeof(struct proc));
-	init_process->pid = next_pid++;
-	init_process->timeslice = 20;
-	init_process->state = RUNNING;
-	init_process->kernel_stack_bottom = malloc(4096 * 2);
-	memset(init_process->kernel_stack_bottom, 0, 4096 * 2);
-	init_process->regs = (struct registers_state *)
-		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(struct registers_state) + 4);
-	init_process->context = (struct context *)
-		(ALIGN_DOWN((u32)init_process->kernel_stack_bottom + 4096 * 2 - 1, 4)
-		 - sizeof(struct registers_state) - sizeof(struct context) + 4);
+    init_process->kernel_stack_bottom = malloc(PAGE_SIZE * 2);
+    assert(init_process->kernel_stack_bottom != NULL);
+    memset(init_process->kernel_stack_bottom, 0, PAGE_SIZE * 2);
 
-	debug("Scheduler has been successfully initialized\r\n");
+    u8 *kstack_top = (u8 *)ALIGN_DOWN(
+        (u32)init_process->kernel_stack_bottom + PAGE_SIZE * 2 - 1, sizeof(u32));
+
+    kstack_top -= sizeof(struct registers_state) + sizeof(u32);
+    init_process->regs = (struct registers_state *)kstack_top;
+
+    kstack_top -= sizeof(struct context);
+    init_process->context = (struct context *)kstack_top;
+
+    init_process->kernel_stack_top = kstack_top;
+}
+
+void scheduler_init(void) {
+    create_idle_process();
+    create_init_process();
+
+    debug("Scheduler has been successfully initialized\r\n");
 }

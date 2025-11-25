@@ -54,5 +54,6 @@ i32 tty_read(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 i32 tty_write(struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
 void do_cook(struct tty_struct *tty);
 i8 ttyq_getchar(struct tty_queue *q);
+void ttyq_putchar(struct tty_queue *q, i8 c);
 
 #endif

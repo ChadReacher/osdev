@@ -9,6 +9,7 @@
 #include <idt.h>
 #include <tss.h>
 #include <vfs.h>
+#include <panic.h>
 
 i32 syscall_close(i32 fd);
 
@@ -46,7 +47,15 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		return -E2BIG;
 	}
 	argv = (i8 **)malloc((argc + 1) * sizeof(i8 *));
+    if (argv == NULL) {
+        debug("Failed to allocate enough memory for argv");
+        return -ENOMEM;
+    }
 	envp = (i8 **)malloc((envc + 1) * sizeof(i8 *));
+    if (envp == NULL) {
+        debug("Failed to allocate enough memory for envp");
+        return -ENOMEM;
+    }
 	argv[argc] = NULL;
 	envp[envc] = NULL;
 	for (i = 0; i < argc; ++i) {
@@ -90,6 +99,5 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	current_process->close_on_exec = 0;
 	vfs_iput(inode);
 
-	tss_set_stack((u32)current_process->kernel_stack_top);
 	return 0;
 }

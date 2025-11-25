@@ -2,7 +2,6 @@
 #define CMOS_H
 
 #include "types.h"
-#include "isr.h"
 
 #define CMOS_COMMAND_PORT 0x70
 #define CMOS_DATA_PORT 0x71
@@ -30,8 +29,6 @@ struct cmos_time {
 	u8 century;
 };
 
-struct cmos_time cmos_read_rtc();
-void cmos_rtc_handler(struct registers_state *regs);
-void cmos_rtc_init();
+void cmos_rtc_init(void);
 
 #endif

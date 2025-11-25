@@ -4,9 +4,9 @@ Filesystem:
     - Research, get more knowledge about working with devices: character- and block-devices
   * [DONE] Support symbolink links in Ext2
   * Implement second file system:
-    - Implement MSDOS/FAT32(16)
-    - Implement mount() syscall
-    - Implement umount() syscall
+    - Implement MSDOS/FAT32(16) or HFS
+  * Implement mount() syscall
+  * Implement umount() syscall
   * Implement FIFO
   * Implement sockets
 
@@ -15,7 +15,7 @@ Scheduling:
   * Make the kernel preemptive?
 
 Memory management:
-  * Refactor?
+  * [DONE] Refactor?
   * Improve?
   * Introduce zones in virtual memory
 
@@ -44,7 +44,7 @@ Misc:
   * Introduce threads
   * Introduce asynchronous functions
   * Introduce even-driven architecture
-  * Introduce kernel stack trace
+  * [DONE] Introduce kernel stack trace
 
 Plan:
 * [DONE] Implement pipe as file system
@@ -57,20 +57,21 @@ Plan:
 * [DONE] Introduce block cache
 * [DONE] Implement truncate(2) syscall
 * ...
+* Implement mount() syscall
+* Implement umount() syscall
+* ...
 * Introduce memory zones? mmap(2) syscall?
 * ...
 * Implement Unix domain sockets
 * Implement networking sockets
 * ...
-* Implement MSDOS/FAT32(16) file system
-* Implement mount() syscall
-* Implement umount() syscall
-* ...
 * Implement SMP
 * Implement threads
 * Implement async routines
+* ...
+* Implement a second file system
+* ...
 
 
 Open questions/TODOs:
 * Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
-* Do we need 'need_resched'. For now, it is used only in 'process_wakeup' routine. It means that we enable the scheduler to work when we we wake up a process.

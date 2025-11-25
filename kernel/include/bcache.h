@@ -12,13 +12,13 @@
 #define B_DIRTY     0x4
 
 struct buffer {
-        i32 refcnt;
-	i32 flags;
-	u16 dev;
-	u32 block;
-	i8 *data;
-	struct buffer *prev;
-	struct buffer *next;
+    i32 refcnt;
+    i32 flags;
+    u16 dev;
+    u32 block;
+    i8 *data;
+    struct buffer *prev;
+    struct buffer *next;
 };
 
 void bcache_init(void);

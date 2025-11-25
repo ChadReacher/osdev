@@ -1,8 +1,6 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
-#include "isr.h"
-
 #define KEYBOARD_DATA_PORT   0x60
 #define KEYBOARD_STATUS_PORT 0x64
 
@@ -44,8 +42,6 @@
 #define UP_ARROW 0x48
 #define DOWN_ARROW 0x50
 
-void keyboard_init();
-u8 keyboard_get_scancode();
-u8 keyboard_getchar();
+void keyboard_init(void);
 
 #endif

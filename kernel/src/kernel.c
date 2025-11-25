@@ -8,7 +8,7 @@
 #include <syscall.h>
 #include <timer.h>
 #include <keyboard.h>
-#include <cmos.h>
+#include <cmos_rtc.h>
 #include <pmm.h>
 #include <paging.h>
 #include <console.h>
@@ -21,6 +21,7 @@
 #include <ext2.h>
 #include <elf.h>
 #include <bcache.h>
+#include <common.h>
 
 void kernel_start(void) {
 	serial_init();
@@ -28,9 +29,9 @@ void kernel_start(void) {
 	isr_init();
 	irq_init();
 	syscall_init();
-	tss_init(5, 0x10, 0);
+	tss_init();
 	idt_init();
-	timer_init(TIMER_FREQ);
+	timer_init();
 	keyboard_init();
 	cmos_rtc_init();
 	pmm_init();
