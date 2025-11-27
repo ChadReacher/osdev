@@ -11,6 +11,7 @@ struct file_ops ata_ops = {
 	block_read,
 	block_write,
 	NULL,
+    NULL,
 };
 
 struct file_ops *blk_dev_ops[] = {

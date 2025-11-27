@@ -23,3 +23,9 @@ u32 ntohl(u32 netlong) {
 u16 ntohs(u16 netshort) {
 	return htons(netshort);
 }
+
+in_addr_t inet_addr(const i8 *cp) {
+    (void)cp;
+    // TODO: implement
+    return INADDR_ANY;
+}

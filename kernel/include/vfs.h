@@ -4,6 +4,7 @@
 #include "types.h"
 #include "ext2.h"
 #include "pipe.h"
+#include <net.h>
 
 #define ROOT_DEV 0x306
 
@@ -60,6 +61,7 @@ struct file_ops {
     i32 (*read) (struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
     i32 (*write) (struct vfs_inode *inode, struct file *fp, i8 *buf, i32 count);
     i32 (*readdir) (struct vfs_inode *inode, struct file *fp, struct dirent *dent);
+    void (*close) (struct vfs_inode *inode, struct file *fp);
 };
 
 struct ext2_inode;
@@ -90,6 +92,7 @@ struct vfs_inode {
     union {
         struct ext2_inode i_ext2;
         struct pipe_inode i_pipe;
+        struct socket i_socket;
     } u;
 };
 

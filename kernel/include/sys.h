@@ -74,7 +74,6 @@ i32 syscall_send();
 i32 syscall_sendto();
 i32 syscall_recv();
 i32 syscall_recvfrom();
-i32 syscall_shutdown();
 
 syscall_fn syscall_handlers[NR_SYSCALLS] = {
     syscall_test,

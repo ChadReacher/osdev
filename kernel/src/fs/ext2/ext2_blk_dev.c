@@ -8,6 +8,7 @@ struct file_ops ext2_blk_ops = {
     NULL,
     NULL,
     NULL,
+    NULL,
 };
 
 i32 ext2_blk_open(struct vfs_inode *inode, struct file *fp) {

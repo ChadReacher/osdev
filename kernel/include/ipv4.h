@@ -2,6 +2,7 @@
 #define IPV4_H
 
 #include <types.h>
+#include <vfs.h>
 
 #define IPV4_FLAGS_MF (1 << 0)
 #define IPV4_FLAGS_DF (1 << 1)
@@ -24,6 +25,7 @@ typedef struct ipv4_header {
     u32 dest_addr;
 } __attribute__((packed)) ipv4_header_t;
 
+void net_create_ip_socket(struct vfs_inode *inode);
 void ipv4_receive_packet(void *packet);
 void ipv4_send_packet(u8 *data, u32 len, u8 protocol, u32 dest_addr);
 u16 ipv4_checksum(void *addr, i32 count);

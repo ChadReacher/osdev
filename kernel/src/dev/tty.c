@@ -32,6 +32,7 @@ struct file_ops tty_ops = {
 	tty_read,
     tty_write,
 	NULL,
+    NULL,
 };
 
 struct file_ops ttyx_ops = {
@@ -39,6 +40,7 @@ struct file_ops ttyx_ops = {
 	tty_read,
     tty_write,
 	NULL,
+    NULL,
 };
 
 struct tty_struct tty_table[] = {

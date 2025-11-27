@@ -14,6 +14,7 @@ struct file_ops ext2_dir_ops = {
 	NULL,
 	NULL,
 	ext2_readdir,
+    NULL,
 };
 
 static i32 ext2_delete_entry(struct ext2_dir *dir, struct buffer *old_buf);

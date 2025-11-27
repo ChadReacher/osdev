@@ -28,12 +28,14 @@ struct file_ops pipe_read_ops = {
     pipe_read,
     bad_pipe_write,
     NULL,
+    NULL,
 };
 
 struct file_ops pipe_write_ops = {
     NULL,
     bad_pipe_read,
     pipe_write,
+    NULL,
     NULL
 };
 

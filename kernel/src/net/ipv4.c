@@ -6,6 +6,7 @@
 #include <udp.h> 
 #include <heap.h>
 #include <string.h>
+#include <errno.h>
 
 #define MAX_FRAGMENT_SESSIONS 12
 
@@ -24,6 +25,117 @@ struct IPFragment {
 /* Support for now only `MAX_FRAGMENT_SESSIONS` unique simultaneous fragmentation processes */
 static struct IPFragment fragments[MAX_FRAGMENT_SESSIONS] = {0};
 static u32 idx = 0;
+
+static i32 ipv4_connect(struct socket *socket, const struct sockaddr *addr, socklen_t addrlen) {
+    assert(socket != NULL);
+
+    if (addr == NULL) {
+        return -1;
+    } else if (sizeof(struct sockaddr_in) != addrlen) {
+        return -1;
+    }
+
+    if (socket->connected) {
+        return -EINVAL;
+    }
+    
+    if (!socket->bounded) {
+        struct sockaddr_in *saddr = (struct sockaddr_in *) &socket->saddr;
+        saddr->sin_family = AF_INET;
+        saddr->sin_port = 0;
+        // TODO: change to dynamically detecting via "next hop on route"
+        //saddr->sin_addr.s_addr = inet_addr("192.168.0.115");
+        saddr->sin_addr.s_addr = 0x12345678;
+        // TODO: maybe add socket to global list of sockets
+        socket->bounded = 1;
+    }
+
+
+    socket->daddr = *addr;
+    socket->connected = true;
+
+    return 0;
+}
+
+static i32 ipv4_bind(struct socket *socket, const struct sockaddr *addr, socklen_t addrlen) {
+    assert(socket != NULL);
+
+    if (addr == NULL) {
+        return -1;
+    } else if (addrlen != sizeof(struct sockaddr_in)) {
+        return -1;
+    }
+
+    if (socket->bounded) {
+        return -EINVAL;
+    }
+
+    struct sockaddr_in *saddr = (struct sockaddr_in *) &socket->saddr;
+    saddr->sin_family = AF_INET;
+    saddr->sin_port = 0;
+    // TODO: change to dynamically detecting via "next hop on route"
+    //saddr->sin_addr.s_addr = inet_addr("192.168.0.115");
+    saddr->sin_addr.s_addr = 0x12345678;
+    // TODO: maybe add socket to global list of sockets
+
+    socket->bounded = 1;
+
+    return 0;
+}
+
+static void ipv4_listen(void) {
+
+}
+
+static i32 ipv4_sendto(struct socket *socket, const void *buf, u32 len, i32 flags, const struct sockaddr *daddr, socklen_t addrlen) {
+    assert(socket != NULL);
+    assert(buf != NULL);
+
+    if (!daddr && !socket->connected) {
+        return -EINVAL;
+    }
+    if (daddr && addrlen != sizeof(struct sockaddr_in)) {
+        return -EINVAL;
+    }
+    if (socket->connected && daddr) {
+        return -EINVAL;
+    }
+
+    // src ip ---> socket->saddr.sin_addr or INADDR_ANY
+    // dst ip ---> socket->daddr.sin_addr or daddr.sin_addr
+    // protocol ---> socket->proto
+    // data ---> buf
+    // len ---> len
+
+    return 0;
+}
+
+static i32 ipv4_send(struct socket *socket, const void *buf, u32 len, i32 flags) {
+    return ipv4_sendto(socket, buf, len, flags, NULL, 0);
+}
+
+
+static void ipv4_recv(void) {
+
+}
+
+static void ipv4_recvfrom(void) {
+
+}
+
+struct socket_ops socket_ipv4_ops = {
+    ipv4_connect,
+    ipv4_bind,
+    ipv4_listen,
+    ipv4_send,
+    ipv4_sendto,
+    ipv4_recv,
+    ipv4_recvfrom
+};
+
+void net_create_ip_socket(struct vfs_inode *inode) {
+    inode->u.i_socket.ops = &socket_ipv4_ops;
+}
 
 void create_first_fragment(u16 id, void *payload, u16 plen, u32 offset) {
     if (idx > MAX_FRAGMENT_SESSIONS) {

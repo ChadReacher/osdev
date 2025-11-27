@@ -15,6 +15,7 @@ struct file_ops ext2_file_ops = {
 	ext2_file_read,
     ext2_file_write,
 	ext2_readdir,
+    NULL,
 };
 
 

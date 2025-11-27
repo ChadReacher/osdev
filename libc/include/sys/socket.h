@@ -6,11 +6,12 @@
 typedef i32 socklen_t;
 typedef u32 sa_family_t;
 
+// It holds socket address information for various types of sockets
 struct sockaddr {
 	// Socket address family
 	sa_family_t sa_family;
-	// Socket address (variable-length data)
-	i8 sa_data[];
+	// Protocol address
+	i8 sa_data[14];
 };
 
 #define SOCK_DGRAM		2

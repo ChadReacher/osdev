@@ -38,6 +38,7 @@ struct file_ops dev_memory_ops = {
 	dev_mem_read,
     dev_mem_write,
 	NULL,
+    NULL,
 };
 
 i32 dev_mem_open(UNUSED struct vfs_inode *inode, UNUSED struct file *fp) {

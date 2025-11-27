@@ -208,7 +208,10 @@ void ext2_read_inode(struct vfs_inode *vnode) {
     } else if (S_ISLNK(vnode->i_mode)) {
 		vnode->i_ops = &ext2_inode_symlink_ops;
 		vnode->i_f_ops = &ext2_file_ops;
-	}  else if (S_ISFIFO(vnode->i_mode)) {
+    } else if (S_ISSOCK(vnode->i_mode)) {
+        //vnode->i_ops = &ext2_inode_sock_ops;
+        //vnode->i_f_ops = &ext2_file_ops;
+	} else if (S_ISFIFO(vnode->i_mode)) {
 		//vnode->i_ops = ext2_inode_fifo_ops;
 		//vnode->i_f_ops = &ext2_fifo_ops;
 	}

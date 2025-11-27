@@ -9,6 +9,7 @@ struct file_ops ext2_chr_ops = {
 	NULL,
     NULL,
 	NULL,
+    NULL,
 };
 
 i32 ext2_chr_open(struct vfs_inode *inode, struct file *fp) {

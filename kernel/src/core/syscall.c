@@ -24,6 +24,7 @@
 #include <vfs.h>
 #include <bcache.h>
 #include <ata.h>
+#include <net.h>
 #include <socket.h>
 
 extern u32 startup_time;
@@ -91,6 +92,11 @@ i32 syscall_close(i32 fd) {
     if (--f->f_count) {
         return 0;
     }
+
+    if (f->f_ops && f->f_ops->close) {
+        f->f_ops->close(f->f_inode, f);
+    }
+
     vfs_iput(f->f_inode);
     return 0;
 }
@@ -1380,30 +1386,59 @@ i32 syscall_umount(const i8 *target) {
 }
 
 i32 syscall_socket(i32 domain, i32 type, i32 protocol) {
-    // domain is only supported for: AF_INET
-    if (domain != AF_INET) {
-        return -EINVAL;
-    }
+    i32 fd;
+    struct file *f;
+    struct vfs_inode *inode = NULL;
 
-    // type is only supported for: SOCK_STREAM (TCP), SOCK_DGRAM (UDP), SOCK_RAW (for ICMP?) 
-    if (type != SOCK_DGRAM && type != SOCK_RAW && type != SOCK_STREAM) {
-        return -EINVAL;
-    }
-    
-    // protocol is only supported for: 0 i.e. default protocol
-    if (protocol != 0) {
-        return -EINVAL;
-    }
+    fd = process_fd_new();
+    if (fd > NR_OPEN) return -EMFILE;
 
-    return 0;
+    f = process_file_new();
+    if (!f) return -ENFILE;
+
+    current_process->fds[fd] = f;
+    ++f->f_count;
+
+    inode = net_create_socket(domain, type, protocol);
+    if (!inode) return -EINVAL;
+
+    f->f_mode = 0777 & ~current_process->umask;
+    f->f_flags = 0;
+    f->f_count = 1;
+    f->f_inode = inode;
+    f->f_pos = 0;
+    f->f_ops = inode->i_f_ops;
+    return fd;
 }
 
-i32 syscall_connect() {
-    return -EINVAL;
+i32 syscall_connect(i32 fd, const struct sockaddr *addr, socklen_t addrlen) {
+    struct file *f;
+    if (fd > NR_OPEN) {
+        return -EBADF;
+    }
+    f = current_process->fds[fd];
+    if (!f) {
+        return -EBADF;
+    }
+    if (!S_ISSOCK(f->f_inode->i_mode)) {
+        return -EINVAL;
+    }
+    return net_connect_socket(&f->f_inode->u.i_socket, addr, addrlen);
 }
 
-i32 syscall_bind() {
-    return -EINVAL;
+i32 syscall_bind(int fd, const struct sockaddr *addr, socklen_t addrlen) {
+    struct file *f;
+    if (fd > NR_OPEN) {
+        return -EBADF;
+    }
+    f = current_process->fds[fd];
+    if (!f) {
+        return -EBADF;
+    }
+    if (!S_ISSOCK(f->f_inode->i_mode)) {
+        return -EINVAL;
+    }
+    return net_bind_socket(&f->f_inode->u.i_socket, addr, addrlen);
 }
 
 i32 syscall_listen() {
@@ -1414,12 +1449,40 @@ i32 syscall_accept() {
     return -EINVAL;
 }
 
-i32 syscall_send() {
-    return -EINVAL;
+i32 syscall_send(int fd, const void *buf, u32 len, i32 flags) {
+    struct file *f;
+
+    if (fd > NR_OPEN) {
+        return -EBADF;
+    }
+
+    f = current_process->fds[fd];
+    if (!f) {
+        return -EBADF;
+    }
+    if (!S_ISSOCK(f->f_inode->i_mode)) {
+        return -EINVAL;
+    }
+
+    return net_send_socket(&f->f_inode->u.i_socket, buf, len, flags);
 }
 
-i32 syscall_sendto() {
-    return -EINVAL;
+i32 syscall_sendto(int fd, const void *buf, u32 len, i32 flags, const struct sockaddr *addr, socklen_t addrlen) {
+    struct file *f;
+
+    if (fd > NR_OPEN) {
+        return -EBADF;
+    }
+
+    f = current_process->fds[fd];
+    if (!f) {
+        return -EBADF;
+    }
+    if (!S_ISSOCK(f->f_inode->i_mode)) {
+        return -EINVAL;
+    }
+
+    return net_sendto_socket(&f->f_inode->u.i_socket, buf, len, flags, addr, addrlen);
 }
 
 i32 syscall_recv() {
