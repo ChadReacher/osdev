@@ -4,9 +4,11 @@
 #include "types.h"
 
 #define IDT_ENTRIES 256
+/* 1110 1111 */
+#define INTERRUPT_TRAP_TYPE_KERNEL 0xEF
 /* 1110 1110 */
 #define INTERRUPT_GATE_TYPE_KERNEL 0xEE
-#define INTERRUPT_GATE_TYPE 0x8E
+#define INTERRUPT_GATE_TYPE_USER 0x8E
 /* 10001110
  * 1 bit        P(present bit),
  * 2-3 bits     DPL(Descriptor Privelege Level)
