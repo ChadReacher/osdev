@@ -29,6 +29,7 @@ Core:
 
 Devices:
   * Implement several TTYs
+  * Implement writing directly to serial console instead of VGA (like ttyS0)
   * [DONE] Implement block cache
   * Implement devfs?
 
@@ -45,6 +46,7 @@ Misc:
   * Introduce asynchronous functions
   * Introduce even-driven architecture
   * [DONE] Introduce kernel stack trace
+  * Introduce '#!' shebang
 
 Plan:
 * [DONE] Implement pipe as file system
