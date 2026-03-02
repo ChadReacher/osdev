@@ -20,6 +20,7 @@ static void task_switch(struct proc *next_proc);
 static void cpu_idle(void) {
     while (1) {
         __asm__ volatile ("hlt");
+        schedule();
     }
 }
 
