@@ -139,7 +139,7 @@ void check_signals(struct registers_state *regs) {
 }
 
 void syscall_init(void) {
-    idt_set(SYSCALL, (u32)isr0x80, INTERRUPT_GATE_TYPE_KERNEL);
+    idt_set(SYSCALL, (u32)isr0x80, INTERRUPT_TRAP_TYPE_KERNEL);
 
     debug("Syscall handler has been initialized\r\n");
 }
