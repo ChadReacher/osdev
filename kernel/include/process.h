@@ -125,7 +125,7 @@ struct proc {
 };
 
 void user_init(void);
-void enter_usermode(void);
+void user_enter(void);
 
 // Allocates a new file descriptor
 i32 process_fd_new(void);

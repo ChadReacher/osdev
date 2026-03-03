@@ -17,12 +17,7 @@ struct proc *current_process = NULL;
 
 static void task_switch(struct proc *next_proc);
 
-static void cpu_idle(void) {
-    while (1) {
-        __asm__ volatile ("hlt");
-        schedule();
-    }
-}
+void kinit(void);
 
 struct proc *get_proc_by_id(i32 pid) {
     if (pid < 0 || pid > NR_PROCS) {
@@ -140,27 +135,22 @@ static void create_idle_process(void) {
     idle_process->regs->es = KERNEL_CS;
     idle_process->regs->fs = KERNEL_CS;
     idle_process->regs->gs = KERNEL_CS;
-    idle_process->regs->eip = (u32)cpu_idle;
 
     kstack_top -= sizeof(struct context);
     idle_process->context = (struct context *)kstack_top;
-    idle_process->context->eip = (u32)irq_ret;
 
     idle_process->kernel_stack_top = kstack_top;
 }
 
 static void create_init_process(void) {
-    struct proc *init_process = current_process = procs[1] = malloc(sizeof(struct proc));
+    struct proc *init_process = procs[1] = malloc(sizeof(struct proc));
     assert(init_process != NULL);
     memset(init_process, 0, sizeof(struct proc));
 
     init_process->pid = next_pid++;
     init_process->timeslice = DEFAULT_TIMESLICE;
     init_process->state = RUNNING;
-    for (u32 i = 0; i < NR_GROUPS; ++i) {
-        init_process->groups[i] = -1;
-    }
-    init_process->tty = -1;
+    init_process->page_directory = virtual_to_physical(CURR_PAGE_DIR);
 
     init_process->kernel_stack_bottom = malloc(KSTACK_SZ);
     assert(init_process->kernel_stack_bottom != NULL);
@@ -174,6 +164,7 @@ static void create_init_process(void) {
 
     kstack_top -= sizeof(struct context);
     init_process->context = (struct context *)kstack_top;
+    init_process->context->eip = (u32)kinit;
 
     init_process->kernel_stack_top = kstack_top;
 }
@@ -181,6 +172,8 @@ static void create_init_process(void) {
 void scheduler_init(void) {
     create_idle_process();
     create_init_process();
+
+    current_process = procs[IDLE_PID];
 
     debug("Scheduler has been successfully initialized\r\n");
 }
