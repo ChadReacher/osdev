@@ -31,7 +31,14 @@ Devices:
   * Implement several TTYs
   * Implement writing directly to serial console instead of VGA (like ttyS0)
   * [DONE] Implement block cache
-  * Implement devfs?
+  * Implement devfs (it seems not so difficult):
+    - a separate virtual file system
+    - define generic `dev_t` structure to contain necessary data about a device
+    - maintain a list of registered devices
+    - each device driver will register itself to the list of devices
+    - implement file API (open, close, read, write)
+    - implement directory API (readdir, open, lookup, etc.)
+    - mount the filesystem in 'init' process code
 
 Misc:
   * Networking (sockets, after implementing default Unix Domain sockets)
