@@ -216,7 +216,7 @@ i8 *strerror(i32 errnum) {
 			s = "Bad file descriptor";
 			break;
 		case ECHILD:
-			s = "NO child processes";
+			s = "No child processes";
 			break;
 		case EAGAIN:
 			s = "Resource temporarily unavailable";

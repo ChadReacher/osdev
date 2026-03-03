@@ -16,8 +16,8 @@
 #define INTERRUPT_GATE_TYPE_KERNEL 0xEE
 /* 1110 1111, on switch the interrupts are leaved enabled */
 #define INTERRUPT_TRAP_TYPE_KERNEL 0xEF
-/* 1000 1110 */
-#define INTERRUPT_GATE_TYPE_USER 0x8E
+/* 1110 1110 */
+#define INTERRUPT_GATE_TYPE_USER 0xEE
 
 struct idt_entry {
     u16 isr_address_low;    /* The lower 16 bits of the ISR's address */

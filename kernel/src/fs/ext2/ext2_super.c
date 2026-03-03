@@ -36,7 +36,7 @@ i32 ext2_read_super(struct vfs_superblock *vsb) {
         vsb->s_dev = 0;
         return -1;
     }
-    dump_super_block_info(&vsb->u.ext2_sb);
+    // dump_super_block_info(&vsb->u.ext2_sb);
     vsb->s_block_size = 1024 << vsb->u.ext2_sb.s_log_block_size;
     vsb->fs_ops = &ext2_fs_ops;
     vsb->sb_ops = &ext2_sb_ops;

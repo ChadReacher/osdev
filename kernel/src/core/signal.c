@@ -3,6 +3,7 @@
 #include "errno.h"
 #include "isr.h"
 #include <panic.h>
+#include <signal.h>
 
 
 void do_exit(i32 code);
@@ -54,7 +55,7 @@ i32 handle_signal(struct registers_state *regs) {
             //current_process->state = RUNNING;
             return 0;
         } else {
-            do_exit((0x7E << 8) | sig);
+            do_exit((sig << 8) | 0x7E);
         }
     } else if (action->sa_handler == SIG_IGN) {
         return 0;
@@ -80,6 +81,8 @@ i32 send_signal(struct proc *proc, i32 sig) {
     if (current_process->euid != proc->euid && current_process->euid != 0) {
         return -EPERM;
     }
+    i32 is_masked = (proc->sigmask & (1 << (sig - 1)));
+    i32 is_ignored = (proc->signals[sig].sa_handler == SIG_IGN);
 
     if (sig == SIGSTOP || sig == SIGTSTP || sig == SIGTTIN || sig == SIGTTOU) {
         sigdelset(&proc->sigpending, SIGCONT);
@@ -95,7 +98,7 @@ i32 send_signal(struct proc *proc, i32 sig) {
         }
     }
     sigaddset(&proc->sigpending, sig);
-    if (proc->state == INTERRUPTIBLE) {
+    if (proc->state == INTERRUPTIBLE && !is_masked && !is_ignored) {
         proc->state = RUNNING;
     }
 

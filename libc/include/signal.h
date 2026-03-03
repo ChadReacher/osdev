@@ -59,5 +59,6 @@ i32 sigaction(i32 sig, sigaction_t *act, sigaction_t *oact);
 i32 sigprocmask(i32 how, sigset_t *set, sigset_t *oset);
 i32 sigpending(sigset_t *set);
 i32 sigsuspend(sigset_t *sigmask);
+i32 pause(void);
 
 #endif

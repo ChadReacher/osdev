@@ -1,5 +1,6 @@
 #include <isr.h>
 #include <idt.h>
+#include <signal.h>
 #include <stdio.h>
 #include <port.h>
 #include <pic.h>
@@ -62,6 +63,26 @@ void breakpoint_handler(struct registers_state *regs) {
           regs->useresp,
           regs->ss
     );
+    i32 err = send_signal(current_process, SIGTRAP);
+    if (err != 0) {
+        debug("[%s] failed to send SIGTRAP signal\r\n", __func__);
+    }
+}
+
+void invalid_opcode_handler(UNUSED struct registers_state *regs) {
+    debug("Exception: INVALID OPCODE\r\n");
+    i32 err = send_signal(current_process, SIGILL);
+    if (err != 0) {
+        debug("[%s] failed to send SIGILL signal\r\n", __func__);
+    }
+}
+
+void divzero_handler(UNUSED struct registers_state *regs) {
+    debug("Exception: DIVISION BY ZERO\r\n");
+    i32 err = send_signal(current_process, SIGFPE);
+    if (err != 0) {
+        debug("[%s] failed to send SIGFPE signal\r\n", __func__);
+    }
 }
 
 void isr_init(void) {
@@ -100,7 +121,9 @@ void isr_init(void) {
     idt_set(30, (u32)isr30, INTERRUPT_GATE_TYPE_USER);
     idt_set(31, (u32)isr31, INTERRUPT_GATE_TYPE_USER);
 
+    register_interrupt_handler(0, divzero_handler);
     register_interrupt_handler(3, breakpoint_handler);
+    register_interrupt_handler(6, invalid_opcode_handler);
 
     debug("ISRs have been initialized\r\n");
 }
@@ -131,9 +154,10 @@ void register_interrupt_handler(u8 n, isr_t handler) {
 }
 
 void check_signals(struct registers_state *regs) {
-    while (current_process
-        && (current_process->sigpending & ~current_process->sigmask)
-        && (regs->cs & 0x3) == 0x3) {
+    assert(current_process != NULL);
+    bool occurred_from_user = (regs->cs & 0x3) == 0x3;
+    while (occurred_from_user &&
+          (current_process->sigpending & ~current_process->sigmask)) {
         handle_signal(regs);
     }
 }
@@ -156,12 +180,14 @@ i32 syscall_handler(struct registers_state *regs) {
 
 static void default_handler(struct registers_state *regs) {
     panic("Received interrupt: %s(%d) with error code: %x\n\n"
+          "   Current Process     = %d\n"
           "   Instruction Pointer = %#x\n"
           "   Code Segment        = %#x\n"
           "   CPU Flags           = %#x\n"
           "   Stack Pointer       = %#x\n"
           "   Stack Segment       = %#x\n",
         exception_messages[regs->int_number], regs->int_number, regs->err_code,
+        current_process->pid,
         regs->eip,
         regs->cs,
         regs->eflags,

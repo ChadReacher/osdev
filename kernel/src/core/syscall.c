@@ -41,12 +41,13 @@ i32 syscall_open(i8 *filename, u32 oflags, u32 mode) {
 
     mode &= 0777 & ~current_process->umask;
     fd = process_fd_new();
-    if (fd > NR_OPEN) {
+    if (fd == -1) {
         debug("We have run out of file descriptors\r\n");
         return -EMFILE;
     }
     f = process_file_new();
     if (!f) {
+        debug("[syscall_open]: The system-wide limit on the total number of open files has been reached.\r\n");
         return -ENFILE;
     }
     current_process->fds[fd] = f;
@@ -129,14 +130,11 @@ i32 syscall_write(i32 fd, i8 *buf, u32 count) {
     return -EINVAL;
 }
 
-#define IS_SEEKABLE(x) ((x)>=1 && (x)<=3)
 i32 syscall_lseek(i32 fd, i32 offset, i32 whence) {
     struct file *file;
     i32 tmp;
 
-    if (fd > NR_OPEN || !(file = current_process->fds[fd]) ||
-            !(file->f_inode) ||
-            !IS_SEEKABLE(MAJOR(file->f_inode->i_rdev))) {
+    if (fd > NR_OPEN || !(file = current_process->fds[fd]) || !(file->f_inode)) {
         return -EBADF;
     }
     if (file->f_inode->i_pipe) {
@@ -204,8 +202,7 @@ i32 syscall_fork() {
 
     idx = get_free_proc();
     if (idx < 0) {
-          debug("[%s]: hit the system-wide limit: %d procs\r\n", __func__,
-                NR_PROCS);
+          debug("[syscall_fork]: [%d] hit the system-wide limit: %d procs\r\n", current_process->pid, NR_PROCS);
           return -EAGAIN;
     }
     child = procs[idx] = malloc(sizeof(struct proc));
@@ -218,6 +215,7 @@ i32 syscall_fork() {
     if (!child->page_directory) {
         free(child);
         procs[idx] = NULL;
+        debug("Failed to copy paging directory\r\n");
         return -ENOMEM;
     }
     child->pid = next_pid++;
@@ -239,9 +237,9 @@ i32 syscall_fork() {
     child->context = (struct context *)kstack_top;
     child->context->eip = (u32)irq_ret;
 
-    child->kernel_stack_top = child->context;
+    child->kernel_stack_top = kstack_top;
 
-    memcpy(child->fds, current_process->fds, NR_OPEN * sizeof(struct file *));  
+    memcpy(child->fds, current_process->fds, NR_OPEN * sizeof(struct file *));
     for (i = 0; i < NR_OPEN; ++i) {
         if (child->fds[i]) {
             ++child->fds[i]->f_count;
@@ -467,6 +465,7 @@ loop:
                 if (stat_loc) {
                     *stat_loc = p->exit_code;
                 }
+                free(procs[i]);
                 procs[i] = NULL;
                 return flag;
             default:
@@ -1182,7 +1181,8 @@ i32 syscall_pipe(i32 fidles[2]) {
         f[0]->f_count = 0;
     }
     if (j < 2) {
-        return -1;
+        debug("[syscall_pipe]: The system-wide limit on the total number of open files has been reached.\r\n");
+        return -ENFILE;
     }
     j = 0;
     for (i = 3; j < 2 && i < NR_OPEN; ++i) {
@@ -1197,7 +1197,8 @@ i32 syscall_pipe(i32 fidles[2]) {
     }
     if (j < 2) {
         f[0]->f_count=f[1]->f_count = 0;
-        return -1;
+        debug("[syscall_pipe]: The per-process limit on the number of open file descriptors has been reached\r\n");
+        return -EMFILE;
     }
 
     if (!(inode = pipe_get_inode())) {

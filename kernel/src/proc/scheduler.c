@@ -1,4 +1,4 @@
-#include "paging.h"
+#include <paging.h>
 #include <scheduler.h>
 #include <tss.h>
 #include <syscall.h>
@@ -20,10 +20,13 @@ static void task_switch(struct proc *next_proc);
 void kinit(void);
 
 struct proc *get_proc_by_id(i32 pid) {
-    if (pid < 0 || pid > NR_PROCS) {
-        return NULL;
+    for (u32 i = 0; i < NR_PROCS; ++i) {
+        if (!procs[i]) continue;
+        if (procs[i]->pid == pid) {
+            return procs[i];
+        }
     }
-    return procs[pid];
+    return NULL;
 }
 
 int get_free_proc(void) {
@@ -96,6 +99,11 @@ void schedule(void) {
 
     if (next_proc != current_process) {
         task_switch(next_proc);
+    } else {
+        // It was previously assumed the `else` branch can be entered only by
+        // idle process (because e.g. all other tasks are sleeping) but in fact
+        // with new disk IRQ implementation, the schedule may observe that we
+        // don't need to really sleep
     }
 }
 
@@ -143,7 +151,7 @@ static void create_idle_process(void) {
 }
 
 static void create_init_process(void) {
-    struct proc *init_process = procs[1] = malloc(sizeof(struct proc));
+    struct proc *init_process = procs[INIT_PID] = malloc(sizeof(struct proc));
     assert(init_process != NULL);
     memset(init_process, 0, sizeof(struct proc));
 
@@ -161,10 +169,20 @@ static void create_init_process(void) {
 
     kstack_top -= sizeof(struct registers_state) + sizeof(u32);
     init_process->regs = (struct registers_state *)kstack_top;
+    init_process->regs->eip = (u32)kinit;
+    init_process->regs->cs = (u32)KERNEL_CS;
+    init_process->regs->eflags = 0x202;
+    init_process->regs->useresp = 0x0;
+    init_process->regs->ss = 0x10;
+    init_process->regs->cs = KERNEL_CS;
+    init_process->regs->ds = KERNEL_DS;
+    init_process->regs->es = KERNEL_CS;
+    init_process->regs->fs = KERNEL_CS;
+    init_process->regs->gs = KERNEL_CS;
 
     kstack_top -= sizeof(struct context);
     init_process->context = (struct context *)kstack_top;
-    init_process->context->eip = (u32)kinit;
+    init_process->context->eip = (u32)irq_ret;
 
     init_process->kernel_stack_top = kstack_top;
 }

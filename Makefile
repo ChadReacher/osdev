@@ -65,8 +65,9 @@ libc:
 run:
 	qemu-system-i386\
 		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
-	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
-		-rtc base=localtime,clock=host,driftfix=slew
+		-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
+		-rtc base=localtime,clock=host,driftfix=slew -display curses\
+		-serial file:serial.log
 
 log:
 	qemu-system-i386\
@@ -80,7 +81,7 @@ debug:
 	qemu-system-i386\
 		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
 	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
-		-rtc base=localtime,clock=host,driftfix=slew\
+		-rtc base=localtime,clock=host,driftfix=slew -nographic\
 		-boot a -s -S &\
 		gdb
 
