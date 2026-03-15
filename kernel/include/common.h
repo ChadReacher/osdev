@@ -17,4 +17,12 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
+static inline void enable_interrupts(void) {
+    __asm__ volatile ("sti;");
+}
+
+static inline void disable_interrupts(void) {
+    __asm__ volatile ("cli;");
+}
+
 #endif

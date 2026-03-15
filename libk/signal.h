@@ -21,7 +21,7 @@ typedef struct {
 #define SIGILL      4    
 #define SIGTRAP     5
 #define SIGABRT     6
-#define SIGIOT      6
+#define SIGIOT      6 // seems useless
 #define SIGUNUSED   7
 #define SIGFPE      8
 #define SIGKILL     9
@@ -31,7 +31,7 @@ typedef struct {
 #define SIGPIPE     13
 #define SIGALRM     14
 #define SIGTERM     15
-#define SIGSTKFLT   16
+#define SIGSTKFLT   16 // Seems unused
 #define SIGCHLD     17
 #define SIGCONT     18
 #define SIGSTOP     19

@@ -28,7 +28,8 @@ i32 main(i32 argc, i8 *argv[]) {
         memset(buf, 0, BUFSZ);
         fd = open(argv[i], O_RDONLY, 0);
         if (fd < 0) {
-            perror("cat: couldn't open file");
+            perror("cat: open failed");
+            write(stderr, "err :(", 7);
             continue;
         }
         do {

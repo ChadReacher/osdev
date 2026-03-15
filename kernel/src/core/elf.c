@@ -100,48 +100,13 @@ static void setup_heap(u32 last_addr) {
     if (brk_phys_frame == NULL) {
         panic("Failed to allocate new physical block: not enough space :(");
     }
-	current_process->brk = ALIGN_UP(last_addr, 4096);
+	current_process->brk = ALIGN_UP(last_addr, PAGE_SIZE);
 	map_page((physical_address)brk_phys_frame, current_process->brk, 
             PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
 }
 
-static void setup_kernel_stack(i8 *usp) {
-	u32 *sp;
-
-	sp = (u32 *)ALIGN_DOWN((u32)current_process->kernel_stack_bottom + 4096 * 2 - 1, 4);
-	/* Setup kernel stack as we have returned from interrupt routine */
-	*sp-- = 0x23;			/* user DS */
-	*sp-- = (u32)usp;		/* user stack */
-	*sp-- = 0x200;			/* EFLAGS */
-	*sp-- = 0x1B;			/* user CS */
-	*sp-- = 0x0;			/* user eip */
-	*sp-- = 0x0;			/* err code */
-	*sp-- = 0x0;			/* int num */
-	*sp-- = 0x0;			/* eax */
-	*sp-- = 0x0; 			/* ecx */
-	*sp-- = 0x0; 			/* edx */
-	*sp-- = 0x0; 			/* ebx */
-	*sp-- = 0x0; 			/* esp */
-	*sp-- = 0x0;			/* ebp */
-	*sp-- = 0x0; 			/* esi */
-	*sp-- = 0x0; 			/* edi */
-	*sp-- = 0x23;			/* ds */
-	*sp-- = 0x23; 			/* es */
-	*sp-- = 0x23; 			/* fs */
-	*sp-- = 0x23; 			/* gs */
-	*current_process->regs = *((struct registers_state *)(sp + 1));
-	*sp-- = (u32)irq_ret;	/* irq_ret eip (to return back to the end of the interrupt routine) */
-	*sp-- = 0x0;			/* ebp */
-	*sp-- = 0x0; 			/* ebx */
-	*sp-- = 0x0; 			/* esi */
-	*sp-- = 0x0; 			/* edi */
-	++sp;
-	current_process->kernel_stack_top = (void *)sp;
-	current_process->context = (struct context *)sp;
-}
-
 i32 elf_load(struct vfs_inode *inode, 
-		i32 argc, i8 **argv, i32 envc, i8 **envp) {
+		i32 argc, i8 **argv, i32 envc, i8 **envp, i8 **user_esp) {
 	i8 *usp;
 	i32 i;
 	u32 last_addr;
@@ -192,8 +157,8 @@ i32 elf_load(struct vfs_inode *inode,
 		if (program_header.memsz == 0) {
 			continue;
 		}
-		blocks = program_header.memsz / 4096;
-		if (program_header.memsz % 4096 != 0) {
+		blocks = program_header.memsz / PMM_BLOCK_SIZE;
+		if (program_header.memsz % PMM_BLOCK_SIZE != 0) {
 			++blocks;
 		}
 		code_phys_frame = allocate_blocks(blocks);
@@ -215,7 +180,7 @@ i32 elf_load(struct vfs_inode *inode,
 	}
 	usp = setup_user_stack(argc, argv, envc, envp);
 	setup_heap(last_addr);
-	setup_kernel_stack(usp);
+	*user_esp = usp;
 	return 0;
 }
 

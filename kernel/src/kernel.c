@@ -42,10 +42,22 @@ void kernel_start(void) {
 	pci_init();
 	ata_init();
 	scheduler_init();
-	mount_root();
-	user_init();
-	enter_usermode();
 
-	panic("End of kernel\r\n");
-	for (;;);
+	debug("split up to: kmain and kinit\r\n");
+
+	debug("[kmain]: let's manually switch to kinit\r\n");
+	schedule();
+
+	debug("[kmain]: entering CPU idle loop\r\n");
+	while (1) {
+		__asm__ volatile ("hlt");
+		schedule();
+	}
+}
+
+void kinit(void) {
+	debug("[kinit]: new kernel process that finishes initialization\r\n");
+
+	mount_root();
+	user_enter();
 }

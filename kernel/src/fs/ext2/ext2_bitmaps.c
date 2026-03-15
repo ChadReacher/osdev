@@ -128,6 +128,9 @@ void ext2_free_inode(struct vfs_inode *inode) {
 struct vfs_inode *ext2_alloc_inode(u16 dev) {
     struct vfs_superblock *vsb = get_vfs_super(dev);
     struct vfs_inode *inode = get_empty_inode();
+    if (!inode) {
+        return NULL;
+    }
 
     u32 s_total_groups = vsb->u.ext2_sb.s_blocks_count / vsb->u.ext2_sb.s_blocks_per_group;
     for (u32 i = 0; i < s_total_groups; ++i) {

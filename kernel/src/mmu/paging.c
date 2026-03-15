@@ -4,6 +4,7 @@
 #include <pmm.h>
 #include <process.h>
 #include <common.h>
+#include <scheduler.h>
 
 static struct page_directory *cur_page_dir = (struct page_directory *)CURR_PAGE_DIR;
 
@@ -35,9 +36,13 @@ void pagefault_handler(struct registers_state *regs) {
         }
         map_page((physical_address)new_heap_page, bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
     } else {
-        while (1) {
-            __asm__ volatile ("cli");
-            __asm__ volatile ("hlt");
+        i32 err = send_signal(current_process, SIGSEGV);
+        if (err != 0) {
+            debug("[%s] failed to send SIGSEGV\n", __func__);
+            while (1) {
+                __asm__ volatile ("cli");
+                __asm__ volatile ("hlt");
+            }
         }
     }
 }

@@ -65,6 +65,8 @@ struct file_ops {
 struct ext2_inode;
 struct ext2_super_block;
 
+#define I_BUSY 0x1
+
 struct vfs_inode {
     u32 i_mode;
     u32 i_uid;
@@ -81,6 +83,7 @@ struct vfs_inode {
     u32 i_num;
     u32 i_count;
     u32 i_dirt;
+    u32 i_cflags;
     u32 i_pipe;
     struct proc *i_wait;
     bool i_mount;

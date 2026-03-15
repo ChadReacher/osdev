@@ -265,6 +265,5 @@ void ext2_write_inode(struct vfs_inode *vnode) {
 			vnode->i_sb->u.ext2_sb.s_inode_size);
 	bwrite(buf);
 
-	vnode->i_dirt = 0;
 	brelse(buf);
 }

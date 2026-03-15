@@ -64,6 +64,6 @@ struct elf_section_header {
 } __attribute__((packed));
 
 i32 elf_load(struct vfs_inode *inode, 
-		i32 argc, i8 **argv, i32 envc, i8 **envp);
+		i32 argc, i8 **argv, i32 envc, i8 **envp, i8 **user_esp);
 
 #endif

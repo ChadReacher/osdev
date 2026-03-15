@@ -104,9 +104,11 @@ static i32 pipe_write(struct vfs_inode *inode, UNUSED struct file *fp, i8 *buf,
 struct vfs_inode *pipe_get_inode(void) {
     struct vfs_inode *inode = NULL;
 
-    if (!(inode = get_empty_inode())) {
+    inode = get_empty_inode();
+    if (!inode) {
         return NULL;
     }
+
     inode->i_count = 2;
     inode->i_pipe = 1;
     inode->u.i_pipe.i_buf = malloc(PAGE_SIZE);

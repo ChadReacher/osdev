@@ -12,12 +12,15 @@ Filesystem:
 
 Scheduling:
   * [DONE] What about signals? Improve signal management?
-  * Make the kernel preemptive?
+  * [DONE] Support signals for popular interrupts (unprivileged instruction, division by 0, etc.)
 
 Memory management:
   * [DONE] Refactor?
-  * Improve?
-  * Introduce zones in virtual memory
+  * Introduce proper singular API to allocate virtual memory (which should
+    allocated physical memory and map it) and physical memory
+  * Introduce zones (mmap?) in virtual memory
+    This would allow us to better track the mapped memory and provide more
+    reliable implementation for demand paging for user heap allocations.
 
 Core:
   * Introduce multi-user support
@@ -29,22 +32,35 @@ Core:
 
 Devices:
   * Implement several TTYs
+  * Implement writing directly to serial console instead of VGA (like ttyS0)
   * [DONE] Implement block cache
-  * Implement devfs?
+  * Implement devfs (it seems not so difficult):
+    - a separate virtual file system
+    - define generic `dev_t` structure to contain necessary data about a device
+    - maintain a list of registered devices
+    - each device driver will register itself to the list of devices
+    - implement file API (open, close, read, write)
+    - implement directory API (readdir, open, lookup, etc.)
+    - mount the filesystem in 'init' process code
 
 Misc:
-  * Networking (sockets, after implementing default Unix Domain sockets)
+  * Networking (sockets, before/after? implementing default Unix Domain sockets)
   * Add mkdir -p build directory to Makefile 
+  * Generate *.o and *.d inside build directory
   * Add doxygen or another style for comments for functions
   * Add documentation
   * Improve user infrastructure
   * Improve build infrastructure
-  * Introduce safe power off
-  * Resource scarce OS testing (too many processes, not enough space, etc.)
+  * Introduce safe power off, reboot (probably needs ACPI?)
+  * [DONE] Resource scarce OS testing (too many processes, not enough space, etc.)
   * Introduce threads
   * Introduce asynchronous functions
   * Introduce even-driven architecture
   * [DONE] Introduce kernel stack trace
+  * Introduce '#!' shebang
+  * Kernel command line parameters (root, init, loglevel)
+  * Use single disk image that contains kernel itself (like /boot/kernel)
+  * Test all available `errno` values
 
 Plan:
 * [DONE] Implement pipe as file system
@@ -59,6 +75,17 @@ Plan:
 * ...
 * [DONE] Implement mount() syscall
 * [DONE] Implement umount() syscall
+* ...
+* [DONE] Implement inode cache?
+* E2E/Stress tests
+  - [DONE] block cache
+  - [DONE] inode cache
+  - [DONE] process table
+  - [DONE] system-wide file table
+  - [DONE] process-wide file table
+  - [DONE] signals
+  - [DONE] crashes to receive corresponding signals (just iterate over general interrupts)
+* Working 'cd ..' && getcwd()
 * ...
 * Introduce memory zones? mmap(2) syscall?
 * ...
@@ -75,3 +102,4 @@ Plan:
 
 Open questions/TODOs:
 * Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
+In the kernel VFS code.

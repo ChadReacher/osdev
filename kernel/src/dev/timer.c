@@ -18,7 +18,11 @@ static void timer_handler(struct registers_state *regs) {
 
     ++ticks;
 
-    if (regs->cs & 0x3) {
+    // CPL is low 2 bits of CS:
+    // ring 0 -> 00 = kernel
+    // ring 3 -> 11 = user
+    bool occurred_from_user = (regs->cs & 0x3) == 0x3;
+    if (occurred_from_user) {
         ++current_process->utime;
     } else {
         ++current_process->stime;
@@ -40,6 +44,10 @@ static void timer_handler(struct registers_state *regs) {
                 p->state = RUNNING;
             }
         }
+    }
+
+    if (!occurred_from_user) {
+        return;
     }
 
     if ((--current_process->timeslice) > 0) {

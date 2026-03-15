@@ -6,7 +6,6 @@ enter_usermode_asm:
 	mov es, ax
 	mov fs, ax
 	mov gs, ax
-	;sti
 	push eax			; user SS
 	push ebx			; user stack
 	push 0x200			; EFLAGS
@@ -14,42 +13,10 @@ enter_usermode_asm:
 	push 0x0			; EIP
 	iret
 
-global context_switch
-context_switch:
-	; Restore general-purpose registers
-	mov eax, esp
-	add eax, 4
-	mov ebp, eax		; skip return address
-	mov ecx, [ebp + 4]
-	mov edx, [ebp + 8]
-	mov ebx, [ebp + 12]
-	mov esi, [ebp + 24]
-	mov edi, [ebp + 28]
-	; After that EAX, EBP, ESP are not restored
-	; ESP will be restored with 'iret' as user stack
-
-	; Prepare for the usermode switch
-	mov ax, 0x23
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-
-	push 0x23			; User DS
-	mov eax, [ebp + 16]
-	push eax			; User stack
-	push 512			; EFLAGS
-	push 0x1B			; User CS
-	mov eax, [ebp + 32]
-	push eax 			; User EIP
-
-	; Now restore EAX and EBP
-	mov eax, [ebp + 0]
-	mov ebp, [ebp + 20]
-
-	iret
-
 global switch_to
+; switch_to(struct context **old_context, struct context *new_context);
+; eax -> **old_context
+; edx -> *new_context
 switch_to:
 	mov eax, [esp + 4]
 	mov edx, [esp + 8]

@@ -122,10 +122,12 @@ struct proc {
     i32 cstime;
     // Controlling terminal device
     i32 tty;
+    // Arbitrary channel address to sleep/wake up on
+    void *chan;
 };
 
 void user_init(void);
-void enter_usermode(void);
+void user_enter(void);
 
 // Allocates a new file descriptor
 i32 process_fd_new(void);
@@ -135,6 +137,9 @@ struct file *process_file_new(void);
 void process_wakeup(struct proc *p);
 // Puts the process to sleep
 void process_sleep(void);
+
+void chan_sleep(void *chan);
+void chan_wakeup(void *chan);
 
 extern struct proc *current_process;
 

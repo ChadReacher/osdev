@@ -49,8 +49,8 @@ user: libc
 	sudo losetup -fP build/disk.img
 	sudo losetup
 	sudo ./disk_part.sh
-	sudo mkfs.ext2 -b 1024 -g 1024 -r 0 -d userland/hdd/ /dev/loop0p1
-	sudo mkfs.ext2 -b 1024 -g 1024 -r 0 -d userland/hdd2/ /dev/loop0p2
+	sudo mkfs.ext2 -b 1024 -g 1024 -E revision=0 -d userland/hdd/ /dev/loop0p1
+	sudo mkfs.ext2 -b 1024 -g 1024 -E revision=0 -d userland/hdd2/ /dev/loop0p2
 	sudo dumpe2fs /dev/loop0p1
 	sudo losetup -d /dev/loop0
 
@@ -65,8 +65,9 @@ libc:
 run:
 	qemu-system-i386\
 		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
-	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
-		-rtc base=localtime,clock=host,driftfix=slew
+		-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
+		-rtc base=localtime,clock=host,driftfix=slew -display curses\
+		-serial file:serial.log
 
 log:
 	qemu-system-i386\
@@ -80,7 +81,7 @@ debug:
 	qemu-system-i386\
 		-drive file=build/boot.img,if=ide,format=raw,media=disk,index=0\
 	   	-drive file=build/disk.img,if=ide,format=raw,media=disk,index=1\
-		-rtc base=localtime,clock=host,driftfix=slew\
+		-rtc base=localtime,clock=host,driftfix=slew -nographic\
 		-boot a -s -S &\
 		gdb
 

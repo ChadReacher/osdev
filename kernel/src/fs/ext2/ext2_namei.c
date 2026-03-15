@@ -394,7 +394,7 @@ i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res) {
 	brelse(buf);
 	if (!(inode = vfs_iget(dir->i_dev, inr))) {
 		vfs_iput(dir);
-		return -EACCES;
+		return -ENFILE;
 	}
 
     // Is it a mountpoint?

@@ -6,6 +6,7 @@
 #include "sys/stat.h"
 #include "errno.h"
 #include "stdarg.h"
+#include <stdio.h>
 
 extern i8 **environ;
 
@@ -174,12 +175,16 @@ i32 close(i32 fd) {
 }
 
 i32 lseek(i32 fd, i32 offset, i32 whence) {
-	u32 ret;
+	i32 ret;
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
 			: "a"(__NR_lseek), "b"(fd), "c"(offset), "d"(whence));
 
+	if (ret < 0) {
+		errno = -ret;
+		ret = -1;
+	}
 	return ret;
 }
 
@@ -383,6 +388,11 @@ i32 setsid() {
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
 			: "a"(__NR_setsid));
+
+	if (ret < 0) {
+		errno = -ret;
+		ret = -1;
+	}
 
 	return ret;
 }

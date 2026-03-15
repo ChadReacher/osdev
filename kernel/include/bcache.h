@@ -10,6 +10,7 @@
 #define B_INVALID   0x1
 #define B_USED      0x2
 #define B_DIRTY     0x4
+#define B_LOCKED    0x8
 
 struct buffer {
     i32 refcnt;

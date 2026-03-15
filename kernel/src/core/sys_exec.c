@@ -12,6 +12,7 @@
 #include <panic.h>
 
 i32 syscall_close(i32 fd);
+extern void enter_usermode_asm(u32 useresp);
 
 #define ARG_MAX 64
 i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
@@ -19,6 +20,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	i32 err, i;
 	i8 **argv, **envp, **arg_p, **env_p;
 	i32 argc = 0, envc = 0;
+	i8 *user_esp = NULL;
 
 	err = vfs_namei(pathname, NULL, 1, &inode);
 	if (err) {
@@ -66,8 +68,7 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 	}
 
 
-
-	if ((err = elf_load(inode, argc, argv, envc, envp))) {
+	if ((err = elf_load(inode, argc, argv, envc, envp, &user_esp)) != 0) {
 		for (i = 0; i < argc; ++i) {
 			free(argv[i]);
 		}
@@ -92,6 +93,8 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 		}
 	}
 	vfs_iput(inode);
+
+	enter_usermode_asm((u32)user_esp);
 
 	return 0;
 }

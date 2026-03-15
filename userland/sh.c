@@ -109,7 +109,8 @@ int next_job_id() {
 int insert_job(struct job *job) {
 	int id = next_job_id();
 	if (id < 0) {
-		return -1;
+		printf("sh failed: reached maximum amount of jobs\n");
+		_exit(1);
 	}
 	job->id = id;
 	job_table[id] = job;
@@ -404,6 +405,7 @@ int run_proc(struct job *job, struct process *p, int ifd, int ofd, int mode) {
 
 	childpid = fork();
 	if (childpid < 0) {
+		perror("sh failed: fork failed");
 		return -1;
 	} else if (childpid == 0) {
 		sigaction(SIGINT, &sigdfl_act, NULL);
@@ -487,49 +489,75 @@ void check_zombie() {
 
 void run_job(struct job *job) {
 	struct process *p;
-	int ifd = 0, status, job_id;
+	int ifd = STDIN_FILENO;
+	int job_id = -1;
 	int fd[2];
 
 	check_zombie();
+
 	if (job->root->type == CMD_EXTERNAL) {
 		job_id = insert_job(job);
 	}
 
 	for (p = job->root; p != NULL; p = p->next) {
+		int ofd = STDOUT_FILENO;
+
+		// we need to setup a pipe for a next process
+		if (p->next != NULL) {
+			if (pipe(fd) < 0) {
+				perror("sh failed: pipe failed");
+				goto error;
+			}
+			ofd = fd[1];
+		} else if (p->opath != NULL) {
+			// we need to setup output redirection for the last process
+			ofd = open(p->opath, O_CREAT|O_WRONLY|O_TRUNC, 0644);
+			if (ofd < 0) ofd = STDOUT_FILENO;
+		}
+
+		// we need to setup input redirection for the first process
 		if (p == job->root && p->ipath != NULL) {
 			ifd = open(p->ipath, O_RDONLY, 0);
 			if (ifd < 0) {
 				printf("sh: no such file or directory: %s\n", p->ipath);
-				remove_job(job_id);
-				return;
+				goto error;
 			}
 		}
-		if (p->next != NULL) {
-			pipe(fd);
-			status = run_proc(job, p, ifd, fd[1], EXEC_PIPELINE);
-			close(fd[1]);
-			ifd = fd[0];
-		} else {
-			int ofd = 1;
-			if (p->opath != NULL) {
-				ofd = open(p->opath, O_CREAT|O_WRONLY|O_TRUNC, 0);
-				if (ofd < 0) {
-					ofd = 1;
-				}
-			}
-			status = run_proc(job, p, ifd, ofd, job->mode);
-			if (ofd != 1) {
-				close(ofd);
-			}
+
+		// Spawn a process
+		u32 status = run_proc(job, p, ifd, ofd, (p->next != NULL ? EXEC_PIPELINE : job->mode));
+
+		if (ifd != STDIN_FILENO) close(ifd);
+		if (ofd != STDOUT_FILENO) close(ofd);
+
+		if (status != 0) {
+			goto error;
 		}
+
+		ifd = fd[0];
 	}
 
 	if (job->root->type == CMD_EXTERNAL) {
-		if (status >= 0 && job->mode == EXEC_FOREGROUND) {
+		if (job->mode == EXEC_FOREGROUND) {
 			remove_job(job_id);
 		} else if (job->mode == EXEC_BACKGROUND) {
 			print_processes_of_job(job_id);
 		}
+	}
+	return;
+
+error:
+	{
+		struct process *p;
+		for (p = job->root; p != NULL; p = p->next) {
+			if (p->pid > 0) {
+				kill(p->pid, SIGKILL);
+
+				waitpid(p->pid, NULL, 0);
+				p->pid = -1;
+			}
+		}
+		remove_job(job->id);
 	}
 }
 
