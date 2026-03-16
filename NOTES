@@ -14,6 +14,7 @@ The issue is fixed by proper sleep handling and Ctrl+TSTP/CTRL-TTOU signals
 * Ctrl+D does not work
 * can't run shell inside shell
 * `cd ..` leads to broken environment (currently we rely on string representation of cwd)
+This is fixed by proper rework of getcwd(2) syscall implementation.
 * there are many page fault due if we malloc 1 MB buffer and read file to it e.g. `cat /home/file`
 * can't move up 'cd ..' when current working directory is mount point root
 * it seems I can't call `int $0x3` breakpoint handler

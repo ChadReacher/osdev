@@ -50,7 +50,7 @@ i32 vfs_dirnamei(const i8 *pathname, struct vfs_inode *base, const i8 **res_base
             return -ENOENT; 
         }
         ++base->i_count; /* lookup eats one 'i_count' */
-        error = base->i_ops->lookup(base, tmp, &inode);
+        error = vfs_lookup(base, tmp, &inode);
         if (error) {
             vfs_iput(base);
             free(saved_pathname);
@@ -101,7 +101,7 @@ i32 vfs_namei(const i8 *pathname, struct vfs_inode *base, i32 follow_links, stru
         return -ENOENT;
     }
     ++dir->i_count; /* lookup eats one 'i_count' */
-    err = dir->i_ops->lookup(dir, basename, &inode);
+    err = vfs_lookup(dir, basename, &inode);
     vfs_iput(dir);
     if (err != 0) {
         return err;
@@ -148,7 +148,7 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
         return -ENOENT;
     }
     ++dir->i_count; /* lookup eats one 'i_count' */
-    err = dir->i_ops->lookup(dir, basename, &inode);
+    err = vfs_lookup(dir, basename, &inode);
 
     if (err) {
         if (!(oflags & O_CREAT)) {
@@ -207,6 +207,67 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
     }
     *res_inode = inode;
     return 0;
+}
+
+extern struct vfs_superblock superblocks[NR_SUPERBLOCKS];
+
+// Performs lookup in the @dir directory for the @name file and storing the resulting inode at @res
+// It 'consumes' the @dir inode exactly once.
+// In the case of mount point boundary it returns the host side of the mount point, not fast-forwarding. 
+// For example:
+// ```
+// dir = "/" (it's mount point root, in rootfs it's '/mnt')
+// vfs_lookup(dir, "..") will return host side '/mnt' _not_ the host '/' immediately.
+// ```
+i32 vfs_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res) {
+    struct vfs_inode *inode = NULL;
+    i32 err = -1;
+    assert(dir != NULL);
+    assert(dir->i_count >= 2);
+    assert(name != NULL);
+    assert(res != NULL);
+
+    for (int i = 0; i < NR_SUPERBLOCKS; ++i) {
+        if (superblocks[i].s_dev == 0) {
+            continue;
+        }
+        bool is_root_of_mount = superblocks[i].s_root == dir;
+        if (strcmp(name, "..") == 0 && is_root_of_mount) {
+            struct vfs_inode *host_side = superblocks[i].s_mounted;
+            if (host_side != NULL) {
+                vfs_iput(dir);
+                ++host_side->i_count;
+                *res = host_side;
+                return 0;
+            }
+        }
+    }
+
+    assert(dir->i_ops != NULL);
+    assert(dir->i_ops->lookup != NULL);
+    err = dir->i_ops->lookup(dir, name, &inode);
+    if (err < 0) {
+        goto exit;
+    }
+
+    for (int i = 0; i < NR_SUPERBLOCKS; ++i) {
+        if (superblocks[i].s_dev == 0) {
+            continue;
+        }
+        bool is_mount_point = superblocks[i].s_mounted == inode;
+        if (is_mount_point) {
+            struct vfs_inode *mount_side = superblocks[i].s_root;
+            ++mount_side->i_count;
+            vfs_iput(inode);
+            inode = mount_side;
+            break;
+        }
+    }
+
+    *res = inode;
+    err = 0;
+exit:
+    return err;
 }
 
 i32 check_permission(struct vfs_inode *inode, i32 mask) {

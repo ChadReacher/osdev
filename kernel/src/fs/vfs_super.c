@@ -99,7 +99,6 @@ void mount_root(void) {
             vsb->s_mounted = NULL;
             current_process->root = vsb->s_root;
             current_process->pwd = vsb->s_root;
-            current_process->str_pwd = strdup("/");
             debug("The %s filesystem has been mounted as root\r\n", filesystems[i].name);
             return;
         }
