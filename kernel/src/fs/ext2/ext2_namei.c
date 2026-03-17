@@ -358,8 +358,6 @@ struct buffer *ext2_find_entry(struct vfs_inode *dir, const i8 *name,
 	return NULL;
 }
 
-extern struct vfs_superblock superblocks[NR_SUPERBLOCKS];
-
 /* It searches the inode by 'name' entry in VFS directory inode 'dir' */
 i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res) {
 	struct buffer *buf = NULL;
@@ -396,17 +394,6 @@ i32 ext2_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res) {
 		vfs_iput(dir);
 		return -ENFILE;
 	}
-
-    // Is it a mountpoint?
-    for (int i = 0; i < NR_SUPERBLOCKS; ++i) {
-        if (superblocks[i].s_dev != 0 && superblocks[i].s_mounted &&
-            superblocks[i].s_mounted->i_num == inode->i_num) {
-            vfs_iput(inode);
-            inode = superblocks[i].s_root;
-            ++inode->i_count;
-            break;
-        }
-    }
  
     *res = inode;
 

@@ -13,6 +13,8 @@
 #define F_SETLK 6
 #define F_SETLKW 7
 
+#define PATH_MAX 1024
+
 #define WNOHANG   1
 #define WUNTRACED 2
 

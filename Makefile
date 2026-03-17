@@ -32,19 +32,7 @@ build/kernel.bin: libk
 
 user: libc
 	$(MAKE) -C userland
-	$(shell mkdir -p userland/hdd/{bin,etc,home,lib,tmp,usr,var,dev})
-	$(shell mkdir -p userland/hdd/mnt/test)
-	mv -f userland/bin/* userland/hdd/bin
-	man wc > userland/hdd/home/file
-	echo "del" > userland/hdd/home/del
-	echo "bye" > userland/hdd/home/bye
-	sudo mknod userland/hdd/dev/null c 0x01 0x03
-	sudo mknod userland/hdd/dev/zero c 0x01 0x04
-	sudo mknod userland/hdd/dev/full c 0x01 0x05
-	sudo mknod userland/hdd/dev/tty  c 0x05 0x00
-	sudo mknod userland/hdd/dev/tty0 c 0x04 0x00
-	sudo mknod userland/hdd/dev/hdb0 b 0x03 0x06
-	sudo mknod userland/hdd/dev/hdb1 b 0x03 0x07
+	./make_rootfs.sh
 	dd if=/dev/zero of=build/disk.img bs=1024 count=4096
 	sudo losetup -fP build/disk.img
 	sudo losetup
@@ -86,11 +74,11 @@ debug:
 		gdb
 
 clean:
-	rm -rf build/* userland/hdd/*
+	rm -rf build/* userland/hdd/* userland/hdd2/*
 	$(MAKE) clean -C kernel
 
 clean-deps:
-	rm -rf build/* userland/hdd/*
+	rm -rf build/* userland/hdd/* userland/hdd2/*
 	$(MAKE) clean-deps -C kernel
 
 # $@ - target name

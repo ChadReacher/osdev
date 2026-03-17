@@ -3,7 +3,7 @@ CFLAGS += -c -I ../libc/include
 binaries = bin/init bin/test bin/sh bin/ls bin/cat bin/rm bin/link bin/mkdir\
 		   bin/rmdir bin/mv bin/clear bin/sleep bin/wc bin/symlink bin/readlink\
 		   bin/trunc bin/mount bin/umount bin/test_fork bin/test_fd bin/test_bcache\
-		   bin/test_icache bin/test_signal
+		   bin/test_icache bin/test_signal bin/test_getcwd bin/test_vfs
 
 all: userland
 

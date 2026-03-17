@@ -246,9 +246,10 @@ i8 *getcwd(i8 *buf, u32 size) {
 			: "=a"(ret) 
 			: "a"(__NR_getcwd), "b"(buf), "c"(size));
 
-	if (!ret) {
+	if (ret == 0) {
 		return buf;
 	}
+	errno = -ret;
 	return NULL;
 }
 

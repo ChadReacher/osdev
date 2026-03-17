@@ -7,8 +7,8 @@ Filesystem:
     - Implement MSDOS/FAT32(16) or HFS
   * [DONE] Implement mount() syscall
   * [DONE] Implement umount() syscall
-  * Implement FIFO
-  * Implement sockets
+  * Implement FIFO (maybe remove - it's just a named pipe)
+  * Implement sockets (maybe implemented during networking stuff)
 
 Scheduling:
   * [DONE] What about signals? Improve signal management?
@@ -19,8 +19,9 @@ Memory management:
   * Introduce proper singular API to allocate virtual memory (which should
     allocated physical memory and map it) and physical memory
   * Introduce zones (mmap?) in virtual memory
-    This would allow us to better track the mapped memory and provide more
-    reliable implementation for demand paging for user heap allocations.
+    - This would allow us to provide robust implementation for `demand paging` and improve heap allocations
+    - This would allow us to implement COW (Copy On Write)
+    - This would allow us to check the user pointer passed to system calls
 
 Core:
   * Introduce multi-user support
@@ -60,7 +61,12 @@ Misc:
   * Introduce '#!' shebang
   * Kernel command line parameters (root, init, loglevel)
   * Use single disk image that contains kernel itself (like /boot/kernel)
+  * Use standard kernel format like `bzImage`?
   * Test all available `errno` values
+  * Introduce features from Plan9?
+    - process namespace
+    - union filesystem
+    - mmap vs no mmap
 
 Plan:
 * [DONE] Implement pipe as file system
@@ -85,7 +91,8 @@ Plan:
   - [DONE] process-wide file table
   - [DONE] signals
   - [DONE] crashes to receive corresponding signals (just iterate over general interrupts)
-* Working 'cd ..' && getcwd()
+* ...
+* [DONE] Working 'cd ..' && getcwd()
 * ...
 * Introduce memory zones? mmap(2) syscall?
 * ...
@@ -98,8 +105,3 @@ Plan:
 * ...
 * Implement a second file system
 * ...
-
-
-Open questions/TODOs:
-* Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
-In the kernel VFS code.

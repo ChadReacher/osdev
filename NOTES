@@ -14,8 +14,10 @@ The issue is fixed by proper sleep handling and Ctrl+TSTP/CTRL-TTOU signals
 * Ctrl+D does not work
 * can't run shell inside shell
 * `cd ..` leads to broken environment (currently we rely on string representation of cwd)
+This is fixed by proper rework of getcwd(2) syscall implementation.
 * there are many page fault due if we malloc 1 MB buffer and read file to it e.g. `cat /home/file`
 * can't move up 'cd ..' when current working directory is mount point root
+This is fixed by proper getcwd(2) and lookup implementation, specificaly introducing wrapper - vfs_lookup function to handle the mounts properly.
 * it seems I can't call `int $0x3` breakpoint handler
 The issue was in the CPL(current privilege level) and DPL(descriptor privilege level)
 * `cat /home/file | wc &` sometimes produces 1 50 55 which is strange
@@ -23,7 +25,9 @@ It seems it's good because `cat` fails due to `ENFILE` (The system-wide limit on
 So it should good and expected.
 * maybe i should encorporate automatic kernel symbols generation?
 * perror returns output to stdout, not stderr (probably needs support for `FILE` structure)
+Use plain write(2) syscall, maybe?
 * shell is limited in a number of background processes
+We limited the number and just live with it
 * if run the 'cat /home/file | wc' for around 400 iterations we can reach HEAP END
 The issue was:
 - we didn't free the process struct

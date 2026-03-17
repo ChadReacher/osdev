@@ -78,9 +78,6 @@ struct proc {
     struct vfs_inode *root;
     // Current working directory
     struct vfs_inode *pwd;
-    // String representation of `pwd`
-    // TODO: remove and update the syscall_getcwd()
-    char *str_pwd;
     // Break of the process memory: first unallocated byte
     // TODO: should it be page aligned?
     u32 brk;

@@ -251,7 +251,6 @@ i32 syscall_fork() {
     }
     if (current_process->pwd) {
         ++current_process->pwd->i_count;
-        child->str_pwd = strdup(current_process->str_pwd);
     }
     child->regs->eax = 0;
     child->alarm = 0;
@@ -368,7 +367,6 @@ void do_exit(i32 code) {
     free_user_image();
     free_blocks((void *)current_process->page_directory, 1);
 
-    free(current_process->str_pwd);
     free(current_process->kernel_stack_bottom);
     current_process->state = ZOMBIE;
     current_process->exit_code = code;
@@ -534,18 +532,80 @@ i32 syscall_sbrk(i32 incr) {
     return old_brk;
 }
 
-// TODO[fs]: implement proper getcwd() using bottom-up approach via iget and namei
+static i8 *get_name_in_parent(struct vfs_inode *parent, u32 inum) {
+    i32 err;
+    struct dirent dent;
+    struct file fp;
+    fp.f_pos = 0;
+
+    assert(parent->i_f_ops != NULL);
+    assert(parent->i_f_ops->readdir != NULL);
+    while ((err = parent->i_f_ops->readdir(parent, &fp, &dent)) > 0) {
+        if (dent.inode == inum) {
+            return strdup(dent.name);
+        }
+    }
+    return NULL;
+}
+
 i32 syscall_getcwd(i8 *buf, u32 size) {
-    u32 len;
+    i8 pwd[PATH_MAX] = {0};
+    i8 *ptr = pwd + PATH_MAX - 1;
 
     if (size <= 0) {
         return -EINVAL;
     }
-    len = strlen(current_process->str_pwd);
-    if (size > 0 && size < len + 1) {
+    if (buf == NULL) {
+        return -EFAULT;
+    }
+
+    struct vfs_inode *root = current_process->root;
+    struct vfs_inode *curr = vfs_iget(current_process->pwd->i_dev, current_process->pwd->i_num);
+
+    while (curr != root) {
+        struct vfs_inode *parent = NULL;
+
+        if (curr == curr->i_sb->s_root && curr->i_sb->s_mounted != NULL) {
+            vfs_iput(curr);
+            curr = curr->i_sb->s_mounted;
+            ++curr->i_count;
+        }
+
+        i32 err = vfs_namei("..", curr, true, &parent);
+        if (err < 0) {
+            vfs_iput(curr);
+            return err;
+        }
+
+        i8 *name = get_name_in_parent(parent, curr->i_num);
+        assert(name != NULL);
+        i32 len = strlen(name);
+        if (ptr - len - 1 < pwd) {
+            free(name);
+            vfs_iput(curr);
+            return -ENAMETOOLONG;
+        }
+
+        ptr -= len;
+        memcpy(ptr, name, len);
+        ptr -= 1;
+        *ptr = '/';
+
+        vfs_iput(curr);
+        curr = parent;
+        free(name);
+    }
+
+    if (*ptr == '\0') {
+        *(--ptr) = '/';
+    }
+
+    if (strlen(ptr) + 1 > size) {
         return -ERANGE;
     }
-    memcpy(buf, current_process->str_pwd, len + 1);
+
+    memcpy(buf, ptr, strlen(ptr) + 1);
+    vfs_iput(curr);
     return 0;
 }
 
@@ -597,12 +657,12 @@ i32 syscall_fstat(i32 fd, struct stat *statbuf) {
     return 0;
 }
 
-// TODO[fs]: remove str_pwd after implementing proper getcwd()
 i32 syscall_chdir(i8 *path) {
     i32 err;
     struct vfs_inode *inode;
 
-    if ((err = vfs_namei(path, NULL, 1, &inode))) {
+    err = vfs_namei(path, NULL, 1, &inode);
+    if (err < 0) {
         return err;
     }
     if (!S_ISDIR(inode->i_mode)) {
@@ -613,10 +673,8 @@ i32 syscall_chdir(i8 *path) {
         vfs_iput(inode);
         return -EACCES;
     }
-    free(current_process->str_pwd);
     vfs_iput(current_process->pwd);
     current_process->pwd = inode;
-    current_process->str_pwd = strdup(path);
     return 0;
 }
 

@@ -86,7 +86,6 @@ struct vfs_inode {
     u32 i_cflags;
     u32 i_pipe;
     struct proc *i_wait;
-    bool i_mount;
     struct vfs_superblock *i_sb;
     struct vfs_inode_ops *i_ops;
     struct file_ops *i_f_ops;
@@ -139,6 +138,7 @@ void mount_root(void);
 struct vfs_superblock *get_vfs_super(u32 dev);
 i32 vfs_do_mount(u32 dev, struct vfs_inode *dir);
 i32 vfs_do_umount(struct vfs_inode *target);
+i32 vfs_lookup(struct vfs_inode *dir, const i8 *name, struct vfs_inode **res);
 
 struct vfs_inode *vfs_iget(u16 dev, u32 nr);
 void vfs_iput(struct vfs_inode *inode);
