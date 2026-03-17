@@ -12,7 +12,9 @@ Known bugs:
 * test program behaves strange. When stopping the program and then resuming it, the counter starts just 1 number above. For example, we stopped at 3, and it started at 5.
 The issue is fixed by proper sleep handling and Ctrl+TSTP/CTRL-TTOU signals
 * Ctrl+D does not work
+Fix the bug in sigreturn to return the old EAX register value. Also add EINTR to tty driver and handle it in the shell.
 * can't run shell inside shell
+This is fixed by some previous commits
 * `cd ..` leads to broken environment (currently we rely on string representation of cwd)
 This is fixed by proper rework of getcwd(2) syscall implementation.
 * there are many page fault due if we malloc 1 MB buffer and read file to it e.g. `cat /home/file`

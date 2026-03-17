@@ -780,7 +780,7 @@ i32 syscall_sleep(u32 secs) {
 i32 syscall_sigreturn() {
     *current_process->regs = current_process->signal_old_regs;
     memcpy(&current_process->sigmask, &current_process->old_sigmask,sizeof(sigset_t));
-    return 0;
+    return current_process->regs->eax;
 }
 
 i32 syscall_getppid() {

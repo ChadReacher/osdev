@@ -4,6 +4,7 @@
 #include "isr.h"
 #include <panic.h>
 #include <signal.h>
+#include <process.h>
 
 
 void do_exit(i32 code);

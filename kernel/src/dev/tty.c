@@ -107,7 +107,7 @@ i32 tty_read(struct vfs_inode *inode, UNUSED struct file *fp, i8 *buf, i32 count
 	tty = &tty_table[minor];
 	while (count > 0) {
 		if (current_process->sigpending) {
-			break;
+			return -ERESTART;
 		}
 		if (EMPTY(tty->cooked) || ((tty->termios.c_lflag & ICANON) &&
 				!tty->cooked.count && !IS_FULL(tty->input))) {
