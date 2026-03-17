@@ -86,7 +86,10 @@ void vsprintf(i8 *buf, const i8 *fmt, va_list args) {
 
 void perror(const i8 *s) {
 	if (s && strlen(s) > 0) {
-		printf("%s: ", s);
+		write(stderr, s, strlen(s));
+		write(stderr, ": ", 2);
 	}
-	printf("%s\n", strerror(errno));
+	char *errno_str = strerror(errno);
+	write(stderr, errno_str, strlen(errno_str));
+	write(stderr, "\n", 1);
 }
