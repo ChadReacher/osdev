@@ -89,7 +89,7 @@ i32 execvp(const i8 *file, i8 **argv) {
 		errno = -ENOENT;
 		return -1;
 	}
-	if (file[0] == '/') {
+	if (strchr(file, '/') != NULL) {
 		return execve(file, argv, environ);
 	}
 	if (find_file_in_path(file, absolute_path) == 0) {
