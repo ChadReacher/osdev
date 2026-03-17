@@ -10,7 +10,10 @@ i32 putchar(i32 c) {
 
 i32 getchar() {
 	u8 c = 0;
-	read(stdin, &c, 1);
+	i32 err = read(stdin, &c, 1);
+	if (err < 0) {
+		return err;
+	}
 	return c;
 }
 

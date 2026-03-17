@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
@@ -276,11 +277,6 @@ int get_job_id_by_pid(int pid) {
 		}
 	}
 	return -1;
-}
-
-void sigint_handler(int sig) {
-	(void)sig;
-	printf("\n");
 }
 
 void builtin_cd(int argc, char **argv) {
@@ -691,10 +687,17 @@ char *read_line() {
 		if (c == '\n') {
 			buf[pos] = '\0';
 			return buf;
+		} else if (c == -1 && errno == EINTR) {
+			continue;
+		} else if (c == 0) {
+			builtin_exit();
+			break;
 		} else {
 			buf[pos++] = c;
 		}
 	}
+	printf("unreachable\n");
+	return NULL;
 }
 
 void print_prompt() {
@@ -715,6 +718,12 @@ void loop() {
 		job = parse_line(line);
 		run_job(job);
 	}
+}
+
+void sigint_handler(int sig) {
+	(void)sig;
+	printf("^C\n");
+	print_prompt();
 }
 
 void init() {
