@@ -43,7 +43,7 @@ void test_dir(const char *dirname, const char **files, int sz) {
     ASSERT_OK(closedir(dirp));
 }
 
-int test_func(void) {
+int main(void) {
     printf("Testing VFS\n");
 
     {
@@ -175,16 +175,6 @@ int test_func(void) {
 
         printf("TEST PASSED: getcwd(/); cd /mnt; getcwd(/mnt); cd ..; getcwd(/)\n");
     }
-
-    return 0;
-}
-
-int main(void) {
-    __asm__ volatile ("int3" ::: "memory");
-    for (int i = 0; i < 100; ++i) {
-        test_func();
-    }
-    __asm__ volatile ("int3" ::: "memory");
 
     return 0;
 }
