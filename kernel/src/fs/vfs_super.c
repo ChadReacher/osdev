@@ -78,6 +78,7 @@ i32 vfs_do_umount(struct vfs_inode *target) {
         if (vsb->s_dev != 0 && vsb->s_root != target) {
             continue;
         }
+        vfs_iput(vsb->s_mounted);
         vfs_iput(target);
         vfs_iput(vsb->s_root);
         vsb->sb_ops->write_super(vsb);

@@ -7,6 +7,9 @@
 #include <errno.h>
 #include <panic.h>
 
+
+extern struct vfs_superblock superblocks[NR_SUPERBLOCKS];
+
 /* vfs_dirnamei - converts the path name to VFS inode
  * corresponding to the last directory in the path name
  *
@@ -56,6 +59,27 @@ i32 vfs_dirnamei(const i8 *pathname, struct vfs_inode *base, const i8 **res_base
             free(saved_pathname);
             return error;
         }
+
+        for (int i = 0; i < NR_SUPERBLOCKS; ++i) {
+            if (superblocks[i].s_dev == 0 || superblocks[i].s_mounted == NULL) {
+                continue;
+            }
+            bool is_mount_point = superblocks[i].s_mounted == inode;
+            if (strcmp(tmp, "..") == 0 && is_mount_point) {
+                struct vfs_inode *tmp = NULL;
+                ++inode->i_count; /* lookup eats one 'i_count' */
+                i32 err = vfs_lookup(inode, "..", &tmp);
+                if (err) {
+                    vfs_iput(inode);
+                    return err;
+                }
+
+                vfs_iput(inode);
+                inode = tmp;
+                break;
+            }
+        }
+
         if (!inode->i_ops || !inode->i_ops->followlink) {
             vfs_iput(base);
             base = inode;
@@ -106,6 +130,25 @@ i32 vfs_namei(const i8 *pathname, struct vfs_inode *base, i32 follow_links, stru
     if (err != 0) {
         return err;
     }
+    for (int i = 0; i < NR_SUPERBLOCKS; ++i) {
+        if (superblocks[i].s_dev == 0 || superblocks[i].s_mounted == NULL) {
+            continue;
+        }
+        bool is_mount_point = superblocks[i].s_mounted == inode;
+        if (strcmp(basename, "..") == 0 && is_mount_point) {
+            struct vfs_inode *tmp = NULL;
+            ++inode->i_count; /* lookup eats one 'i_count' */
+            i32 err = vfs_lookup(inode, "..", &tmp);
+            if (err) {
+                vfs_iput(inode);
+                return err;
+            }
+
+            vfs_iput(inode);
+            inode = tmp;
+            break;
+        }
+    }
 
     if (follow_links && inode->i_ops && inode->i_ops->followlink) {
         struct vfs_inode *res = NULL;
@@ -149,6 +192,29 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
     }
     ++dir->i_count; /* lookup eats one 'i_count' */
     err = vfs_lookup(dir, basename, &inode);
+
+    if (err == 0) {
+        for (int i = 0; i < NR_SUPERBLOCKS; ++i) {
+            if (superblocks[i].s_dev == 0 || superblocks[i].s_mounted == NULL) {
+                continue;
+            }
+            bool is_mount_point = superblocks[i].s_mounted == inode;
+            if (strcmp(basename, "..") == 0 && is_mount_point) {
+                struct vfs_inode *tmp = NULL;
+                ++inode->i_count; /* lookup eats one 'i_count' */
+                i32 err = vfs_lookup(inode, "..", &tmp);
+                if (err) {
+                    vfs_iput(inode);
+                    vfs_iput(dir);
+                    return err;
+                }
+
+                vfs_iput(inode);
+                inode = tmp;
+                break;
+            }
+        }
+    }
 
     if (err) {
         if (!(oflags & O_CREAT)) {
@@ -208,8 +274,6 @@ i32 vfs_open_namei(i8 *pathname, i32 oflags, i32 mode, struct vfs_inode **res_in
     *res_inode = inode;
     return 0;
 }
-
-extern struct vfs_superblock superblocks[NR_SUPERBLOCKS];
 
 // Performs lookup in the @dir directory for the @name file and storing the resulting inode at @res
 // It 'consumes' the @dir inode exactly once.

@@ -86,7 +86,6 @@ struct vfs_inode {
     u32 i_cflags;
     u32 i_pipe;
     struct proc *i_wait;
-    bool i_mount;
     struct vfs_superblock *i_sb;
     struct vfs_inode_ops *i_ops;
     struct file_ops *i_f_ops;

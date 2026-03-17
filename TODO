@@ -61,6 +61,7 @@ Misc:
   * Introduce '#!' shebang
   * Kernel command line parameters (root, init, loglevel)
   * Use single disk image that contains kernel itself (like /boot/kernel)
+  * Use standard kernel format like `bzImage`?
   * Test all available `errno` values
   * Introduce features from Plan9?
     - process namespace
@@ -104,8 +105,3 @@ Plan:
 * ...
 * Implement a second file system
 * ...
-
-
-Open questions/TODOs:
-* Where should I perform path resolution? ('./', '../', '././', '/a/..', '/a/b/.././../././', '/hello/', '////hello/////', './///hello/././///..////.//')
-In the kernel VFS code.

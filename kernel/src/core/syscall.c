@@ -565,16 +565,16 @@ i32 syscall_getcwd(i8 *buf, u32 size) {
     while (curr != root) {
         struct vfs_inode *parent = NULL;
 
+        if (curr == curr->i_sb->s_root && curr->i_sb->s_mounted != NULL) {
+            vfs_iput(curr);
+            curr = curr->i_sb->s_mounted;
+            ++curr->i_count;
+        }
+
         i32 err = vfs_namei("..", curr, true, &parent);
         if (err < 0) {
             vfs_iput(curr);
             return err;
-        }
-        // make step across mount point
-        if (curr->i_dev != parent->i_dev) {
-            vfs_iput(curr);
-            curr = parent;
-            continue;
         }
 
         i8 *name = get_name_in_parent(parent, curr->i_num);
