@@ -15,9 +15,8 @@ i32 main(i32 argc, i8 *argv[]) {
     if (argc == 1) {
         while ((r = read(0, buf, BUFSZ)) > 0) {
             if ((err = write(1, buf, r)) < 0) {
-                write(stderr, "error :(", 8);
+                perror("cat: write failed");
                 _exit(1);
-                //perror("cat: write failed");
             }
             printf("%d\n", err);
         }
@@ -29,13 +28,12 @@ i32 main(i32 argc, i8 *argv[]) {
         fd = open(argv[i], O_RDONLY, 0);
         if (fd < 0) {
             perror("cat: open failed");
-            write(stderr, "err :(", 7);
             continue;
         }
         do {
             r = read(fd, buf, BUFSZ);
             if (r < 0) {
-                write(stderr, "error on read :(", 16);
+                perror("cat: read failed");
                 break;
             } else if (r == 0) {
                 break;
@@ -43,7 +41,7 @@ i32 main(i32 argc, i8 *argv[]) {
             for (j = 0; j < r; ++j) {
                 err = write(stdout, buf + j, 1);
                 if (err < 0) {
-                    write(stderr, "error on write :(", 17);
+                    perror("cat: write failed");
                     break;
                 }
             }

@@ -25,7 +25,7 @@ It seems it's good because `cat` fails due to `ENFILE` (The system-wide limit on
 So it should good and expected.
 * maybe i should encorporate automatic kernel symbols generation?
 * perror returns output to stdout, not stderr (probably needs support for `FILE` structure)
-Use plain write(2) syscall, maybe?
+Now we use plain write(2) syscall
 * shell is limited in a number of background processes
 We limited the number and just live with it
 * if run the 'cat /home/file | wc' for around 400 iterations we can reach HEAP END
