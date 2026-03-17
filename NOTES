@@ -9,6 +9,7 @@ This forum discussion saved me - https://forum.osdev.org/viewtopic.php?t=24394.
 
 Known bugs:
 * ./test searches the binary executable in PATH. It finds and executes this file
+It is fixed by handling the path which contains the '/' but doesn't start with it. Basically we don't search PATH if a path contains a slash (doesn't matter either path is absolute or relative)
 * test program behaves strange. When stopping the program and then resuming it, the counter starts just 1 number above. For example, we stopped at 3, and it started at 5.
 The issue is fixed by proper sleep handling and Ctrl+TSTP/CTRL-TTOU signals
 * Ctrl+D does not work
@@ -18,6 +19,7 @@ This is fixed by some previous commits
 * `cd ..` leads to broken environment (currently we rely on string representation of cwd)
 This is fixed by proper rework of getcwd(2) syscall implementation.
 * there are many page fault due if we malloc 1 MB buffer and read file to it e.g. `cat /home/file`
+It seems as expected due to demand paging mechanism.
 * can't move up 'cd ..' when current working directory is mount point root
 This is fixed by proper getcwd(2) and lookup implementation, specificaly introducing wrapper - vfs_lookup function to handle the mounts properly.
 * it seems I can't call `int $0x3` breakpoint handler
