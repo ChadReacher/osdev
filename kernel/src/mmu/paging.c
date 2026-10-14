@@ -103,6 +103,9 @@ void map_page(physical_address paddr, virtual_address vaddr, u32 flags) {
         }
         *entry |= PAGING_FLAG_PRESENT;
         *entry |= PAGING_FLAG_WRITEABLE;
+        if (flags & PAGING_FLAG_USER) {
+            *entry |= PAGING_FLAG_USER;
+        }
         *entry = ((*entry & ~0xFFFFF000) | new_table_paddr);
 
         struct page_table *new_page_table = (struct page_table *)
