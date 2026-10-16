@@ -522,13 +522,27 @@ i32 syscall_dup(u32 oldfd) {
 }
 
 i32 syscall_sbrk(i32 incr) {
+    const u32 flags = PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER;
     u32 old_brk = current_process->brk;
+    u32 old_page = ALIGN_DOWN(old_brk, PAGE_SIZE);
+    u32 new_brk = current_process->brk + incr;
+    u32 new_page = ALIGN_DOWN(new_brk, PAGE_SIZE);
 
-    if (!incr) {
+    if (incr <= 0) {
         return old_brk;
     }
 
-    current_process->brk += incr;
+    u32 pages = (new_page - old_page) / PAGE_SIZE;
+    for (u32 i = 0, page = old_page + PAGE_SIZE; i < pages; ++i, page += PAGE_SIZE) {
+        void *frame = allocate_blocks(1);
+        if (frame == NULL) {
+	    return -ENOMEM;
+        }
+        map_page((physical_address)frame, page, flags);
+    }
+
+    current_process->brk = new_brk;
+
     return old_brk;
 }
 

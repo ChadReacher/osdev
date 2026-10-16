@@ -9,6 +9,10 @@
 #include <pmm.h>
 #include <binfmt.h>
 
+#define USER_STACK_TOP KERNEL_LOAD_VADDR
+#define USER_STACK_SIZE (2 * PAGE_SIZE)
+#define USER_STACK_BASE (USER_STACK_TOP - USER_STACK_SIZE)
+
 extern void irq_ret();
 
 static void dump_elf_header(struct elf_header *elf_h);
@@ -18,39 +22,31 @@ static inline i32 is_elf(struct elf_header *hdr) {
 	return hdr->magic_number == ELF_MAGIC_NUMBER && strncmp((i8 *)hdr->elf_ascii, "ELF", 3) == 0;
 }
 
-static void map_user_stack() {
-	void *stack_frame;
-	pd_entry *stack_pd_entry;
-	struct page_table *stack_page_table;
-	pt_entry stack_page;
-	struct page_directory *curr_page_dir = (struct page_directory *)CURR_PAGE_DIR;
-
-	stack_frame = allocate_blocks(1);
-	if (stack_frame == NULL) {
-		panic("Failed to allocate new physical block: not enough space :(");
+static i32 map_user_stack() {
+	u32 page = USER_STACK_BASE;
+	u32 pages = USER_STACK_SIZE / PAGE_SIZE;
+	const u32 flags = PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER;
+	for (u32 i = 0; i < pages; ++i) {
+		void *frame = allocate_blocks(1);
+		if (!frame) {
+			return -1;
+		}
+		map_page((physical_address)frame, page, flags);
+		page += PAGE_SIZE;
 	}
-	map_page((physical_address)stack_frame, 0xBFFFF000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
-	stack_pd_entry = &curr_page_dir->entries[767];
-	*stack_pd_entry |= PAGING_FLAG_PRESENT;
-	*stack_pd_entry |= PAGING_FLAG_WRITEABLE;
-	*stack_pd_entry |= PAGING_FLAG_USER;
-	stack_page_table = (struct page_table *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)0xBFFFF000) << 12));
-	stack_page = 0;
-	stack_page |= PAGING_FLAG_PRESENT;
-	stack_page |= PAGING_FLAG_WRITEABLE;
-	stack_page |= PAGING_FLAG_USER;
-	stack_page = ((stack_page & ~0xFFFFF000) | (u32)stack_frame);
-	stack_page_table->entries[PAGE_TABLE_INDEX(0xBFFFF000)] = stack_page;
+	return 0;
 }
 
 i8 *setup_user_stack(i32 argc, i8 **argv, i32 envc, i8 **envp) {
 	i32 env_ptr, arg_ptr;
 	i8 *usp;
 
-	map_user_stack();
+	if (map_user_stack()) {
+		return NULL;
+        }
 
-	memset((void *)0xBFFFF000, 0, 4092);
-	usp = (i8 *)0xBFFFFFFB;
+	memset((void *)USER_STACK_BASE, 0, USER_STACK_SIZE);
+	usp = (i8 *)USER_STACK_TOP - sizeof(i32);
 
 	/* push envp strings */
 	for (i32 i = envc - 1; i >= 0; --i) {
@@ -88,27 +84,27 @@ i8 *setup_user_stack(i32 argc, i8 **argv, i32 envc, i8 **envp) {
 	return usp;
 }
 
-static void setup_heap(u32 last_addr) {
-	void *brk_phys_frame;
-
-	brk_phys_frame = allocate_blocks(1);
+static i32 setup_heap(u32 last_addr) {
+	const u32 flags = PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER; 
+	void *brk_phys_frame = allocate_blocks(1);
 	if (brk_phys_frame == NULL) {
-		panic("Failed to allocate new physical block: not enough space :(");
+		return -1;
 	}
 	current_process->brk = ALIGN_UP(last_addr, PAGE_SIZE);
-	map_page((physical_address)brk_phys_frame, current_process->brk, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+	map_page((physical_address)brk_phys_frame, current_process->brk, flags);
+	return 0;
 }
 
 /* TODO: REWRITE:
  * 1. [DONE] Make binary format agnostic
  * 2. [DONE] Figure out the proper way to load the file (i.e. explicitly allocate the `struct file` or do it silently like it's currently done)
- * 3. Probably move out the user stack setup
+ * 3. [DONE] Probably move out the user stack setup -> No
  * 4. Refactor the user stack setup to avoid hardcoded values
- * 5. Think about heap VMA. Do we still need the `brk` pointer?
+ * 5. [DONE] Think about heap VMA. Do we still need the `brk` pointer? -> Yes, for brk(2) and sbrk(2) syscalls
  * 6. [DONE] Do we really need to return a pointer to a user stack? -> Yes
  * 7. [DONE] Is it really a way to `free_user_image`? -> Yes
- * 8. How to properly allocate pages? Do we need to perform two explicit steps: physical allocation and virtual mapping?
- * 9. Update the page fault hander for the new VMA struct
+ * 8. [DONE] How to properly allocate pages? Do we need to perform two explicit steps: physical allocation and virtual mapping? -> Yes
+ * 9. [DONE] Update the page fault hander for the new VMA struct -> No, that requires lazy allocation strategy
  */
 i32 elf_load_binary(struct binparams *bprm, struct registers_state *regs) {
 	u32 last_addr = 0;
@@ -119,7 +115,7 @@ i32 elf_load_binary(struct binparams *bprm, struct registers_state *regs) {
 		return -ENOEXEC;
 	}
 
-	dump_elf_header(hdr);
+	//dump_elf_header(hdr);
 
 	if (hdr->type != ET_EXEC || hdr->machine != EM_X86) {
 		return -ENOEXEC;
@@ -135,8 +131,8 @@ i32 elf_load_binary(struct binparams *bprm, struct registers_state *regs) {
 			return retval;
 		}
 
-		debug("ELF program header:\r\n");
-		dump_program_header(phdr);
+		//debug("ELF program header:\r\n");
+		//dump_program_header(phdr);
 
 		if (phdr.type != PT_LOAD) {
 			debug("ELF program header is not PT_LOAD: %d\r\n", phdr.type);
@@ -165,23 +161,6 @@ i32 elf_load_binary(struct binparams *bprm, struct registers_state *regs) {
 			map_page(phys_code_page, addr, flags);
 		}
 
-		///* Setup virtual memory areas */
-		//struct vma_struct *vma = malloc(sizeof(struct vma_struct));
-		//if (!vma) {
-		//	panic("Failed to allocate memory for `struct vma_struct`");
-		//	return -ENOMEM;
-		//}
-		//memset(vma, 0, sizeof(struct vma_struct));
-		//vma->vma_start = phdr.vaddr;
-		//vma->vma_end = phdr.vaddr + phdr.memsz;
-		//vma->vma_file = NULL; /* TODO: setup the file for future demand paging */
-		//if (current_process->mm == NULL) {
-		//	current_process->mm = vma;
-		//} else {
-		//	vma_struct_insert(current_process->mm, vma); /* TODO: make insert to be sorted relative to addresses */
-		//}
-
-
 		retval = read_exec_buffer(bprm->inode, (i8 *)phdr.vaddr, phdr.filesz, phdr.offset);
 		if (retval < 0) {
 			return retval;
@@ -191,7 +170,12 @@ i32 elf_load_binary(struct binparams *bprm, struct registers_state *regs) {
 	}
 
 	i8 *usp = setup_user_stack(bprm->argc, bprm->argv, bprm->envc, bprm->envp);
-	setup_heap(last_addr);
+	if (!usp) {
+		return -ENOMEM;
+	}
+	if (setup_heap(last_addr)) {
+		return -ENOMEM;
+	}
 
 	regs->eip = hdr->entry;
 	regs->useresp = (u32)usp;

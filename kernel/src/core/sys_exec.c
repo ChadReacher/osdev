@@ -120,5 +120,5 @@ i32 syscall_exec(i8 *pathname, i8 **u_argv, i8 **u_envp) {
 
 err1:
 	vfs_iput(bprm.inode);
-	return 0;
+	return err;
 }

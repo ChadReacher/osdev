@@ -24,27 +24,15 @@ void pagefault_handler(struct registers_state *regs) {
     debug("Page Fault Exception. Bad Address: %#x. Error code: %d\r\n", bad_address, err_code);
     stack_trace();
 
-    const i8 present = (err_code & PAGING_FLAG_PRESENT) == PAGING_FLAG_PRESENT;
-    const i8 rw = (err_code & PAGING_FLAG_WRITEABLE) == PAGING_FLAG_WRITEABLE;
-    const i8 us = (err_code & PAGING_FLAG_USER) == PAGING_FLAG_USER;
-
-    if (!present && rw && us) {
-        /* Fault due to user heap expansion */
-        void *new_heap_page = allocate_blocks(1);
-        if (new_heap_page == NULL) {
-            panic("Failed to allocate new physical block: not enough space :(");
-        }
-        map_page((physical_address)new_heap_page, bad_address, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
-    } else {
-        i32 err = send_signal(current_process, SIGSEGV);
-        if (err != 0) {
-            debug("[%s] failed to send SIGSEGV\n", __func__);
-            while (1) {
-                __asm__ volatile ("cli");
-                __asm__ volatile ("hlt");
-            }
+    if (bad_address >= KERNEL_LOAD_VADDR) {
+        debug("Kernel panic - we crashed :-)\r\n");
+        while (1) {
+            __asm__ volatile ("cli");
+            __asm__ volatile ("hlt");
         }
     }
+
+    send_signal(current_process, SIGSEGV);
 }
 
 physical_address virtual_to_physical(virtual_address vaddr) {
