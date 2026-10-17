@@ -233,5 +233,9 @@ struct page_directory *paging_copy_page_dir(bool is_deep_copy) {
 void paging_init(void) {
     register_interrupt_handler(14, pagefault_handler);
 
+    /* Clear identity mapping for first 4MB */
+    cur_page_dir->entries[0] = 0;
+    flush_tlb();
+
     debug("Paging has been initialized\r\n");
 }
