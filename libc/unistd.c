@@ -228,12 +228,16 @@ i32 dup(i32 oldfd) {
 }
 
 void *sbrk(u32 incr) {
-	u32 ret;
+	i32 ret;
 
 	__asm__ __volatile__ ("int $0x80" 
 			: "=a"(ret) 
 			: "a"(__NR_sbrk), "b"(incr));
 
+	if (ret < 0) {
+		errno = -ret;
+		return NULL;
+	}
 	return (void *)ret;
 }
 

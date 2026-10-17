@@ -86,19 +86,7 @@ mov ecx, cr0
 or ecx, 0x80000001
 mov cr0, ecx
 
-; Move to higher half kernel
-lea ecx, [start_in_higher_half]
-jmp ecx
-
 start_in_higher_half:
-	; Remove first 4MB identity mapping
-	; mov dword [boot_page_directory], 0
-	; invlpg [0]
-
-	; Flush TLB
-	; mov eax, cr3
-	; mov cr3, eax
-
     mov ebp, 0x0                    ; Clear the frame pointer register
     push 0x0
 

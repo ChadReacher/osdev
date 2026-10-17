@@ -7,65 +7,56 @@
 #include <heap.h>
 #include <errno.h>
 #include <pmm.h>
+#include <binfmt.h>
+
+#define USER_STACK_TOP KERNEL_LOAD_VADDR
+#define USER_STACK_SIZE (2 * PAGE_SIZE)
+#define USER_STACK_BASE (USER_STACK_TOP - USER_STACK_SIZE)
 
 extern void irq_ret();
 
 static void dump_elf_header(struct elf_header *elf_h);
 static void dump_program_header(struct elf_program_header ph);
 
-static i32 is_elf(struct elf_header *elf) {
-	i32 ret = -1;
-	if (elf->magic_number == ELF_MAGIC_NUMBER && strncmp((i8 *)elf->elf_ascii, "ELF", 3) == 0) {
-		ret = 0;
-	}
-	if (ret != -1) {
-		ret = elf->type;
-	}
-	return ret;
+static inline i32 is_elf(struct elf_header *hdr) {
+	return hdr->magic_number == ELF_MAGIC_NUMBER && strncmp((i8 *)hdr->elf_ascii, "ELF", 3) == 0;
 }
 
-static void map_user_stack() {
-	void *stack_frame;
-	pd_entry *stack_pd_entry;
-	struct page_table *stack_page_table;
-	pt_entry stack_page;
-	struct page_directory *curr_page_dir = (struct page_directory *)CURR_PAGE_DIR;
-
-	stack_frame = allocate_blocks(1);
-    if (stack_frame == NULL) {
-        panic("Failed to allocate new physical block: not enough space :(");
-    }
-	map_page((physical_address)stack_frame, 0xBFFFF000, PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
-	stack_pd_entry = &curr_page_dir->entries[767];
-	*stack_pd_entry |= PAGING_FLAG_PRESENT;
-	*stack_pd_entry |= PAGING_FLAG_WRITEABLE;
-	*stack_pd_entry |= PAGING_FLAG_USER;
-	stack_page_table = (struct page_table *)(0xFFC00000 + (PAGE_DIR_INDEX((u32)0xBFFFF000) << 12));
-	stack_page = 0;
-	stack_page |= PAGING_FLAG_PRESENT;
-	stack_page |= PAGING_FLAG_WRITEABLE;
-	stack_page |= PAGING_FLAG_USER;
-	stack_page = ((stack_page & ~0xFFFFF000) | (u32)stack_frame);
-	stack_page_table->entries[PAGE_TABLE_INDEX(0xBFFFF000)] = stack_page;
+static i32 map_user_stack() {
+	u32 page = USER_STACK_BASE;
+	u32 pages = USER_STACK_SIZE / PAGE_SIZE;
+	const u32 flags = PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER;
+	for (u32 i = 0; i < pages; ++i) {
+		void *frame = allocate_blocks(1);
+		if (!frame) {
+			return -1;
+		}
+		map_page((physical_address)frame, page, flags);
+		page += PAGE_SIZE;
+	}
+	return 0;
 }
 
 i8 *setup_user_stack(i32 argc, i8 **argv, i32 envc, i8 **envp) {
-	i32 i, env_ptr, arg_ptr;
+	i32 env_ptr, arg_ptr;
 	i8 *usp;
 
-	map_user_stack();
+	if (map_user_stack()) {
+		return NULL;
+        }
 
-	memset((void *)0xBFFFF000, 0, 4092);
-	usp = (i8 *)0xBFFFFFFB;
+	memset((void *)USER_STACK_BASE, 0, USER_STACK_SIZE);
+	usp = (i8 *)USER_STACK_TOP - sizeof(i32);
+
 	/* push envp strings */
-	for (i = envc - 1; i >= 0; --i) {
+	for (i32 i = envc - 1; i >= 0; --i) {
 		usp -= strlen(envp[i]) + 1;
 		strcpy((i8 *)usp, envp[i]);
 		free(envp[i]);
 		envp[i] = (i8 *)usp;
 	}
 	/* push argv strings */
-	for (i = argc - 1; i >= 0; --i) {
+	for (i32 i = argc - 1; i >= 0; --i) {
 		usp -= strlen(argv[i]) + 1;
 		strcpy((i8 *)usp, argv[i]);
 		free(argv[i]);
@@ -93,106 +84,113 @@ i8 *setup_user_stack(i32 argc, i8 **argv, i32 envc, i8 **envp) {
 	return usp;
 }
 
-static void setup_heap(u32 last_addr) {
-	void *brk_phys_frame;
-
-	brk_phys_frame = allocate_blocks(1);
-    if (brk_phys_frame == NULL) {
-        panic("Failed to allocate new physical block: not enough space :(");
-    }
+static i32 setup_heap(u32 last_addr) {
+	const u32 flags = PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER; 
+	void *brk_phys_frame = allocate_blocks(1);
+	if (brk_phys_frame == NULL) {
+		return -1;
+	}
 	current_process->brk = ALIGN_UP(last_addr, PAGE_SIZE);
-	map_page((physical_address)brk_phys_frame, current_process->brk, 
-            PAGING_FLAG_PRESENT | PAGING_FLAG_WRITEABLE | PAGING_FLAG_USER);
+	map_page((physical_address)brk_phys_frame, current_process->brk, flags);
+	return 0;
 }
 
-i32 elf_load(struct vfs_inode *inode, 
-		i32 argc, i8 **argv, i32 envc, i8 **envp, i8 **user_esp) {
-	i8 *usp;
-	i32 i;
-	u32 last_addr;
-	struct elf_header elf_header;
-	pd_entry *code_pd_entry;
-	struct page_directory *curr_page_dir = (struct page_directory *)0xFFFFF000;
-	struct file fp;
+/* TODO: REWRITE:
+ * 1. [DONE] Make binary format agnostic
+ * 2. [DONE] Figure out the proper way to load the file (i.e. explicitly allocate the `struct file` or do it silently like it's currently done)
+ * 3. [DONE] Probably move out the user stack setup -> No
+ * 4. Refactor the user stack setup to avoid hardcoded values
+ * 5. [DONE] Think about heap VMA. Do we still need the `brk` pointer? -> Yes, for brk(2) and sbrk(2) syscalls
+ * 6. [DONE] Do we really need to return a pointer to a user stack? -> Yes
+ * 7. [DONE] Is it really a way to `free_user_image`? -> Yes
+ * 8. [DONE] How to properly allocate pages? Do we need to perform two explicit steps: physical allocation and virtual mapping? -> Yes
+ * 9. [DONE] Update the page fault hander for the new VMA struct -> No, that requires lazy allocation strategy
+ */
+i32 elf_load_binary(struct binparams *bprm, struct registers_state *regs) {
+	u32 last_addr = 0;
+	i32 retval = -1;
 
-    fp.f_ops = inode->i_f_ops;
-	fp.f_mode = inode->i_mode;
-	fp.f_flags = 0;
-	fp.f_count = 1;
-	fp.f_inode = inode;
-	fp.f_pos = 0;
-    if (fp.f_ops && fp.f_ops->read) {
-        i32 err = fp.f_ops->read(fp.f_inode, &fp, (i8 *)&elf_header, sizeof(struct elf_header));
-        if (err != sizeof(struct elf_header)) {
-				return -ENOEXEC;
-        }
-    }
-	if (is_elf(&elf_header) != ET_EXEC) {
+	struct elf_header *hdr = (struct elf_header *)bprm->buffer;
+	if (!is_elf(hdr)) {
 		return -ENOEXEC;
 	}
-	//dump_elf_header(&elf_header);
+
+	//dump_elf_header(hdr);
+
+	if (hdr->type != ET_EXEC || hdr->machine != EM_X86) {
+		return -ENOEXEC;
+	}
+
 	free_user_image();
-	code_pd_entry = &curr_page_dir->entries[0];
-	*code_pd_entry |= PAGING_FLAG_USER;
-	*code_pd_entry |= PAGING_FLAG_WRITEABLE;
-	for (i = 0; i < elf_header.ph_num; ++i) {
-		u32 j, addr;
-		u32 blocks, flags;
-		void *code_phys_frame;
-		struct elf_program_header program_header;
 
-		fp.f_pos = elf_header.phoff + elf_header.ph_size * i;
-        if (fp.f_ops && fp.f_ops->read) {
-            i32 err = fp.f_ops->read(fp.f_inode, &fp, (i8 *)&program_header, sizeof(program_header));
-            if (err != sizeof(program_header)) {
-	    			return -ENOEXEC;
-            }
-        }
-		//dump_program_header(program_header);
+	for (i32 i = 0; i < hdr->ph_num; ++i) {
+		struct elf_program_header phdr;
+		const i32 offset = hdr->phoff + hdr->ph_size * i;
+		retval = read_exec_buffer(bprm->inode, (i8 *)&phdr, sizeof(phdr), offset);
+		if (retval < 0) {
+			return retval;
+		}
 
-		flags = PAGING_FLAG_PRESENT | PAGING_FLAG_USER;
-		flags |= (program_header.flags & PF_W) ? PAGING_FLAG_WRITEABLE : 0;
-		flags |= (program_header.flags & PF_X) ? 0 : 0;
-		flags |= (program_header.flags & PF_R) ? 0 : 0;
-		if (program_header.memsz == 0) {
+		//debug("ELF program header:\r\n");
+		//dump_program_header(phdr);
+
+		if (phdr.type != PT_LOAD) {
+			debug("ELF program header is not PT_LOAD: %d\r\n", phdr.type);
 			continue;
 		}
-		blocks = program_header.memsz / PMM_BLOCK_SIZE;
-		if (program_header.memsz % PMM_BLOCK_SIZE != 0) {
+
+		if (phdr.memsz == 0) {
+			continue;
+		}
+
+		u32 blocks = phdr.memsz / PMM_BLOCK_SIZE;
+		if (phdr.memsz % PMM_BLOCK_SIZE != 0) {
 			++blocks;
 		}
-		code_phys_frame = allocate_blocks(blocks);
-        if (code_phys_frame == NULL) {
-            panic("Failed to allocate new physical block: not enough space :(");
-        }
+		void *code_phys_frames = allocate_blocks(blocks);
+		if (code_phys_frames == NULL) {
+		    panic("Failed to allocate new physical block: not enough space :(");
+		    return -ENOMEM;
+		}
+
+		u32 flags = PAGING_FLAG_PRESENT | PAGING_FLAG_USER;
+		flags |= (phdr.flags & PF_W) ? PAGING_FLAG_WRITEABLE : 0;
 		/* Map necessary pages for code */
-		for (j = 0, addr = program_header.vaddr; j < blocks; ++j, addr += 0x1000) {
-			u32 phys_code_page = (u32)code_phys_frame + j * 0x1000;
+		for (u32 j = 0, addr = phdr.vaddr; j < blocks; ++j, addr += 0x1000) {
+			u32 phys_code_page = (u32)code_phys_frames + j * 0x1000;
 			map_page(phys_code_page, addr, flags);
 		}
-		fp.f_pos = program_header.offset;
-        if (fp.f_ops && fp.f_ops->read) {
-            fp.f_ops->read(fp.f_inode, &fp, (i8 *)program_header.vaddr, program_header.filesz);
-        }
-		memset((void *)(program_header.vaddr + program_header.filesz),
-				0, program_header.memsz - program_header.filesz);
-		last_addr = program_header.vaddr + program_header.memsz;
+
+		retval = read_exec_buffer(bprm->inode, (i8 *)phdr.vaddr, phdr.filesz, phdr.offset);
+		if (retval < 0) {
+			return retval;
+		}
+		memset((void *)(phdr.vaddr + phdr.filesz), 0, phdr.memsz - phdr.filesz);
+		last_addr = phdr.vaddr + phdr.memsz;
 	}
-	usp = setup_user_stack(argc, argv, envc, envp);
-	setup_heap(last_addr);
-	*user_esp = usp;
+
+	i8 *usp = setup_user_stack(bprm->argc, bprm->argv, bprm->envc, bprm->envp);
+	if (!usp) {
+		return -ENOMEM;
+	}
+	if (setup_heap(last_addr)) {
+		return -ENOMEM;
+	}
+
+	regs->eip = hdr->entry;
+	regs->useresp = (u32)usp;
+
 	return 0;
 }
 
 static void dump_elf_header(struct elf_header *elf_h) {
-	debug("magic_number - %x\r\n", elf_h->magic_number);
 	debug("magic_number - %x\r\n", elf_h->magic_number);
 	debug("elf_ascii[3] - %c, %c, %c\r\n", elf_h->elf_ascii[0], elf_h->elf_ascii[1], elf_h->elf_ascii[2]);
 	debug("class - %x\r\n", elf_h->class);
 	debug("data - %x\r\n", elf_h->data);
 	debug("version - %x\r\n", elf_h->version);
 	debug("os_abi - %x\r\n", elf_h->os_abi);
-	debug("padding[8] - [0]....8 times");
+	debug("padding[8] - [0]....8 times\r\n");
 	debug("type - %x\r\n", elf_h->type);
 	debug("machine - %x\r\n", elf_h->machine);
 	debug("elf_version - %x\r\n", elf_h->elf_version);

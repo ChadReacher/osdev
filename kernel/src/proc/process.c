@@ -74,5 +74,7 @@ void user_enter(void) {
     __asm__ volatile ("movl %%eax, %%cr3" : : "a"(current_process->page_directory));
 
     i32 err = syscall_exec(INIT_PROGRAM, argv, envp);
-    assert(err == 0 && "unreachable");
+    assert(err == 0 && "Failed to load init program");
+
+    enter_usermode_asm(current_process->regs->useresp);
 }

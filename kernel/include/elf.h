@@ -6,6 +6,9 @@
 
 #define ELF_MAGIC_NUMBER 0x7F
 
+
+#define EM_X86 0x3
+
 #define ET_NONE 0x00
 #define ET_EXEC 0x02
 

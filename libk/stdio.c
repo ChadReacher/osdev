@@ -49,7 +49,7 @@ void kvsprintf(i8 *buf, i8 *fmt, va_list args) {
     i8 *temp_s;
     i8 c;
     u8 percent = 0;
-    bool alt_conversion = true;
+    bool alt_conversion = false;
     u32 leading_zeroes = 0;
 
     for (p = fmt; *p; ++p) {

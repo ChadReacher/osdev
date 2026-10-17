@@ -78,8 +78,8 @@ struct proc {
     struct vfs_inode *root;
     // Current working directory
     struct vfs_inode *pwd;
-    // Break of the process memory: first unallocated byte
-    // TODO: should it be page aligned?
+    // Program break: end of the process's data segment.
+    // Therefore, it's start of the heap - first unallocated byte
     u32 brk;
     // File mode creation mask
     u32 umask;
